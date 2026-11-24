@@ -49,11 +49,13 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   quickPromptReply: null,
   lastExportNotice: null,
   statusMessage: null,
+  compilingOverlay: null,
 
   setNavMode: (navMode) => {
     playJiggSfx('nav', get().soundEnabled);
     set({ navMode });
   },
+  setCompilingOverlay: (compilingOverlay) => set({ compilingOverlay }),
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
   toggleSolidFallback: () => set((s) => ({ solidFallback: !s.solidFallback })),

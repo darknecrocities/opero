@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getUiDictionary } from '@opero/i18n';
+import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock, ExportFormat } from '@opero/shared-types';
+import { ResizeHandle } from '../../components/ResizeHandle';
 import { operoClient } from '../../services/operoClient';
 import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
 import { AnalyzerReportPanel } from './AnalyzerReportPanel';
@@ -24,7 +25,9 @@ export const DocumentAnalyzerView: React.FC = () => {
   const { uiLocale, targetLocale, activeModelId, soundEnabled, projects, openManualInStudio } = useOperoStore();
   const selectedOllamaTag = DEFAULT_MODELS.find((m) => m.id === activeModelId)?.ollamaTag;
   const dict = getUiDictionary(uiLocale);
+  const feat = getFeatureStrings(uiLocale);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [splitPct, setSplitPct] = useState<number>(54);
 
   const [docs, setDocs] = useState<AnalyzedDocument[]>([]);
   const [activeDoc, setActiveDoc] = useState<AnalyzedDocument | null>(null);
@@ -174,16 +177,15 @@ export const DocumentAnalyzerView: React.FC = () => {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 800 }}>
+          <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800 }}>
             {dict.navAnalyzer}
           </h1>
           <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)' }}>
-            Feed .pdf, .docx, .doc, .txt, or .md · Auto & manual Box/Arrow/Crop annotations with AI reasoning
+            {feat.analyzerSubtitle}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {activeDoc && <span className="status-pill verified">{activeDoc.engineUsed}</span>}
           <input
             ref={fileInputRef}
             type="file"
@@ -199,7 +201,7 @@ export const DocumentAnalyzerView: React.FC = () => {
             onClick={() => fileInputRef.current?.click()}
           >
             <JiggIcon name="add" size={15} variant="duotone" />
-            <span>{busyUpload ? 'Analyzing...' : 'Upload Document'}</span>
+            <span>{busyUpload ? 'Analyzing...' : feat.analyzerUploadBtn}</span>
           </button>
         </div>
       </div>
@@ -244,10 +246,10 @@ export const DocumentAnalyzerView: React.FC = () => {
         >
           <JiggIcon name="docs" size={38} variant="duotone" />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>
-            Upload a document to summarize, annotate, and generate a full report
+            {feat.analyzerEmptyTitle}
           </div>
           <p style={{ margin: 0, maxWidth: '460px', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Supports PDF, Word (.docx / .doc), Markdown, and plain text. Local-first analysis with automatic Box & Arrow callouts, manual crop-to-explain, and PDF/DOCX/HTML/MD export.
+            {feat.analyzerEmptyBody}
           </p>
           <button
             type="button"
@@ -255,43 +257,53 @@ export const DocumentAnalyzerView: React.FC = () => {
             onClick={() => fileInputRef.current?.click()}
           >
             <JiggIcon name="add" size={15} variant="duotone" />
-            <span>Choose Document (.pdf, .docx, .txt)</span>
+            <span>{feat.analyzerUploadBtn}</span>
           </button>
         </div>
       ) : (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
-            gap: '16px',
-            alignItems: 'start',
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'stretch',
+            flexWrap: 'wrap',
+            minWidth: 0,
           }}
         >
-          <DocumentCanvas
-            doc={activeDoc}
-            activeTool={activeTool}
-            selectedAnnId={selectedAnnId}
-            busyBlockId={busyBlockId}
-            onSelectTool={setActiveTool}
-            onSelectAnnotation={setSelectedAnnId}
-            onAnnotateBlock={(blk, tool) => void handleAnnotateBlock(blk, tool)}
+          <div style={{ flex: `1 1 ${splitPct}%`, minWidth: '300px' }}>
+            <DocumentCanvas
+              doc={activeDoc}
+              activeTool={activeTool}
+              selectedAnnId={selectedAnnId}
+              busyBlockId={busyBlockId}
+              onSelectTool={setActiveTool}
+              onSelectAnnotation={setSelectedAnnId}
+              onAnnotateBlock={(blk, tool) => void handleAnnotateBlock(blk, tool)}
+            />
+          </div>
+          <ResizeHandle
+            ariaLabel="Resize document canvas and report inspector"
+            onResizeDelta={(dx) => setSplitPct((p) => Math.max(36, Math.min(68, p + dx * 0.12)))}
+            onReset={() => setSplitPct(54)}
           />
-          <AnalyzerReportPanel
-            doc={activeDoc}
-            selectedAnnId={selectedAnnId}
-            exportNotice={exportNotice}
-            busyExport={busyExport}
-            onSelectAnnotation={setSelectedAnnId}
-            onDeleteAnnotation={(id) =>
-              void persistAnnotations(activeDoc.annotations.filter((a) => a.id !== id))
-            }
-            onUpdateAnnotation={(updated) =>
-              void persistAnnotations(
-                activeDoc.annotations.map((a) => (a.id === updated.id ? updated : a)),
-              )
-            }
-            onCompileAndExport={(fmt) => void handleCompileAndExport(fmt)}
-          />
+          <div style={{ flex: `1 1 ${98 - splitPct}%`, minWidth: '280px' }}>
+            <AnalyzerReportPanel
+              doc={activeDoc}
+              selectedAnnId={selectedAnnId}
+              exportNotice={exportNotice}
+              busyExport={busyExport}
+              onSelectAnnotation={setSelectedAnnId}
+              onDeleteAnnotation={(id) =>
+                void persistAnnotations(activeDoc.annotations.filter((a) => a.id !== id))
+              }
+              onUpdateAnnotation={(updated) =>
+                void persistAnnotations(
+                  activeDoc.annotations.map((a) => (a.id === updated.id ? updated : a)),
+                )
+              }
+              onCompileAndExport={(fmt) => void handleCompileAndExport(fmt)}
+            />
+          </div>
         </div>
       )}
     </div>

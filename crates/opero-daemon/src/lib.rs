@@ -1,3 +1,4 @@
+mod agent_meeting_routes;
 mod analyzer_routes;
 
 use axum::{
@@ -418,7 +419,8 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
         .route("/api/v1/updates/install", post(install_update))
         .layer(RequestBodyLimitLayer::new(1024 * 100))
         .with_state(state.clone())
-        .merge(analyzer_routes::router(state))
+        .merge(analyzer_routes::router(state.clone()))
+        .merge(agent_meeting_routes::router(state))
         .layer(cors)
 }
 

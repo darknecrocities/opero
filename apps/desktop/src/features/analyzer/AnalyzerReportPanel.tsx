@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { getFeatureStrings } from '@opero/i18n';
 import { JiggIcon } from '@opero/jiggicons';
 import type { AnalyzedDocument, DocumentAnnotation, ExportFormat } from '@opero/shared-types';
+import { useOperoStore } from '../../store/useOperoStore';
 
 type InspectorTab = 'summary' | 'annotations' | 'report';
 
@@ -27,6 +29,8 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
   onUpdateAnnotation,
   onCompileAndExport,
 }) => {
+  const { uiLocale } = useOperoStore();
+  const feat = getFeatureStrings(uiLocale);
   const [tab, setTab] = useState<InspectorTab>('annotations');
 
   return (
@@ -47,9 +51,9 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
       <div role="tablist" aria-label="Analyzer Inspector Tabs" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {(
           [
-            { id: 'summary', label: 'Summary' },
-            { id: 'annotations', label: `Annotations (${doc.annotations.length})` },
-            { id: 'report', label: 'Full Report' },
+            { id: 'summary', label: feat.analyzerTabSummary },
+            { id: 'annotations', label: `${feat.analyzerTabAnnotations} (${doc.annotations.length})` },
+            { id: 'report', label: feat.analyzerTabReport },
           ] as const
         ).map((t) => (
           <button
@@ -136,19 +140,14 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
                     >
                       #{ann.number} · {ann.title}
                     </button>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>
-                        {ann.kind.toUpperCase()} · {ann.source.toUpperCase()}
-                      </span>
-                      <button
-                        type="button"
-                        className="opero-btn"
-                        onClick={() => onDeleteAnnotation(ann.id)}
-                        style={{ minHeight: '22px', padding: '1px 6px', fontSize: '10px' }}
-                      >
-                        Remove
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="opero-btn"
+                      onClick={() => onDeleteAnnotation(ann.id)}
+                      style={{ minHeight: '22px', padding: '1px 7px', fontSize: '10.5px' }}
+                    >
+                      {feat.analyzerRemove}
+                    </button>
                   </div>
 
                   <textarea
@@ -168,12 +167,22 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
                   />
 
                   <div style={{ fontSize: '12px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
-                    <strong style={{ color: 'var(--ink)' }}>Reasoning:</strong> {ann.reasoning}
+                    <strong style={{ color: 'var(--ink)' }}>{feat.analyzerReasoning}:</strong> {ann.reasoning}
                   </div>
 
                   {ann.suggestedFix && (
-                    <div style={{ fontSize: '11.5px', color: '#16865B', background: '#ECFDF5', padding: '6px 8px', borderRadius: '8px' }}>
-                      <strong>Suggestion:</strong> {ann.suggestedFix}
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--ink)',
+                        background: '#F8FAFC',
+                        borderLeft: '2px solid var(--brand-sky)',
+                        padding: '6px 10px',
+                        borderRadius: '0 6px 6px 0',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong style={{ color: 'var(--ink)' }}>{feat.analyzerSuggestion}:</strong> {ann.suggestedFix}
                     </div>
                   )}
                 </article>

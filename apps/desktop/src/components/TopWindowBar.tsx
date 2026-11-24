@@ -1,10 +1,12 @@
 import React from 'react';
+import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OperoLogo } from '@opero/mascot';
 import { useOperoStore } from '../store/useOperoStore';
 
 export const TopWindowBar: React.FC = () => {
   const {
+    uiLocale,
     leftOpen,
     rightOpen,
     solidFallback,
@@ -15,6 +17,8 @@ export const TopWindowBar: React.FC = () => {
     setNavMode,
     runExport,
   } = useOperoStore();
+  const dict = getUiDictionary(uiLocale);
+  const feat = getFeatureStrings(uiLocale);
 
   return (
     <header className="opero-topbar">
@@ -31,7 +35,7 @@ export const TopWindowBar: React.FC = () => {
           style={{ minHeight: '32px', padding: '4px 9px' }}
         >
           <JiggIcon name="library" size={16} variant="outline" />
-          <span>{leftOpen ? 'Hide Nav' : 'Nav'}</span>
+          <span>{leftOpen ? feat.hideNav : feat.showNav}</span>
         </button>
       </div>
 
@@ -53,7 +57,7 @@ export const TopWindowBar: React.FC = () => {
           style={{ minHeight: '32px', padding: '4px 10px' }}
         >
           <JiggIcon name="eye" size={15} variant="duotone" />
-          <span>{solidFallback ? 'Solid' : 'Glass'}</span>
+          <span>{solidFallback ? feat.solidMode : feat.glassMode}</span>
         </button>
         <button
           type="button"
@@ -62,7 +66,7 @@ export const TopWindowBar: React.FC = () => {
           style={{ minHeight: '32px', padding: '4px 10px' }}
         >
           <JiggIcon name="export-pdf" size={15} variant="duotone" />
-          <span>Export</span>
+          <span>{dict.exportTitle}</span>
           <span className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>⌘E</span>
         </button>
         <button
@@ -87,7 +91,7 @@ export const TopWindowBar: React.FC = () => {
           style={{ minHeight: '32px', padding: '4px 8px' }}
         >
           <JiggIcon name="panel" size={16} variant="outline" />
-          <span>{rightOpen ? 'Hide Rail' : 'Rail'}</span>
+          <span>{rightOpen ? feat.hideRail : feat.showRail}</span>
         </button>
       </div>
     </header>
