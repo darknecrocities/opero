@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { getUiDictionary, PERSONALITY_OPTIONS } from '@opero/i18n';
 import { playJiggSfx } from '@opero/jiggicons';
 import { PeroStateMascot, type OperoAppState } from '@opero/mascot';
@@ -30,24 +30,47 @@ const STEP_PERO_STATE: Record<number, OperoAppState> = {
 export const WelcomeOnboardingFlow: React.FC = () => {
   const { userProfile, soundEnabled, saveOnboardingProfile, setUiLocale } = useOperoStore();
   const [step, setStep] = useState<number>(0);
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [name, setName] = useState<string>(userProfile.name);
   const [occupation, setOccupation] = useState<string>(userProfile.occupation);
   const [personality, setPersonality] = useState<OperoPersonality>(userProfile.personality);
   const [locale, setLocale] = useState<FirstClassLocale>(userProfile.defaultLocale);
   const [privacyAccepted, setPrivacyAccepted] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+  const swipeStartX = useRef<number | null>(null);
 
   const dict = getUiDictionary(locale);
 
   const goNext = () => {
     if (step === 1 && !name.trim()) return;
+    if (step >= TOTAL_SCREENS - 1) return;
     playJiggSfx('step', soundEnabled);
+    setDirection('next');
     setStep((s) => Math.min(TOTAL_SCREENS - 1, s + 1));
   };
 
   const goBack = () => {
+    if (step <= 0) return;
     playJiggSfx('click', soundEnabled);
+    setDirection('prev');
     setStep((s) => Math.max(0, s - 1));
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'LABEL') return;
+    swipeStartX.current = e.clientX;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (swipeStartX.current === null) return;
+    const deltaX = e.clientX - swipeStartX.current;
+    swipeStartX.current = null;
+    if (deltaX <= -56) {
+      goNext();
+    } else if (deltaX >= 56) {
+      goBack();
+    }
   };
 
   const handleLocalePick = (nextLocale: FirstClassLocale) => {
@@ -84,6 +107,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-label="OPERO Welcome Onboarding"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       style={{
         position: 'fixed',
         inset: 0,
@@ -94,11 +119,12 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '32px 24px',
+        overflowX: 'hidden',
       }}
     >
       <div
         key={step}
-        className="opero-view-enter"
+        className={direction === 'next' ? 'onboard-swipe-next' : 'onboard-swipe-prev'}
         style={{
           width: '100%',
           maxWidth: '480px',
