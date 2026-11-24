@@ -49,7 +49,9 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('button', { name: 'Create Manual' }).first().click();
     await expect(page.getByRole('button', { name: 'Number', exact: true })).toBeVisible({ timeout: 6000 });
     await page.getByRole('button', { name: /PDF ⌘E/i }).click();
-    await expect(page.getByText(/Exported PDF/i)).toBeVisible({ timeout: 6000 });
+    await expect(page.getByRole('status').filter({ hasText: /Exported PDF/i }).first()).toBeVisible({
+      timeout: 6000,
+    });
 
     // 5. Settings Hub via shortcut (Meta+,)
     await page.keyboard.press('Meta+,');
@@ -79,7 +81,9 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('button', { name: /Place CROP & Explain/i }).first().click();
     await page.getByRole('tab', { name: 'Full Report' }).click();
     await page.getByRole('button', { name: 'Export PDF' }).click();
-    await expect(page.getByText(/Exported PDF/i)).toBeVisible({ timeout: 6000 });
+    await expect(page.locator('.status-pill', { hasText: /Exported PDF/i }).first()).toBeVisible({
+      timeout: 6000,
+    });
 
     // 7. Back to Dashboard via Meta+0
     await page.keyboard.press('Meta+0');

@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::error::{OperoError, OperoResult};
 use crate::memory::dual_core::upsert_memory_chunk;
+use crate::memory::mmi_knowledge::seed_mmi_public_knowledge;
 use crate::models::{GlossaryTerm, Project, RecordingSession};
 
 const INITIAL_SQL: &str = include_str!("../migrations/001_initial_schema.sql");
@@ -77,6 +78,7 @@ impl OperoStore {
                 );
             }
         }
+        let _ = seed_mmi_public_knowledge(conn)?;
         Ok(())
     }
 
