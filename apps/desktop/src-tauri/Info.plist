@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.mmi.opero</string>
+  <key>CFBundleName</key>
+  <string>OPERO</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>OPERO captures explicit, user-started workflow screenshots locally on this device to build illustrated operation manuals. No screenshots are sent to external cloud AI services.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>OPERO reads active window titles and UI control labels strictly during explicit recording sessions to generate accurate procedural steps.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Optional local voice note dictation when enabled in OPERO Speech Settings (disabled by default).</string>
+</dict>
+</plist>

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OPERO",
+  "version": "1.0.0",
+  "identifier": "com.mmi.opero",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @opero/desktop dev",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "pnpm --filter @opero/desktop build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "OPERO — Your workflow. Automatically documented.",
+        "width": 1380,
+        "height": 880,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:4317 http://localhost:4317"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "../../../assets/images/brand/opero-app-icon-192.png",
+      "../../../assets/images/brand/opero-app-icon-512.png",
+      "../../../assets/images/brand/opero-app-icon-1024.png"
+    ],
+    "macOS": {
+      "entitlements": "./Entitlements.plist",
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}
