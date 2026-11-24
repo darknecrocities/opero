@@ -34,6 +34,9 @@ export function useKeyboardShortcuts(): void {
       } else if (key === '2') {
         e.preventDefault();
         store.setNavMode('templates');
+      } else if (key === '3') {
+        e.preventDefault();
+        store.setNavMode('analyzer');
       } else if (key === ',') {
         e.preventDefault();
         store.setNavMode('settings');

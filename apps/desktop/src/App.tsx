@@ -6,6 +6,7 @@ import { DashboardView } from './features/dashboard/DashboardView';
 import { LiveWorkspaceView } from './features/workspace/LiveWorkspaceView';
 import { StudioView } from './features/studio/StudioView';
 import { TemplatesView } from './features/templates/TemplatesView';
+import { DocumentAnalyzerView } from './features/analyzer/DocumentAnalyzerView';
 import { SettingsView } from './features/settings/SettingsView';
 import { WelcomeOnboardingFlow } from './features/onboarding/WelcomeOnboardingFlow';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
         const s = useOperoStore.getState();
         if (payload === 'open_dashboard') s.setNavMode('dashboard');
         else if (payload === 'open_templates') s.setNavMode('templates');
+        else if (payload === 'open_analyzer') s.setNavMode('analyzer');
         else if (payload === 'open_settings' || payload === 'check_updates') s.setNavMode('settings');
         else if (payload === 'snap_frame') void s.snapWorkflowAction('QuickBar Snap');
         else if (payload === 'toggle_capture') {
@@ -78,6 +80,8 @@ export const App: React.FC = () => {
             <StudioView />
           ) : navMode === 'templates' ? (
             <TemplatesView />
+          ) : navMode === 'analyzer' ? (
+            <DocumentAnalyzerView />
           ) : navMode === 'settings' ? (
             <SettingsView />
           ) : (

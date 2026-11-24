@@ -61,7 +61,24 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('tab', { name: 'Updates' }).click();
     await expect(page.getByRole('button', { name: /Check for Updates/i })).toBeVisible();
 
-    // 6. Back to Dashboard via Meta+0
+    // 6. Document Analyzer via shortcut (Meta+3): upload, auto-annotate, crop-explain, export report
+    await page.keyboard.press('Meta+3');
+    await expect(page.getByRole('heading', { name: 'Document Analyzer' })).toBeVisible();
+    await page.getByLabel('Upload document for analysis').setInputFiles({
+      name: 'sample_sop_check.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        'Standard Operating Procedure\n1. Checklist\n| Step | Status |\n| Verify backup | |\n2. Notes\nNote: Confirm sign-off before release.\n',
+      ),
+    });
+    await expect(page.getByText('sample_sop_check.txt').first()).toBeVisible({ timeout: 6000 });
+    await page.getByRole('button', { name: /Crop Piece \+ AI/i }).click();
+    await page.getByRole('button', { name: /Place CROP & Explain/i }).first().click();
+    await page.getByRole('tab', { name: 'Full Report' }).click();
+    await page.getByRole('button', { name: 'Export PDF' }).click();
+    await expect(page.getByText(/Exported PDF/i)).toBeVisible({ timeout: 6000 });
+
+    // 7. Back to Dashboard via Meta+0
     await page.keyboard.press('Meta+0');
     await expect(page.getByText('Sessions & Meetings')).toBeVisible();
 

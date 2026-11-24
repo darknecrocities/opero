@@ -1,5 +1,7 @@
 import type {
+  AnalyzedDocument,
   DashboardAnalytics,
+  DocumentAnnotation,
   DualCoreMemoryStats,
   ExportFormat,
   FirstClassLocale,
@@ -11,6 +13,7 @@ import type {
   PermissionSurface,
   Project,
   RecordingSession,
+  RegionExplanation,
   UpdateCheckResult,
   UpdateInstallResult,
   UserProfile,
@@ -160,4 +163,47 @@ export const operoClient = {
       { method: 'POST', body: JSON.stringify({ assetDownloadUrl, expectedSha256 }) },
       180000,
     ),
+
+  listAnalyzedDocs: () => fetchLocal<{ documents: AnalyzedDocument[] }>('/analyzer/documents'),
+
+  ingestDocument: (payload: {
+    filename: string;
+    contentBase64?: string;
+    rawText?: string;
+    locale: FirstClassLocale;
+    preferredModel?: string;
+  }) =>
+    fetchLocal<{ document: AnalyzedDocument }>(
+      '/analyzer/ingest',
+      { method: 'POST', body: JSON.stringify(payload) },
+      25000,
+    ),
+
+  explainRegion: (payload: {
+    excerpt: string;
+    contextTitle?: string;
+    kind?: string;
+    locale: FirstClassLocale;
+    preferredModel?: string;
+  }) =>
+    fetchLocal<{ explanation: RegionExplanation }>(
+      '/analyzer/explain-region',
+      { method: 'POST', body: JSON.stringify(payload) },
+      20000,
+    ),
+
+  saveDocumentAnnotations: (docId: string, annotations: DocumentAnnotation[]) =>
+    fetchLocal<{ document: AnalyzedDocument }>(`/analyzer/documents/${docId}/annotations`, {
+      method: 'PUT',
+      body: JSON.stringify({ annotations }),
+    }),
+
+  compileDocumentReport: (
+    docId: string,
+    payload: { projectId?: string; locale: FirstClassLocale; exportFormat?: ExportFormat },
+  ) =>
+    fetchLocal<{
+      manual: Manual;
+      artifact: { format: string; locale: string; filePath: string; sha256: string; byteSize: number } | null;
+    }>(`/analyzer/documents/${docId}/report`, { method: 'POST', body: JSON.stringify(payload) }, 15000),
 };

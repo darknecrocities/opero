@@ -243,6 +243,65 @@ export interface DashboardAnalytics {
   dailyActivity: number[];
 }
 
+export interface DocumentBlock {
+  id: string;
+  kind: 'heading' | 'paragraph' | 'table' | 'note' | string;
+  title: string | null;
+  text: string;
+  rows: string[][];
+  blankCellCount: number;
+  yPct: number;
+  hPct: number;
+}
+
+export interface DocumentAnnotation {
+  id: string;
+  number: number;
+  kind: 'box' | 'arrow' | 'crop' | string;
+  source: 'ai' | 'manual' | string;
+  blockId: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  targetX: number | null;
+  targetY: number | null;
+  title: string;
+  excerpt: string;
+  explanation: string;
+  reasoning: string;
+  suggestedFix: string | null;
+  severity: 'info' | 'suggestion' | 'missing' | string;
+}
+
+export interface AnalyzedDocument {
+  id: string;
+  filename: string;
+  fileFormat: string;
+  byteSize: number;
+  sha256: string;
+  wordCount: number;
+  detectedLanguages: string[];
+  documentType: string;
+  engineUsed: string;
+  executiveSummary: string;
+  keyFindings: string[];
+  completenessScore: number;
+  blocks: DocumentBlock[];
+  annotations: DocumentAnnotation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RegionExplanation {
+  engineUsed: string;
+  title: string;
+  explanation: string;
+  reasoning: string;
+  suggestedFix: string | null;
+  severity: 'info' | 'suggestion' | 'missing' | string;
+}
+
 export interface UpdateCheckResult {
   currentVersion: string;
   latestVersion: string;
