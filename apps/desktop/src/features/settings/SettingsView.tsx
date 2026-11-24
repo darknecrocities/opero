@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { getUiDictionary, PERSONALITY_OPTIONS } from '@opero/i18n';
+import { getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
-import { PeroStateMascot } from '@opero/mascot';
-import type { FirstClassLocale, OperoPersonality, PermissionSurface } from '@opero/shared-types';
+import type { FirstClassLocale, PermissionSurface } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
 import { useOperoStore } from '../../store/useOperoStore';
 import { ModelsPanel } from './ModelsPanel';
+import { ProfileIdCardPanel } from './ProfileIdCardPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 
 type SettingsTab = 'profile' | 'models' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
@@ -14,7 +14,6 @@ export const SettingsView: React.FC = () => {
   const {
     uiLocale,
     targetLocale,
-    userProfile,
     soundEnabled,
     solidFallback,
     permissions,
@@ -22,13 +21,10 @@ export const SettingsView: React.FC = () => {
     memoryHits,
     sessions,
     exportHistory,
-    peroCapColor,
-    peroJacketColor,
     setUiLocale,
     setTargetLocale,
     toggleSound,
     toggleSolidFallback,
-    saveOnboardingProfile,
     replayOnboarding,
     requestOsPermission,
     openOsSettings,
@@ -36,11 +32,7 @@ export const SettingsView: React.FC = () => {
   } = useOperoStore();
 
   const [tab, setTab] = useState<SettingsTab>('profile');
-  const [name, setName] = useState<string>(userProfile.name);
-  const [occupation, setOccupation] = useState<string>(userProfile.occupation);
-  const [personality, setPersonality] = useState<OperoPersonality>(userProfile.personality);
   const [memQuery, setMemQuery] = useState<string>('');
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const dict = getUiDictionary(uiLocale);
 
@@ -54,19 +46,6 @@ export const SettingsView: React.FC = () => {
     { id: 'sound', icon: 'voice', label: dict.settingsTabSound },
     { id: 'updates', icon: 'refresh', label: 'Updates' },
   ];
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await saveOnboardingProfile({
-      name: name.trim() || 'MMI Operator',
-      occupation: occupation.trim() || 'Operations',
-      personality,
-      defaultLocale: uiLocale,
-      soundEnabled,
-      onboardingCompleted: true,
-    });
-    setSavedNotice('Profile saved');
-  };
 
   const handleDeleteMemory = async (id: string) => {
     await operoClient.deleteMemory(id);
@@ -136,65 +115,7 @@ export const SettingsView: React.FC = () => {
         ))}
       </div>
 
-      {tab === 'profile' && (
-        <form
-          onSubmit={(e) => void handleSaveProfile(e)}
-          className="glass-regular"
-          style={{ borderRadius: '20px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '640px' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <PeroStateMascot state="ready" size={88} capColor={peroCapColor} jacketColor={peroJacketColor} />
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700 }}>
-                {name || 'MMI Operator'}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--ink-muted)' }}>{occupation || 'Operations'}</div>
-            </div>
-          </div>
-
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
-            <span>Name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF' }}
-            />
-          </label>
-
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
-            <span>Occupation</span>
-            <input
-              type="text"
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF' }}
-            />
-          </label>
-
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
-            <span>Opero Tone</span>
-            <select
-              value={personality}
-              onChange={(e) => setPersonality(e.target.value as OperoPersonality)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF' }}
-            >
-              {PERSONALITY_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label[uiLocale]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button type="submit" className="opero-btn primary">
-              {dict.settingsSaveProfile}
-            </button>
-            {savedNotice && <span className="status-pill verified">{savedNotice}</span>}
-          </div>
-        </form>
-      )}
+      {tab === 'profile' && <ProfileIdCardPanel />}
 
       {tab === 'language' && (
         <section className="glass-regular" style={{ borderRadius: '20px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '560px' }}>

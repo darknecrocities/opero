@@ -64,6 +64,9 @@ pub struct RegionExplanation {
 }
 
 fn detect_ollama_model(preferred: Option<&str>) -> Option<String> {
+    if preferred == Some("offline") {
+        return None;
+    }
     let out = Command::new("curl")
         .args(["-fsS", "--max-time", "1", &format!("{OLLAMA_LOOPBACK}/api/tags")])
         .output()
@@ -94,6 +97,7 @@ fn call_ollama_json(model: &str, prompt: &str) -> Option<serde_json::Value> {
         "prompt": prompt,
         "format": "json",
         "stream": false,
+        "think": false,
         "options": { "temperature": 0.2, "num_predict": 512 }
     });
     let body = serde_json::to_string(&payload).ok()?;
@@ -389,7 +393,7 @@ mod tests {
     #[test]
     fn test_analyze_bilingual_report_and_crop_reasoning() {
         let sample = "Daily Internship Report\nインターンシップ日報\n1. Basic Information / 基本情報\n| Name | | Date | |\n2. Daily Time Record (DTR) / 出退勤記録\nRequired for Philippine CHED guidelines.\n| Time In | Time Out | Total Hours |\n| | | |\n4. Technical Notes & Learning\n追加おすすめ\nTraining Type / 研修区分\n8. Signatures / 署名・承認欄\n| Intern Signature | | Supervisor Signature | |\n";
-        let doc = analyze_document_bytes("daily_report.txt", sample.as_bytes(), "en-US", None).unwrap();
+        let doc = analyze_document_bytes("daily_report.txt", sample.as_bytes(), "en-US", Some("offline")).unwrap();
         assert_eq!(doc.file_format, "txt");
         assert!(doc.detected_languages.contains(&"en-US".to_string()));
         assert!(doc.detected_languages.contains(&"ja-JP".to_string()));
@@ -397,7 +401,7 @@ mod tests {
         assert!(doc.annotations.iter().any(|a| a.kind == "arrow" && a.severity == "suggestion"));
         assert!(doc.annotations.iter().any(|a| a.kind == "box" && a.severity == "missing"));
 
-        let exp = explain_cropped_region("追加おすすめ Training Type / 研修区分", "Section 4", "crop", "en-US", None);
+        let exp = explain_cropped_region("追加おすすめ Training Type / 研修区分", "Section 4", "crop", "en-US", Some("offline"));
         assert_eq!(exp.severity, "suggestion");
         assert!(exp.reasoning.contains("hours"));
     }

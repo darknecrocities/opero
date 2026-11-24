@@ -20,7 +20,7 @@ const DEFAULT_LEFT = 228;
 const DEFAULT_RIGHT = 256;
 
 export const App: React.FC = () => {
-  const { navMode, leftOpen, rightOpen, solidFallback, showOnboarding, bootstrap } = useOperoStore();
+  const { navMode, leftOpen, rightOpen, solidFallback, showOnboarding, toastNotice, bootstrap } = useOperoStore();
   useKeyboardShortcuts();
 
   const [leftWidth, setLeftWidth] = useState<number>(() => {
@@ -102,6 +102,29 @@ export const App: React.FC = () => {
     >
       {showOnboarding && <WelcomeOnboardingFlow />}
       <PeroCompilingOverlay />
+      {toastNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="opero-chat-bubble"
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '24px',
+            zIndex: 85,
+            background: '#0F172A',
+            color: '#FFFFFF',
+            padding: '10px 16px',
+            borderRadius: '12px',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.22)',
+            border: '1px solid rgba(105, 188, 252, 0.35)',
+          }}
+        >
+          {toastNotice}
+        </div>
+      )}
       <TopWindowBar />
       <div className={bodyClass}>
         <LeftSidebar />

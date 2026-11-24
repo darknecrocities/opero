@@ -281,18 +281,9 @@
   line-height: 1.65;
 }
 
-@media (max-width: 1024px) {
-  .opero-right-rail,
-  .opero-resize-right {
-    display: none;
-  }
-}
-
 @media (max-width: 768px) {
-  .opero-left-rail,
-  .opero-resize-left,
-  .opero-right-rail,
-  .opero-resize-right {
+  .opero-body.left-collapsed .opero-left-rail,
+  .opero-body.right-collapsed .opero-right-rail {
     display: none;
   }
   .opero-btn {
