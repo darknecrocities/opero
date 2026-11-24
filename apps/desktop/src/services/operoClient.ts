@@ -1,5 +1,8 @@
 import type {
+  AgentChatResponse,
+  AgentThread,
   AnalyzedDocument,
+  AudioCaptureCapabilities,
   DashboardAnalytics,
   DocumentAnnotation,
   DualCoreMemoryStats,
@@ -7,6 +10,8 @@ import type {
   FirstClassLocale,
   HardwareProfile,
   Manual,
+  MeetingAudioSource,
+  MeetingNoteRecord,
   MemoryChunk,
   MemorySearchHit,
   OperoPersonality,
@@ -216,4 +221,56 @@ export const operoClient = {
       { method: 'POST', body: JSON.stringify({ modelTag }) },
       300000,
     ),
+
+  listAgentThreads: () => fetchLocal<{ threads: AgentThread[] }>('/agent/threads'),
+
+  sendAgentMessage: (payload: {
+    threadId?: string;
+    prompt: string;
+    locale: FirstClassLocale;
+    preferredModel?: string;
+  }) =>
+    fetchLocal<AgentChatResponse>(
+      '/agent/chat',
+      { method: 'POST', body: JSON.stringify(payload) },
+      25000,
+    ),
+
+  deleteAgentThread: (threadId: string) =>
+    fetchLocal<{ deleted: boolean }>(`/agent/threads/${threadId}`, { method: 'DELETE' }),
+
+  getAudioCapabilities: () =>
+    fetchLocal<{ capabilities: AudioCaptureCapabilities }>('/meetings/capabilities'),
+
+  listMeetings: () => fetchLocal<{ meetings: MeetingNoteRecord[] }>('/meetings'),
+
+  startMeeting: (payload: {
+    title?: string;
+    audioSource: MeetingAudioSource;
+    sourceLocale: FirstClassLocale;
+    targetLocale: FirstClassLocale;
+  }) =>
+    fetchLocal<{ meeting: MeetingNoteRecord }>('/meetings/start', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  stopAndCompileMeeting: (
+    meetingId: string,
+    payload: { transcriptOverride?: string; preferredModel?: string },
+  ) =>
+    fetchLocal<{ meeting: MeetingNoteRecord }>(
+      `/meetings/${meetingId}/stop-compile`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      30000,
+    ),
+
+  exportMeeting: (
+    meetingId: string,
+    payload: { projectId?: string; exportFormat?: ExportFormat },
+  ) =>
+    fetchLocal<{
+      manual: Manual;
+      artifact: { format: string; locale: string; filePath: string; sha256: string; byteSize: number } | null;
+    }>(`/meetings/${meetingId}/export`, { method: 'POST', body: JSON.stringify(payload) }, 15000),
 };

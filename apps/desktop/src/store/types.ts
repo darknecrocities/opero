@@ -17,7 +17,22 @@ import type {
 } from '@opero/shared-types';
 import type { OperoAppState } from '@opero/mascot';
 
-export type WorkspaceNavMode = 'dashboard' | 'capture' | 'studio' | 'templates' | 'analyzer' | 'settings';
+export type WorkspaceNavMode =
+  | 'dashboard'
+  | 'capture'
+  | 'studio'
+  | 'templates'
+  | 'analyzer'
+  | 'meetings'
+  | 'agent'
+  | 'settings';
+
+export interface CompilingOverlayState {
+  visible: boolean;
+  title: string;
+  stepIndex: number;
+  steps: string[];
+}
 
 export interface ImpulseSample {
   seq: number;
@@ -69,8 +84,10 @@ export interface OperoStoreState {
   quickPromptReply: string | null;
   lastExportNotice: string | null;
   statusMessage: string | null;
+  compilingOverlay: CompilingOverlayState | null;
 
   setNavMode: (mode: WorkspaceNavMode) => void;
+  setCompilingOverlay: (overlay: CompilingOverlayState | null) => void;
   toggleLeft: () => void;
   toggleRight: () => void;
   toggleSolidFallback: () => void;
