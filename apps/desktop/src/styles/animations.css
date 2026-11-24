@@ -325,6 +325,36 @@ textarea:focus {
   background: #f4f9ff;
 }
 
+.onboard-privacy-textbox {
+  width: 100%;
+  max-width: 480px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 14px 4px;
+  border-top: 1px solid #e2eaf2;
+  border-bottom: 1px solid #e2eaf2;
+  background: transparent;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.onboard-privacy-textbox:focus {
+  outline: none;
+  border-top-color: #69bcfc;
+  border-bottom-color: #69bcfc;
+}
+
+.onboard-privacy-highlight {
+  background: #ebf6ff;
+  color: #0f172a;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  box-shadow: inset 0 -1.5px 0 #69bcfc;
+}
+
 .analytics-card-black {
   background: #0f172a;
   color: #ffffff;

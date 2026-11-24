@@ -26,6 +26,16 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       await page.getByRole('button', { name: /Calm & Concise/i }).click();
       await page.getByRole('button', { name: /Continue/i }).click();
       await page.getByRole('button', { name: /English/i }).click();
+      await page.getByRole('button', { name: /Continue/i }).click();
+      await expect(page.getByRole('heading', { name: 'Data Privacy Notice' })).toBeVisible();
+      const privacyBox = page.getByRole('textbox', { name: 'Data Privacy Act and Japan APPI Notice' });
+      await expect(privacyBox).toBeVisible();
+      await expect(privacyBox).toContainText('Data Privacy Act of 2012 (Republic Act No. 10173)');
+      await expect(privacyBox).toContainText('個人情報保護法');
+      await expect(privacyBox.locator('mark.onboard-privacy-highlight').first()).toBeVisible();
+      await expect(page.getByRole('button', { name: /Enter OPERO/i })).toBeDisabled();
+      await page.getByRole('checkbox', { name: /RA 10173/i }).check();
+      await expect(page.getByRole('button', { name: /Enter OPERO/i })).toBeEnabled();
       await page.getByRole('button', { name: /Enter OPERO/i }).click();
       await expect(dialog).toBeHidden({ timeout: 5000 });
     }

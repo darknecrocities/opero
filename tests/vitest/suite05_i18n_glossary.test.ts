@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { validateTranslationQa } from '@opero/document-schema';
-import { LOCALE_MODEL_MAP, MMI_DEFAULT_GLOSSARY, UI_DICTIONARIES } from '@opero/i18n';
+import {
+  getOnboardingPrivacyNotice,
+  LOCALE_MODEL_MAP,
+  MMI_DEFAULT_GLOSSARY,
+  UI_DICTIONARIES,
+} from '@opero/i18n';
 
 describe('Suite 05 — First-Class Multilingual (en-US/ja-JP/fil-PH) & Glossary QA (TC-I18N-001..105)', () => {
   const enKeys = Object.keys(UI_DICTIONARIES['en-US']).sort();
@@ -34,6 +39,25 @@ describe('Suite 05 — First-Class Multilingual (en-US/ja-JP/fil-PH) & Glossary 
         MMI_DEFAULT_GLOSSARY,
       );
       expect(cleanFil).toHaveLength(0);
+    }
+  });
+
+  it('provides trilingual Data Privacy Act (RA 10173) & Japan APPI onboarding notices with highlights', () => {
+    for (const locale of ['en-US', 'ja-JP', 'fil-PH'] as const) {
+      const notice = getOnboardingPrivacyNotice(locale);
+      expect(notice.heading.length).toBeGreaterThan(4);
+      expect(notice.sections).toHaveLength(2);
+      expect(notice.sections[0]?.id).toBe('ph_dpa');
+      expect(notice.sections[1]?.id).toBe('jp_appi');
+      for (const section of notice.sections) {
+        const highlighted = section.segments.filter((seg) => seg.highlight);
+        expect(highlighted.length).toBeGreaterThanOrEqual(3);
+      }
+      const fullText = notice.sections
+        .map((s) => `${s.title} ${s.segments.map((seg) => seg.text).join('')}`)
+        .join(' ');
+      expect(fullText).toMatch(/10173/);
+      expect(fullText).toMatch(/APPI|個人情報保護法/);
     }
   });
 });
