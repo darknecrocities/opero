@@ -1,0 +1,24 @@
+name: Feature Request
+description: Propose a new capability or enhancement for OPERO
+title: "feat(scope): <concise feature summary>"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: User Problem & Goal
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Subsystem
+      options:
+        - Capture & OS Permissions
+        - OPERO Studio & Annotations
+        - Dual-Core Vector RAG & Local AI
+        - Multilingual (en-US / ja-JP / fil-PH)
+        - Export & Redaction
+        - Packaging (.dmg / .exe) & CI/CD
+    validations:
+      required: true
