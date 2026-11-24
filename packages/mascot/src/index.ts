@@ -1,0 +1,36 @@
+export {
+  PeroMascot,
+  PeroStateMascot,
+  OperoLogo,
+  PERO_MOTIONS,
+  PERO_MOTION_BY_ID,
+  OPERO_STATE_TO_MOTION,
+  getMotionForOperoState,
+  PERO_OUTFIT_PRESETS,
+  PERO_DEFAULT_CAP_COLOR,
+  PERO_DEFAULT_JACKET_COLOR,
+  derivePeroColorScheme,
+  buildPeroColorVars,
+  PERO_PALETTE,
+  PERO_STATE_ARIA_LABELS,
+  type PeroMascotProps,
+  type PeroStateMascotProps,
+  type OperoLogoProps,
+  type PeroMotionId,
+  type OperoAppState,
+  type PeroMotionMeta,
+  type PeroOutfitPreset,
+} from '../../../assets/images/mascot/pero-motions/app-code';
+export {
+  PeroAmbientPresence,
+  OPERO_CURATED_OUTFITS,
+  type PeroAmbientPresenceProps,
+  type PeroPlacementMode,
+} from './PeroAmbientPresence';
+export {
+  PERO_11_BONE_BOUNDS,
+  clampPeroBonePose,
+  type PeroBoneId,
+  type BoneConstraint,
+  type BonePoseInput,
+} from './rigBounds';
