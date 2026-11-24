@@ -4,8 +4,9 @@ import { playJiggSfx } from '@opero/jiggicons';
 import { PeroStateMascot, type OperoAppState } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
+import { OnboardingPrivacyStep } from './OnboardingPrivacyStep';
 
-const TOTAL_SCREENS = 5;
+const TOTAL_SCREENS = 6;
 const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
 
 const BALL_COLORS: readonly string[] = [
@@ -13,6 +14,7 @@ const BALL_COLORS: readonly string[] = [
   '#38A3F1',
   '#0F172A',
   '#69BCFC',
+  '#38A3F1',
   '#16865B',
 ];
 
@@ -21,7 +23,8 @@ const STEP_PERO_STATE: Record<number, OperoAppState> = {
   1: 'capturing',
   2: 'processing',
   3: 'verified-draft',
-  4: 'exported',
+  4: 'verified-draft',
+  5: 'exported',
 };
 
 export const WelcomeOnboardingFlow: React.FC = () => {
@@ -31,6 +34,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   const [occupation, setOccupation] = useState<string>(userProfile.occupation);
   const [personality, setPersonality] = useState<OperoPersonality>(userProfile.personality);
   const [locale, setLocale] = useState<FirstClassLocale>(userProfile.defaultLocale);
+  const [privacyAccepted, setPrivacyAccepted] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
 
   const dict = getUiDictionary(locale);
@@ -301,11 +305,22 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           </div>
         )}
 
+        {step === 5 && (
+          <OnboardingPrivacyStep
+            locale={locale}
+            accepted={privacyAccepted}
+            onToggle={(next) => {
+              playJiggSfx('click', soundEnabled);
+              setPrivacyAccepted(next);
+            }}
+          />
+        )}
+
         {step > 0 && (
           <div
             style={{
               width: '100%',
-              maxWidth: '360px',
+              maxWidth: step === 5 ? '480px' : '360px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -330,7 +345,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 type="button"
                 className="opero-btn primary"
                 onClick={() => void handleFinish()}
-                disabled={saving}
+                disabled={saving || !privacyAccepted}
                 style={{ borderRadius: '999px', padding: '8px 24px', minHeight: '42px' }}
               >
                 {dict.onboardingFinish}
