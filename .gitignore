@@ -1,0 +1,64 @@
+# ============================================================================
+# OPERO — Git Ignore Rules (Secrets, Local Databases, AI Weights & Captures)
+# ============================================================================
+
+# Environment & Secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.cert
+*.crt
+
+# Local Databases, Captures & Backups
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+data/
+recordings/
+captures/
+exports/
+.backups/
+
+# Local AI / OCR / Speech Model Weights
+*.gguf
+*.bin
+*.onnx
+*.pt
+*.pth
+*.safetensors
+models/weights/
+
+# Dependencies & Build Artifacts
+node_modules/
+dist/
+build/
+target/
+.turbo/
+.next/
+out/
+coverage/
+
+# Python / Script Cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# OS & Editor Metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json

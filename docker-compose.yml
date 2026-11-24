@@ -1,0 +1,16 @@
+services:
+  opero-daemon:
+    build: .
+    container_name: opero-local-daemon
+    ports:
+      - "127.0.0.1:4317:4317"
+    environment:
+      OPERO_OFFLINE_STRICT: "true"
+      OPERO_SPEECH_ENABLED: "false"
+      OPERO_DATA_DIR: "/app/data"
+    volumes:
+      - opero_local_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  opero_local_data:
