@@ -1,0 +1,80 @@
+name: CI — Verify, Lint & Code Maintainability
+
+on:
+  push:
+    branches: [main, develop, "feat/**", "fix/**", "docs/**", "ci/**", "refactor/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  maintainability-and-lint:
+    name: Maintainability, Secrets & UI Token Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Learned Conventions & Secrets Hygiene
+        run: python3 .agents/skills/opero-continuous-learning/scripts/record_learning.py --verify
+      - name: Run 500-Line Ceiling, Anti-Slop & UI Token Linter
+        run: python3 scripts/check_maintainability.py --strict
+      - name: Validate Pero Motion Studio JS Syntax
+        run: node --check assets/images/mascot/pero-motions/studio/*.js
+
+  rust-lint-and-tests:
+    name: Rust Clippy & Core/Export Tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - name: Generate Native App Icons
+        run: python3 scripts/generate_desktop_icons.py
+      - name: Cargo Test Workspace
+        run: cargo test --workspace
+      - name: Build & Verify Live Daemon Integration + Stress Suites
+        run: |
+          cargo build --bin opero-daemon
+          python3 -m unittest discover -s tests -p "test_*.py" -v
+
+  ts-vitest-and-e2e:
+    name: TypeScript, 420 Vitest Cases & Playwright 4-Viewport E2E
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - name: TypeScript Strict Typecheck
+        run: pnpm typecheck
+      - name: Vitest Feature Suites (420 Cases)
+        run: pnpm test:vitest
+      - name: Build Production Frontend Bundle
+        run: pnpm --filter @opero/desktop build
+      - name: Run Playwright 4-Viewport E2E Suite
+        run: |
+          cargo build --bin opero-daemon
+          pnpm --filter @opero/desktop exec playwright install chromium
+          TMP_DATA=$(mktemp -d)
+          OPERO_DATA_DIR="$TMP_DATA" OPERO_DAEMON_PORT=4317 ./target/debug/opero-daemon &
+          DAEMON_PID=$!
+          pnpm --filter @opero/desktop exec vite preview --host 127.0.0.1 --port 5173 &
+          VITE_PID=$!
+          trap "kill $DAEMON_PID $VITE_PID 2>/dev/null || true; rm -rf $TMP_DATA" EXIT
+          sleep 2
+          pnpm --filter @opero/desktop test:e2e
