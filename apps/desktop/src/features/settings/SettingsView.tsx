@@ -230,8 +230,21 @@ export const SettingsView: React.FC = () => {
 
       {tab === 'memory' && (
         <section className="glass-regular" style={{ borderRadius: '20px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div className="mono" style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
-            Episodic: {memoryStats.episodicCount} · Semantic: {memoryStats.semanticCount} · {(memoryStats.estimatedRamBytes / 1024).toFixed(1)} KB
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="mono" style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+              Episodic: {memoryStats.episodicCount} · Semantic: {memoryStats.semanticCount} · {(memoryStats.estimatedRamBytes / 1024).toFixed(1)} KB
+            </div>
+            <button
+              type="button"
+              className="opero-btn"
+              onClick={() => {
+                setMemQuery('Representative Director Man Machine Interface');
+                void runQuickPrompt('Representative Director Man Machine Interface');
+              }}
+              style={{ minHeight: '28px', padding: '2px 10px', fontSize: '12px' }}
+            >
+              MMI Company &amp; Director
+            </button>
           </div>
           <form
             onSubmit={(e) => {
