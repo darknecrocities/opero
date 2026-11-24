@@ -3,7 +3,7 @@ import { getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock, ExportFormat } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
-import { useOperoStore } from '../../store/useOperoStore';
+import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
 import { AnalyzerReportPanel } from './AnalyzerReportPanel';
 import { DocumentCanvas, type AnalyzerTool } from './DocumentCanvas';
 
@@ -22,6 +22,7 @@ function readFileAsBase64(file: File): Promise<string> {
 
 export const DocumentAnalyzerView: React.FC = () => {
   const { uiLocale, targetLocale, activeModelId, soundEnabled, projects, openManualInStudio } = useOperoStore();
+  const selectedOllamaTag = DEFAULT_MODELS.find((m) => m.id === activeModelId)?.ollamaTag;
   const dict = getUiDictionary(uiLocale);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -60,7 +61,7 @@ export const DocumentAnalyzerView: React.FC = () => {
         filename: file.name,
         contentBase64,
         locale: targetLocale,
-        preferredModel: activeModelId,
+        preferredModel: selectedOllamaTag,
       });
       setDocs((prev) => [document, ...prev.filter((d) => d.id !== document.id)]);
       setActiveDoc(document);
@@ -89,7 +90,7 @@ export const DocumentAnalyzerView: React.FC = () => {
         contextTitle: block.title ?? block.kind,
         kind: tool,
         locale: targetLocale,
-        preferredModel: activeModelId,
+        preferredModel: selectedOllamaTag,
       });
       const nextAnn: DocumentAnnotation = {
         id: `ann_${Date.now()}`,

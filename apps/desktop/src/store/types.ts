@@ -4,6 +4,7 @@ import type {
   DualCoreMemoryStats,
   ExportFormat,
   FirstClassLocale,
+  HardwareProfile,
   Manual,
   MemorySearchHit,
   OperoPersonality,
@@ -47,6 +48,7 @@ export interface OperoStoreState {
   speechEnabled: boolean;
   soundEnabled: boolean;
   activeModelId: string;
+  hardwareProfile: HardwareProfile | null;
   peroState: OperoAppState;
   peroCapColor: string;
   peroJacketColor: string;
@@ -78,6 +80,7 @@ export interface OperoStoreState {
   setRole: (role: OperatorRole) => void;
   setSpeechEnabled: (enabled: boolean) => void;
   setActiveModelId: (id: string) => void;
+  setHardwareProfile: (hw: HardwareProfile) => void;
   setPeroOutfit: (cap: string, jacket: string) => void;
   setActiveSessionId: (id: string | null) => void;
   openManualInStudio: (manual: Manual) => void;

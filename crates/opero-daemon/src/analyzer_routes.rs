@@ -7,6 +7,7 @@ use axum::{
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use opero_core::doc_analyzer::{analyze_document_bytes, explain_cropped_region, DocumentAnnotation};
 use opero_core::error::OperoError;
+use opero_core::hardware::{inspect_hardware_profile, pull_curated_ollama_model};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -131,6 +132,25 @@ async fn compile_report(
     Ok(Json(serde_json::json!({ "manual": manual, "artifact": artifact })))
 }
 
+async fn get_hardware() -> Json<serde_json::Value> {
+    let hardware = inspect_hardware_profile();
+    Json(serde_json::json!({ "hardware": hardware }))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PullModelReq {
+    model_tag: String,
+}
+
+async fn pull_model(Json(req): Json<PullModelReq>) -> Result<Json<serde_json::Value>, ApiError> {
+    let tag = req.model_tag.clone();
+    let hardware = tokio::task::spawn_blocking(move || pull_curated_ollama_model(&tag))
+        .await
+        .map_err(|e| ApiError(OperoError::Validation(format!("Model download task failed: {e}"))))??;
+    Ok(Json(serde_json::json!({ "hardware": hardware })))
+}
+
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     let ingest_route = Router::new()
         .route("/api/v1/analyzer/ingest", post(ingest_document))
@@ -138,6 +158,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .with_state(state.clone());
 
     Router::new()
+        .route("/api/v1/system/hardware", get(get_hardware))
+        .route("/api/v1/models/pull", post(pull_model))
         .route("/api/v1/analyzer/documents", get(list_documents))
         .route("/api/v1/analyzer/explain-region", post(explain_region))
         .route("/api/v1/analyzer/documents/{id}/annotations", put(save_annotations))

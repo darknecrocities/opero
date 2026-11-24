@@ -203,13 +203,31 @@ export interface ModelProfile {
   id: string;
   runtime: 'ollama' | 'llamacpp' | 'apple_metal' | 'offline_deterministic';
   modelName: string;
+  displayName?: string;
+  ollamaTag?: string;
+  shortDescription?: string;
+  capabilitySummary?: string;
+  languagesLabel?: string;
+  downloadSizeLabel?: string;
   revision: string;
   quantization: string;
-  ramTierGb: 8 | 16 | 32;
+  ramTierGb: 4 | 8 | 16 | 32;
   licenseRef: string;
-  capabilities: ('draft' | 'summarize' | 'translate' | 'vision' | 'embed')[];
+  capabilities: ('draft' | 'summarize' | 'translate' | 'vision' | 'embed' | 'reasoning')[];
   active: boolean;
   researchOnly?: boolean;
+}
+
+export interface HardwareProfile {
+  cpuName: string;
+  cpuCores: number;
+  totalRamGb: number;
+  freeDiskGb: number;
+  osName: string;
+  recommendedTier: 'offline' | 'compact' | 'balanced' | 'deep' | string;
+  recommendedModelId: string;
+  ollamaRunning: boolean;
+  installedModels: string[];
 }
 
 export type OperoPersonality =
