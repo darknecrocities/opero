@@ -13,6 +13,8 @@ All AI agents and subagents operating inside `/Users/arronkianparejas/opero` MUS
 - **Core Product, Data Entities & Monorepo Architecture**: Read [.agents/skills/opero/SKILL.md](file:///Users/arronkianparejas/opero/.agents/skills/opero/SKILL.md).
 - **UI Theme, Liquid Glass, Google Fonts, Pero Mascot & Studio Annotations**: Read [.agents/skills/opero-design-system/SKILL.md](file:///Users/arronkianparejas/opero/.agents/skills/opero-design-system/SKILL.md).
 - **Local AI LLM (`Qwen3`/`Gemma 3`), `PaddleOCR`, Multilingual (`en`/`ja-JP`/`fil`), and Speech (`whisper.cpp`/`MeloTTS`/`VoiceStudio`)**: Read [.agents/skills/opero-local-ai-speech/SKILL.md](file:///Users/arronkianparejas/opero/.agents/skills/opero-local-ai-speech/SKILL.md).
+- **Desktop Packaging (`.dmg`/`.exe`), Tauri 2 Cross-Compilation & CI/CD Release**: Read [.agents/skills/opero-packaging-release/SKILL.md](file:///Users/arronkianparejas/opero/.agents/skills/opero-packaging-release/SKILL.md).
+- **Dual-Core Vector RAG Memory & Native macOS/Windows OS Permissions FFI**: Read [.agents/skills/opero-dual-core-rag-permissions/SKILL.md](file:///Users/arronkianparejas/opero/.agents/skills/opero-dual-core-rag-permissions/SKILL.md).
 
 ## 3. Secrets Hygiene & 500-Line Source Ceiling
 - **Secrets Protection**: Never commit `.env`, API keys, SQLite databases (`*.sqlite*`), local AI model weights (`*.gguf`, `*.bin`, `*.onnx`), or raw screen captures. Keep [.gitignore](file:///Users/arronkianparejas/opero/.gitignore) and [.env.example](file:///Users/arronkianparejas/opero/.env.example) synchronized.
