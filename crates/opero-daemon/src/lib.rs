@@ -1,3 +1,5 @@
+mod analyzer_routes;
+
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderValue, Method, StatusCode},
@@ -19,12 +21,12 @@ use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use uuid::Uuid;
 
-struct AppState {
-    store: OperoStore,
-    speech_enabled: bool,
+pub(crate) struct AppState {
+    pub(crate) store: OperoStore,
+    pub(crate) speech_enabled: bool,
 }
 
-struct ApiError(OperoError);
+pub(crate) struct ApiError(pub(crate) OperoError);
 
 impl From<OperoError> for ApiError {
     fn from(e: OperoError) -> Self {
@@ -415,8 +417,9 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
         .route("/api/v1/updates/check", get(check_updates))
         .route("/api/v1/updates/install", post(install_update))
         .layer(RequestBodyLimitLayer::new(1024 * 100))
+        .with_state(state.clone())
+        .merge(analyzer_routes::router(state))
         .layer(cors)
-        .with_state(state)
 }
 
 pub async fn start_embedded_daemon(data_dir: PathBuf, port: u16, speech_enabled: bool) {

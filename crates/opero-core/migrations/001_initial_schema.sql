@@ -267,3 +267,15 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS analyzed_documents (
+  id TEXT PRIMARY KEY,
+  filename TEXT NOT NULL,
+  file_format TEXT NOT NULL,
+  byte_size INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  engine_used TEXT NOT NULL,
+  document_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

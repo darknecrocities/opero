@@ -15,6 +15,7 @@ const NAV_ITEMS: {
   { mode: 'capture', icon: 'capture', shortcut: '⌥Space', labelKey: 'navLiveCapture' },
   { mode: 'studio', icon: 'studio', shortcut: '⌘1', labelKey: 'navStudio' },
   { mode: 'templates', icon: 'outputs', shortcut: '⌘2', labelKey: 'navTemplates' },
+  { mode: 'analyzer', icon: 'docs', shortcut: '⌘3', labelKey: 'navAnalyzer' },
   { mode: 'settings', icon: 'settings', shortcut: '⌘,', labelKey: 'navSettings' },
 ];
 
