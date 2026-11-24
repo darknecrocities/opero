@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -48,6 +49,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
+        "installerHooks": "./nsis/hooks.nsh",
         "displayLanguageSelector": true,
         "languages": ["English", "Japanese"]
       }

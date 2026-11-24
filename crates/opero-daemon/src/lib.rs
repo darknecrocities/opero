@@ -9,6 +9,7 @@ use opero_core::db::OperoStore;
 use opero_core::error::OperoError;
 use opero_core::memory::dual_core::{delete_memory_chunk, get_memory_stats, query_dual_core_memory, upsert_memory_chunk};
 use opero_core::permissions::{inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt, PermissionSurface};
+use opero_core::updater::{check_for_official_update, download_and_replace_update};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -288,6 +289,99 @@ async fn export_manual(
     Ok(Json(serde_json::json!({ "artifact": art })))
 }
 
+async fn get_profile(State(state): State<Arc<AppState>>) -> Result<Json<serde_json::Value>, ApiError> {
+    let profile = state.store.get_user_profile()?;
+    Ok(Json(serde_json::json!({ "profile": profile })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpsertProfileReq {
+    name: String,
+    occupation: String,
+    personality: String,
+    default_locale: String,
+    sound_enabled: Option<bool>,
+    onboarding_completed: Option<bool>,
+    pero_cap_color: Option<String>,
+    pero_jacket_color: Option<String>,
+}
+
+async fn save_profile(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<UpsertProfileReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let profile = state.store.upsert_user_profile(
+        &req.name,
+        &req.occupation,
+        &req.personality,
+        &req.default_locale,
+        req.sound_enabled.unwrap_or(true),
+        req.onboarding_completed.unwrap_or(true),
+        req.pero_cap_color.as_deref().unwrap_or("#69BCFC"),
+        req.pero_jacket_color.as_deref().unwrap_or("#69BCFC"),
+    )?;
+    Ok(Json(serde_json::json!({ "profile": profile })))
+}
+
+async fn get_analytics(State(state): State<Arc<AppState>>) -> Result<Json<serde_json::Value>, ApiError> {
+    let analytics = state.store.get_dashboard_analytics()?;
+    Ok(Json(serde_json::json!({ "analytics": analytics })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateFromTemplateReq {
+    project_id: Option<String>,
+    template_id: String,
+    title: Option<String>,
+    source_locale: Option<String>,
+}
+
+async fn create_manual_from_template(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateFromTemplateReq>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let project_id = match req.project_id {
+        Some(id) if !id.trim().is_empty() => id,
+        _ => {
+            let projects = state.store.list_projects(false)?;
+            if let Some(first) = projects.first() {
+                first.id.clone()
+            } else {
+                state
+                    .store
+                    .create_project("OPERO Workspace", "MMI Operator", "Operations", "en-US")?
+                    .id
+            }
+        }
+    };
+    let manual = state.store.create_manual_from_template(
+        &project_id,
+        &req.template_id,
+        req.title.as_deref().unwrap_or(""),
+        req.source_locale.as_deref().unwrap_or("en-US"),
+    )?;
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "manual": manual }))))
+}
+
+async fn check_updates() -> Result<Json<serde_json::Value>, ApiError> {
+    let update = check_for_official_update()?;
+    Ok(Json(serde_json::json!({ "update": update })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InstallUpdateReq {
+    asset_download_url: String,
+    expected_sha256: Option<String>,
+}
+
+async fn install_update(Json(req): Json<InstallUpdateReq>) -> Result<Json<serde_json::Value>, ApiError> {
+    let result = download_and_replace_update(&req.asset_download_url, req.expected_sha256.as_deref())?;
+    Ok(Json(serde_json::json!({ "result": result })))
+}
+
 pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
     let state = Arc::new(AppState { store, speech_enabled });
     let allowed_origins = [
@@ -299,22 +393,27 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
     ];
     let cors = CorsLayer::new()
         .allow_origin(allowed_origins)
-        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
         .allow_headers(tower_http::cors::Any);
 
     Router::new()
         .route("/api/v1/health", get(health))
+        .route("/api/v1/profile", get(get_profile).put(save_profile))
+        .route("/api/v1/analytics", get(get_analytics))
         .route("/api/v1/projects", get(list_projects).post(create_project))
         .route("/api/v1/sessions", get(list_sessions).post(start_session))
         .route("/api/v1/sessions/{id}/status", post(update_session_status))
         .route("/api/v1/sessions/{id}/events", post(record_event))
         .route("/api/v1/sessions/{id}/generate", post(generate_manual))
+        .route("/api/v1/manuals/from-template", post(create_manual_from_template))
         .route("/api/v1/permissions/status", get(get_permissions))
         .route("/api/v1/permissions/request", post(request_permission))
         .route("/api/v1/permissions/open-settings", post(open_permission_settings))
         .route("/api/v1/memory", get(search_memory).post(add_memory))
         .route("/api/v1/memory/{id}", delete(remove_memory))
         .route("/api/v1/exports", post(export_manual))
+        .route("/api/v1/updates/check", get(check_updates))
+        .route("/api/v1/updates/install", post(install_update))
         .layer(RequestBodyLimitLayer::new(1024 * 100))
         .layer(cors)
         .with_state(state)

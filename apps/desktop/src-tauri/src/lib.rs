@@ -1,3 +1,5 @@
+mod tray;
+
 use opero_core::permissions::{
     inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt,
     OsPermissionSnapshot, PermissionSurface,
@@ -21,7 +23,18 @@ fn open_os_settings(surface: PermissionSurface) -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }));
+
+    builder
         .setup(|app| {
             let data_dir = app
                 .path()
@@ -34,6 +47,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 opero_daemon::start_embedded_daemon(data_dir, 4317, speech_enabled).await;
             });
+            tray::setup_system_tray(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -1,0 +1,63 @@
+name: Staging Pre-Release QA & Artifact Build
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  staging-verify:
+    name: Staging Verification Gate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: python3 scripts/check_maintainability.py --strict
+      - run: pnpm install --frozen-lockfile
+      - run: cargo test --workspace
+      - run: pnpm typecheck && pnpm test:vitest
+      - run: pnpm --filter @opero/desktop build
+
+  staging-bundles:
+    name: Staging ${{ matrix.label }}
+    needs: staging-verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS (.dmg)
+            platform: macos-latest
+            bundles: app,dmg
+            artifact: opero-staging-macos-dmg
+          - label: Windows (.exe NSIS)
+            platform: windows-latest
+            bundles: nsis
+            artifact: opero-staging-windows-exe
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - run: python3 scripts/generate_desktop_icons.py
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @opero/desktop tauri build --bundles ${{ matrix.bundles }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          retention-days: 14
+          path: |
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/nsis/*.exe
