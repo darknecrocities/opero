@@ -4,6 +4,7 @@ pub mod doc_analyzer;
 pub mod doc_analyzer_store;
 pub mod doc_parser;
 pub mod error;
+pub mod hardware;
 pub mod memory;
 pub mod models;
 pub mod permissions;

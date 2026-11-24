@@ -54,6 +54,9 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     // 5. Settings Hub via shortcut (Meta+,)
     await page.keyboard.press('Meta+,');
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await page.getByRole('tab', { name: 'AI Models' }).click();
+    await expect(page.getByText('Choose Your AI Model')).toBeVisible();
+    await expect(page.getByText('Qwen3 Compact').first()).toBeVisible();
     await page.getByRole('tab', { name: 'Memory' }).click();
     await page.getByRole('tab', { name: 'History' }).click();
     await page.getByRole('tab', { name: 'OS Access' }).click();

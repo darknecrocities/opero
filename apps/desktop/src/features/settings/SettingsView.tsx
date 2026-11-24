@@ -5,9 +5,10 @@ import { PeroStateMascot } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality, PermissionSurface } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
 import { useOperoStore } from '../../store/useOperoStore';
+import { ModelsPanel } from './ModelsPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 
-type SettingsTab = 'profile' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
+type SettingsTab = 'profile' | 'models' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -45,6 +46,7 @@ export const SettingsView: React.FC = () => {
 
   const tabs: { id: SettingsTab; icon: string; label: string }[] = [
     { id: 'profile', icon: 'user', label: dict.settingsTabProfile },
+    { id: 'models', icon: 'router', label: 'AI Models' },
     { id: 'language', icon: 'translate', label: dict.settingsTabLanguage },
     { id: 'memory', icon: 'memory', label: dict.settingsTabMemory },
     { id: 'history', icon: 'docs', label: dict.settingsTabHistory },
@@ -334,6 +336,8 @@ export const SettingsView: React.FC = () => {
           </div>
         </section>
       )}
+
+      {tab === 'models' && <ModelsPanel />}
 
       {tab === 'updates' && <UpdatesPanel />}
     </div>

@@ -27,7 +27,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   role: 'author',
   speechEnabled: false,
   soundEnabled: cachedInitial?.soundEnabled ?? true,
-  activeModelId: 'ollama-qwen3-4b',
+  activeModelId: 'ollama-qwen3-1.7b',
+  hardwareProfile: null,
   peroState: 'ready',
   peroCapColor: cachedInitial?.peroCapColor ?? '#69BCFC',
   peroJacketColor: cachedInitial?.peroJacketColor ?? '#69BCFC',
@@ -84,6 +85,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   setRole: (role) => set({ role }),
   setSpeechEnabled: (speechEnabled) => set({ speechEnabled }),
   setActiveModelId: (activeModelId) => set({ activeModelId }),
+  setHardwareProfile: (hardwareProfile) => set({ hardwareProfile }),
   setPeroOutfit: (peroCapColor, peroJacketColor) => set({ peroCapColor, peroJacketColor }),
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
   openManualInStudio: (activeManual) => set({ activeManual, navMode: 'studio', peroState: 'verified-draft' }),
@@ -91,13 +93,14 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [h, pRes, sRes, mRes, profRes, anRes] = await Promise.all([
+      const [h, pRes, sRes, mRes, profRes, anRes, hwRes] = await Promise.all([
         operoClient.health(),
         operoClient.listProjects(),
         operoClient.listSessions(),
         operoClient.searchMemory('Save Inventory', 'en-US', 5),
         operoClient.getProfile(),
         operoClient.getAnalytics(),
+        operoClient.getHardwareProfile().catch(() => ({ hardware: null })),
       ]);
       let projects = pRes.projects;
       if (projects.length === 0) {
@@ -123,6 +126,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         peroCapColor: profRes.profile.peroCapColor,
         peroJacketColor: profRes.profile.peroJacketColor,
         analytics: anRes.analytics,
+        hardwareProfile: hwRes.hardware,
         projects,
         sessions: sRes.sessions,
         activeSessionId: sRes.sessions[0]?.id ?? null,
