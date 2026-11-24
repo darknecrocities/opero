@@ -1,6 +1,8 @@
 import React from 'react';
+import { getFeatureStrings } from '@opero/i18n';
 import { JiggIcon } from '@opero/jiggicons';
 import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock } from '@opero/shared-types';
+import { useOperoStore } from '../../store/useOperoStore';
 
 export type AnalyzerTool = 'select' | 'box' | 'arrow' | 'crop';
 
@@ -29,11 +31,13 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   onSelectAnnotation,
   onAnnotateBlock,
 }) => {
+  const { uiLocale } = useOperoStore();
+  const feat = getFeatureStrings(uiLocale);
   const tools: { id: AnalyzerTool; icon: string; label: string }[] = [
-    { id: 'select', icon: 'eye', label: 'Inspect' },
-    { id: 'box', icon: 'rect', label: 'Box + AI' },
-    { id: 'arrow', icon: 'arrow', label: 'Arrow + AI' },
-    { id: 'crop', icon: 'crop', label: 'Crop Piece + AI' },
+    { id: 'select', icon: 'eye', label: feat.analyzerToolInspect },
+    { id: 'box', icon: 'rect', label: feat.analyzerToolBox },
+    { id: 'arrow', icon: 'arrow', label: feat.analyzerToolArrow },
+    { id: 'crop', icon: 'crop', label: feat.analyzerToolCrop },
   ];
 
   const annsByBlock = new Map<string, DocumentAnnotation[]>();
@@ -118,10 +122,9 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
               {doc.filename}
             </div>
             <div className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-              {doc.fileFormat.toUpperCase()} · {doc.wordCount} words · {doc.detectedLanguages.join(' / ')}
+              {doc.fileFormat.toUpperCase()} · {doc.wordCount} words · {doc.completenessScore}% {feat.analyzerCompleteSuffix}
             </div>
           </div>
-          <span className="status-pill verified">{doc.completenessScore}% filled</span>
         </div>
 
         {doc.blocks.map((blk) => {
@@ -162,14 +165,14 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '5px',
-                        padding: '2px 8px',
-                        borderRadius: '999px',
-                        border: 'none',
+                        padding: '2px 7px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-strong)',
                         cursor: 'pointer',
-                        background: severityBorder(ann.severity),
-                        color: '#FFFFFF',
+                        background: isSelected ? '#0F172A' : '#F4F9FF',
+                        color: isSelected ? '#FFFFFF' : '#0F172A',
                         fontSize: '11px',
-                        fontWeight: 700,
+                        fontWeight: 600,
                       }}
                     >
                       {ann.kind === 'arrow' && (
@@ -177,9 +180,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                           <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
-                      <span>
-                        #{ann.number} {ann.kind.toUpperCase()}
-                      </span>
+                      <span>{String(ann.number).padStart(2, '0')}</span>
                     </button>
                   ))}
                 </div>

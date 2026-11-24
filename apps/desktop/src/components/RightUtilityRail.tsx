@@ -1,5 +1,5 @@
 import React from 'react';
-import { getUiDictionary, LOCALE_MODEL_MAP } from '@opero/i18n';
+import { getFeatureStrings, getUiDictionary, LOCALE_MODEL_MAP } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { ExportFormat, FirstClassLocale } from '@opero/shared-types';
 import { DEFAULT_MODELS, useOperoStore } from '../store/useOperoStore';
@@ -23,6 +23,8 @@ export const RightUtilityRail: React.FC = () => {
     runExport,
   } = useOperoStore();
   const dict = getUiDictionary(uiLocale);
+  const feat = getFeatureStrings(uiLocale);
+  const activeModel = DEFAULT_MODELS.find((m) => m.id === activeModelId) ?? DEFAULT_MODELS[0];
 
   const exportRows: { fmt: ExportFormat; icon: string; label: string; keyHint: string }[] = [
     { fmt: 'pdf', icon: 'export-pdf', label: 'PDF', keyHint: '⌘E' },
@@ -33,11 +35,11 @@ export const RightUtilityRail: React.FC = () => {
 
   return (
     <aside className="opero-right-rail" aria-label="Workspace Utility Rail">
-      <section className="rail-panel" aria-label="AI Model">
+      <section className="rail-panel" aria-label={feat.aiModelTitle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <strong style={{ fontFamily: 'var(--font-display)', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <JiggIcon name="router" size={16} variant="duotone" />
-            <span>AI Model</span>
+            <span>{feat.aiModelTitle}</span>
           </strong>
           <button
             type="button"
@@ -45,56 +47,46 @@ export const RightUtilityRail: React.FC = () => {
             onClick={() => setNavMode('settings')}
             style={{ minHeight: '24px', padding: '2px 7px', fontSize: '11px' }}
           >
-            All Models
+            {feat.allModelsBtn}
           </button>
         </div>
 
-        {hardwareProfile && (
-          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-            {hardwareProfile.cpuName} · {hardwareProfile.totalRamGb} GB memory
+        <select
+          aria-label="Active AI Model"
+          value={activeModelId}
+          onChange={(e) => {
+            playJiggSfx('click', soundEnabled);
+            setActiveModelId(e.target.value);
+          }}
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '7px 8px',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            background: '#FFFFFF',
+            color: 'var(--ink)',
+          }}
+        >
+          {DEFAULT_MODELS.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.displayName ?? m.modelName} ({m.ramTierGb} GB+)
+            </option>
+          ))}
+        </select>
+
+        {activeModel && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.45 }}>
+              {activeModel.shortDescription}
+            </div>
+            {hardwareProfile && (
+              <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                {hardwareProfile.cpuName} · {hardwareProfile.totalRamGb} GB
+              </div>
+            )}
           </div>
         )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {DEFAULT_MODELS.map((m) => {
-            const active = m.id === activeModelId;
-            const fitsRam = !hardwareProfile || hardwareProfile.totalRamGb >= m.ramTierGb;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                className={`nav-item ${active ? 'active' : ''}`}
-                onClick={() => {
-                  playJiggSfx('click', soundEnabled);
-                  setActiveModelId(m.id);
-                }}
-                style={{
-                  padding: '9px 10px',
-                  border: active ? '1.5px solid var(--brand-sky)' : '1px solid var(--border)',
-                  background: active ? 'var(--brand-sky-soft)' : '#FFFFFF',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'start', flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)' }}>
-                      {m.displayName ?? m.modelName}
-                    </span>
-                    {active && <JiggIcon name="verified" size={14} variant="duotone" />}
-                  </div>
-                  {m.shortDescription && (
-                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)', lineHeight: 1.4 }}>
-                      {m.shortDescription}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '10.5px', color: fitsRam ? 'var(--ink-muted)' : 'var(--warning)' }}>
-                    {m.capabilitySummary ?? m.capabilities.join(' · ')} · {m.ramTierGb} GB+
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </section>
 
       <section className="rail-panel" aria-label={dict.ocrVoiceTitle}>
@@ -104,8 +96,9 @@ export const RightUtilityRail: React.FC = () => {
         </strong>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '11px', color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span>Manual Language</span>
+            <span>{feat.manualLanguageLabel}</span>
             <select
+              aria-label="Document Language"
               value={targetLocale}
               onChange={(e) => setTargetLocale(e.target.value as FirstClassLocale)}
               style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 8px', fontSize: '12px', background: 'var(--bg)', color: 'var(--ink)' }}
@@ -119,8 +112,9 @@ export const RightUtilityRail: React.FC = () => {
           </label>
 
           <label style={{ fontSize: '11px', color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span>App Language</span>
+            <span>{feat.appLanguageLabel}</span>
             <select
+              aria-label="App Language"
               value={uiLocale}
               onChange={(e) => setUiLocale(e.target.value as FirstClassLocale)}
               style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 8px', fontSize: '12px', background: 'var(--bg)', color: 'var(--ink)' }}
@@ -134,7 +128,7 @@ export const RightUtilityRail: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px' }}>
             <span style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <JiggIcon name="voice" size={14} variant="outline" />
-              <span>Voice</span>
+              <span>{feat.voiceLabel}</span>
             </span>
             <button
               type="button"
@@ -145,7 +139,7 @@ export const RightUtilityRail: React.FC = () => {
               }}
               style={{ minHeight: '28px', padding: '2px 8px', fontSize: '11px' }}
             >
-              {speechEnabled ? 'Mic: ON' : 'Mic: OFF'}
+              {speechEnabled ? feat.micOn : feat.micOff}
             </button>
           </div>
         </div>
@@ -163,7 +157,7 @@ export const RightUtilityRail: React.FC = () => {
             onClick={() => setNavMode('settings')}
             style={{ minHeight: '24px', padding: '2px 7px', fontSize: '11px' }}
           >
-            Manage
+            {feat.manageBtn}
           </button>
         </div>
         <div className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)', display: 'flex', justifyContent: 'space-between' }}>
@@ -210,7 +204,7 @@ export const RightUtilityRail: React.FC = () => {
           ))}
         </div>
         {lastExportNotice && (
-          <div role="status" className="mono" style={{ fontSize: '11px', color: 'var(--success)', paddingTop: '4px' }}>
+          <div role="status" className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)', paddingTop: '4px' }}>
             {lastExportNotice}
           </div>
         )}

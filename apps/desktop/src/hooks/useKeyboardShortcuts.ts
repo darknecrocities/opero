@@ -37,6 +37,12 @@ export function useKeyboardShortcuts(): void {
       } else if (key === '3') {
         e.preventDefault();
         store.setNavMode('analyzer');
+      } else if (key === '4') {
+        e.preventDefault();
+        store.setNavMode('meetings');
+      } else if (key === '5') {
+        e.preventDefault();
+        store.setNavMode('agent');
       } else if (key === ',') {
         e.preventDefault();
         store.setNavMode('settings');

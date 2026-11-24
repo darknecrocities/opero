@@ -77,7 +77,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       ),
     });
     await expect(page.getByText('sample_sop_check.txt').first()).toBeVisible({ timeout: 6000 });
-    await page.getByRole('button', { name: /Crop Piece \+ AI/i }).click();
+    await page.getByRole('button', { name: 'Crop', exact: true }).click();
     await page.getByRole('button', { name: /Place CROP & Explain/i }).first().click();
     await page.getByRole('tab', { name: 'Full Report' }).click();
     await page.getByRole('button', { name: 'Export PDF' }).click();
@@ -85,7 +85,34 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       timeout: 6000,
     });
 
-    // 7. Back to Dashboard via Meta+0
+    // 7. Meeting Notes via shortcut (Meta+4): record OS audio -> stop & compile -> bilingual script & summary
+    await page.keyboard.press('Meta+4');
+    await expect(page.getByRole('heading', { name: 'Meeting Notes' })).toBeVisible();
+    await page.getByRole('button', { name: 'Record Meeting' }).click();
+    await page.getByRole('button', { name: /Stop & Compile Notes/i }).click();
+    await expect(page.getByTestId('pero-compiling-overlay')).toBeVisible({ timeout: 4000 });
+    await expect(page.getByTestId('pero-compiling-overlay')).toBeHidden({ timeout: 10000 });
+    await expect(page.getByText(/日本語訳/).first()).toBeVisible({ timeout: 6000 });
+
+    // 8. Pero Agent via shortcut (Meta+5): grounded RAG tool-calling query about MMI Director
+    await page.keyboard.press('Meta+5');
+    await expect(page.getByRole('heading', { name: 'Pero Agent' })).toBeVisible();
+    await page.getByRole('button', { name: /Representative Director of Man Machine Interface/i }).click();
+    await expect(page.getByText(/Tetsuya Sekiguchi|関口/).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Actions taken/i).first()).toBeVisible();
+
+    // 9. Resizable sidebar separator & Dynamic EN -> JA -> EN UI switch
+    const leftSep = page.getByRole('separator', { name: /Resize left navigation sidebar/i });
+    await expect(leftSep).toBeVisible();
+    await leftSep.focus();
+    await page.keyboard.press('ArrowRight');
+    const appLangSelect = page.getByLabel('App Language', { exact: true });
+    await appLangSelect.selectOption('ja-JP');
+    await expect(page.getByRole('heading', { name: 'Pero エージェント' })).toBeVisible();
+    await appLangSelect.selectOption('en-US');
+    await expect(page.getByRole('heading', { name: 'Pero Agent' })).toBeVisible();
+
+    // 10. Back to Dashboard via Meta+0
     await page.keyboard.press('Meta+0');
     await expect(page.getByText('Sessions & Meetings')).toBeVisible();
 
