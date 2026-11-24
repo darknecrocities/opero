@@ -19,6 +19,7 @@ const cachedInitial = loadCachedProfile();
 
 export const useOperoStore = create<OperoStoreState>((set, get) => ({
   navMode: 'dashboard',
+  previousNavMode: 'dashboard',
   leftOpen: true,
   rightOpen: true,
   solidFallback: false,
@@ -49,12 +50,34 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   quickPromptReply: null,
   lastExportNotice: null,
   statusMessage: null,
+  toastNotice: null,
   compilingOverlay: null,
   pendingAgentPrompt: null,
 
   setNavMode: (navMode) => {
     playJiggSfx('nav', get().soundEnabled);
-    set({ navMode });
+    set((s) => ({
+      navMode,
+      previousNavMode: s.navMode !== 'settings' ? s.navMode : s.previousNavMode,
+    }));
+  },
+  toggleSettingsView: () => {
+    playJiggSfx('nav', get().soundEnabled);
+    set((s) =>
+      s.navMode === 'settings'
+        ? { navMode: s.previousNavMode || 'dashboard' }
+        : { previousNavMode: s.navMode, navMode: 'settings' },
+    );
+  },
+  showToast: (toastNotice) => {
+    set({ toastNotice });
+    if (toastNotice) {
+      setTimeout(() => {
+        if (get().toastNotice === toastNotice) {
+          set({ toastNotice: null });
+        }
+      }, 2800);
+    }
   },
   setCompilingOverlay: (compilingOverlay) => set({ compilingOverlay }),
   openAgentWithPrompt: (prompt) => {
@@ -64,7 +87,11 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   clearPendingAgentPrompt: () => set({ pendingAgentPrompt: null }),
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
-  toggleSolidFallback: () => set((s) => ({ solidFallback: !s.solidFallback })),
+  toggleSolidFallback: () => {
+    const next = !get().solidFallback;
+    set({ solidFallback: next });
+    get().showToast(next ? 'Solid high-contrast surface enabled' : 'Liquid Glass surface enabled');
+  },
   toggleSound: () => {
     const next = !get().soundEnabled;
     const p = { ...get().userProfile, soundEnabled: next };
@@ -94,7 +121,23 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   setSpeechEnabled: (speechEnabled) => set({ speechEnabled }),
   setActiveModelId: (activeModelId) => set({ activeModelId }),
   setHardwareProfile: (hardwareProfile) => set({ hardwareProfile }),
-  setPeroOutfit: (peroCapColor, peroJacketColor) => set({ peroCapColor, peroJacketColor }),
+  setPeroOutfit: (peroCapColor, peroJacketColor) => {
+    const p = { ...get().userProfile, peroCapColor, peroJacketColor };
+    saveCachedProfile(p);
+    set({ peroCapColor, peroJacketColor, userProfile: p });
+    if (get().daemonOnline) {
+      void operoClient.saveProfile({
+        name: p.name,
+        occupation: p.occupation,
+        personality: p.personality,
+        defaultLocale: p.defaultLocale,
+        soundEnabled: p.soundEnabled,
+        onboardingCompleted: p.onboardingCompleted,
+        peroCapColor,
+        peroJacketColor,
+      });
+    }
+  },
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
   openManualInStudio: (activeManual) => set({ activeManual, navMode: 'studio', peroState: 'verified-draft' }),
   tickTimer: (deltaMs) => set((s) => ({ elapsedMs: s.elapsedMs + deltaMs })),
@@ -419,10 +462,16 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
 
   runExport: async (format, manualOverride) => {
     const state = get();
-    const target = manualOverride ?? state.activeManual;
+    let target = manualOverride ?? state.activeManual;
     if (!target) {
-      set({ lastExportNotice: 'Select or create a manual before exporting.' });
-      return;
+      const created = await get().createManualFromTemplate('sop');
+      if (!created) {
+        const msg = 'Create a manual in Templates or Studio before exporting.';
+        set({ lastExportNotice: msg });
+        get().showToast(msg);
+        return;
+      }
+      target = created;
     }
     if (state.daemonOnline) {
       const { artifact } = await operoClient.exportManual(target, format, state.targetLocale);
@@ -435,11 +484,13 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         sha256: artifact.sha256,
         createdAt: new Date().toISOString(),
       };
+      const notice = `Exported ${artifact.format.toUpperCase()} (${artifact.byteSize} B)`;
       set((s) => ({
         peroState: 'exported',
         exportHistory: [entry, ...s.exportHistory].slice(0, 20),
-        lastExportNotice: `Exported ${artifact.format.toUpperCase()} (${artifact.byteSize} B)`,
+        lastExportNotice: notice,
       }));
+      get().showToast(notice);
       playJiggSfx('success', state.soundEnabled);
     }
   },

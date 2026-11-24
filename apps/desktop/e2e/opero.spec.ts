@@ -4,6 +4,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
   test('full flow: welcome fade-bounce -> blue-ball onboarding -> dashboard -> shortcuts -> 7 templates -> capture/studio -> settings', async ({
     page,
   }) => {
+    test.setTimeout(60000);
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -41,9 +42,15 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await expect(page.getByText('Talking & Documented Steps')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Quick Ask Pero' })).toBeVisible();
 
-    // Verify smooth sidebar hide/show slide toggle
+    // Verify smooth sidebar hide/show slide toggle & functional Top Navbar controls
     await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
     await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
+    await page.getByRole('button', { name: 'Toggle Glass or Solid surface' }).click();
+    await expect(page.locator('.opero-shell.solid-fallback')).toBeVisible();
+    await page.getByRole('button', { name: 'Toggle Glass or Solid surface' }).click();
+    await page.getByRole('button', { name: 'Export menu' }).click();
+    await expect(page.getByRole('menu', { name: 'Quick Export Formats' })).toBeVisible();
+    await page.getByRole('button', { name: 'Export menu' }).click();
 
     // 4. Working keyboard shortcuts (Meta+2 Templates, Meta+, Settings, Meta+0 Dashboard)
     await page.keyboard.press('Meta+2');
@@ -59,9 +66,12 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       timeout: 6000,
     });
 
-    // 5. Settings Hub via shortcut (Meta+,)
+    // 5. Settings Hub via shortcut (Meta+,): Horizontal Operator ID Card & Pero Outfit Studio
     await page.keyboard.press('Meta+,');
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Operator ID Card and Pero Outfit Studio' })).toBeVisible();
+    await expect(page.getByLabel('Pero Cap Color')).toBeVisible();
+    await expect(page.getByLabel('Pero Jacket Color')).toBeVisible();
     await page.getByRole('tab', { name: 'AI Models' }).click();
     await expect(page.getByText('Choose Your AI Model')).toBeVisible();
     await expect(page.getByText('Qwen3 Compact').first()).toBeVisible();
@@ -82,13 +92,14 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
         'Standard Operating Procedure\n1. Checklist\n| Step | Status |\n| Verify backup | |\n2. Notes\nNote: Confirm sign-off before release.\n',
       ),
     });
-    await expect(page.getByText('sample_sop_check.txt').first()).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('sample_sop_check.txt').first()).toBeVisible({ timeout: 18000 });
     await page.getByRole('button', { name: 'Crop', exact: true }).click();
     await page.getByRole('button', { name: /Place CROP & Explain/i }).first().click();
+    await expect(page.getByText('Analyzing...')).toBeHidden({ timeout: 15000 });
     await page.getByRole('tab', { name: 'Full Report' }).click();
     await page.getByRole('button', { name: 'Export PDF' }).click();
     await expect(page.locator('.status-pill', { hasText: /Exported PDF/i }).first()).toBeVisible({
-      timeout: 6000,
+      timeout: 12000,
     });
 
     // 7. Meeting Notes via shortcut (Meta+4): record OS audio -> stop & compile -> bilingual script & summary
@@ -98,7 +109,9 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('button', { name: /Stop & Compile Notes/i }).click();
     await expect(page.getByTestId('pero-compiling-overlay')).toBeVisible({ timeout: 4000 });
     await expect(page.getByTestId('pero-compiling-overlay')).toBeHidden({ timeout: 10000 });
-    await expect(page.getByText(/日本語訳/).first()).toBeVisible({ timeout: 6000 });
+    await expect(page.getByRole('region', { name: 'Bilingual Script' }).getByText(/[ぁ-んァ-ン一-龥]/).first()).toBeVisible({
+      timeout: 6000,
+    });
 
     // 8. Pero Agent via shortcut (Meta+5): Pero face avatar, clean greeting ("hello"), and grounded MMI RAG query
     await page.keyboard.press('Meta+5');

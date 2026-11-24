@@ -54,6 +54,7 @@ export interface ExportHistoryItem {
 
 export interface OperoStoreState {
   navMode: WorkspaceNavMode;
+  previousNavMode: WorkspaceNavMode;
   leftOpen: boolean;
   rightOpen: boolean;
   solidFallback: boolean;
@@ -84,10 +85,13 @@ export interface OperoStoreState {
   quickPromptReply: string | null;
   lastExportNotice: string | null;
   statusMessage: string | null;
+  toastNotice: string | null;
   compilingOverlay: CompilingOverlayState | null;
   pendingAgentPrompt: string | null;
 
   setNavMode: (mode: WorkspaceNavMode) => void;
+  toggleSettingsView: () => void;
+  showToast: (msg: string | null) => void;
   setCompilingOverlay: (overlay: CompilingOverlayState | null) => void;
   openAgentWithPrompt: (prompt: string) => void;
   clearPendingAgentPrompt: () => void;
