@@ -23,6 +23,7 @@ data/
 recordings/
 captures/
 exports/
+dist-installers/
 .backups/
 
 # Local AI / OCR / Speech Model Weights

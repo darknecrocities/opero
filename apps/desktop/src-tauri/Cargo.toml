@@ -1,0 +1,21 @@
+[package]
+name = "opero-desktop"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "OPERO — MMI Local-First AI Workflow Documentation Desktop Application"
+
+[lib]
+name = "opero_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.42", features = ["rt-multi-thread"] }
+opero-core = { path = "../../../crates/opero-core" }
+opero-daemon = { path = "../../../crates/opero-daemon" }
