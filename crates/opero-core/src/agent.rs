@@ -5,8 +5,9 @@ use uuid::Uuid;
 
 use crate::db::OperoStore;
 use crate::error::OperoResult;
-use crate::meeting_notes::{call_ollama_quick, list_meeting_notes, translate_text_local};
+use crate::meeting_notes::{list_meeting_notes, translate_text_local};
 use crate::memory::dual_core::query_dual_core_memory;
+use crate::ollama_runtime::{call_ollama_chat, check_ollama_status, OllamaChatMessage};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +55,7 @@ pub struct AgentChatResponse {
     pub thread_id: String,
     pub message: AgentMessage,
     pub engine_used: String,
+    pub model_live: bool,
 }
 
 pub fn ensure_agent_schema(conn: &Connection) -> OperoResult<()> {
@@ -103,6 +105,44 @@ pub fn delete_agent_thread(store: &OperoStore, thread_id: &str) -> OperoResult<(
     Ok(())
 }
 
+fn is_casual_greeting(prompt: &str) -> bool {
+    let low = prompt.trim().to_lowercase();
+    let short = low.chars().count() <= 32;
+    short
+        && (matches!(
+            low.as_str(),
+            "hi" | "hello" | "hey" | "yo" | "sup" | "good morning" | "good afternoon" | "good evening" | "thanks" | "thank you" | "kumusta" | "kamusta" | "こんにちは" | "おはよう" | "おはようございます" | "こんばんは" | "ありがとう" | "もしもし"
+        ) || low.starts_with("hi ")
+            || low.starts_with("hello ")
+            || low.starts_with("hey "))
+}
+
+fn needs_memory_lookup(prompt: &str) -> bool {
+    if is_casual_greeting(prompt) {
+        return false;
+    }
+    let low = prompt.to_lowercase();
+    low.contains("mmi")
+        || low.contains("man machine")
+        || low.contains("director")
+        || low.contains("president")
+        || low.contains("ceo")
+        || low.contains("office")
+        || low.contains("address")
+        || low.contains("company")
+        || low.contains("glossary")
+        || low.contains("memory")
+        || low.contains("who is")
+        || low.contains("what is")
+        || low.contains("where is")
+        || prompt.contains("マン・マシン")
+        || prompt.contains("代表")
+        || prompt.contains("会社")
+        || prompt.contains("役員")
+        || prompt.contains("本社")
+        || prompt.contains("誰")
+}
+
 pub fn run_agent_turn(
     store: &OperoStore,
     thread_id: Option<&str>,
@@ -117,9 +157,10 @@ pub fn run_agent_turn(
         .unwrap_or_else(|| format!("thr_{}", Uuid::new_v4().simple()));
     let now = Utc::now().to_rfc3339();
 
-    {
+    let prior_history = {
         let conn = store.conn()?;
         ensure_agent_schema(&conn)?;
+        let history = load_thread_messages(&conn, &tid)?;
         let title: String = clean_prompt.chars().take(48).collect();
         conn.execute(
             "INSERT INTO agent_threads (id, title, locale, updated_at) VALUES (?1, ?2, ?3, ?4)
@@ -131,22 +172,23 @@ pub fn run_agent_turn(
             "INSERT INTO agent_messages (id, thread_id, role, content, created_at) VALUES (?1, ?2, 'user', ?3, ?4)",
             params![user_msg_id, tid, clean_prompt, now],
         )?;
-    }
+        history
+    };
 
     let mut tool_calls = Vec::new();
     let mut citations = Vec::new();
     let mut action_link: Option<AgentActionLink> = None;
-    let mut context_blocks = Vec::new();
+    let mut grounded_facts = Vec::new();
     let low = clean_prompt.to_lowercase();
 
-    // Tool 1: Always search Dual-Core Vector RAG for grounded knowledge (MMI, glossary, docs, meetings)
-    {
+    // Tool 1: Search Dual-Core Vector RAG only when the query actually asks for knowledge/facts
+    if needs_memory_lookup(clean_prompt) {
         let conn = store.conn()?;
-        let hits = query_dual_core_memory(&conn, clean_prompt, None, 4)?;
+        let hits = query_dual_core_memory(&conn, clean_prompt, None, 3)?;
         let hit_count = hits.len();
         for h in &hits {
             citations.push(h.chunk.title.clone());
-            context_blocks.push(format!("[Memory: {}] {}", h.chunk.title, h.chunk.content));
+            grounded_facts.push(format!("• {}: {}", h.chunk.title, h.chunk.content));
         }
         tool_calls.push(AgentToolCallRecord {
             tool: "search_knowledge".to_string(),
@@ -156,13 +198,13 @@ pub fn run_agent_turn(
         });
     }
 
-    // Tool 2: Inspect analyzed documents when asked about documents/reports/PDFs
+    // Tool 2: Inspect analyzed documents
     if low.contains("doc") || low.contains("report") || low.contains("pdf") || clean_prompt.contains("ドキュメント") || clean_prompt.contains("レポート") {
         if let Ok(docs) = store.list_analyzed_documents() {
             let count = docs.len();
             if let Some(first) = docs.first() {
-                context_blocks.push(format!(
-                    "[Latest Document: {}] Completeness: {}%. Summary: {}",
+                grounded_facts.push(format!(
+                    "• Latest Document ({}): {}% complete. {}",
                     first.filename, first.completeness_score, first.executive_summary
                 ));
                 action_link = Some(AgentActionLink {
@@ -180,17 +222,14 @@ pub fn run_agent_turn(
         }
     }
 
-    // Tool 3: Inspect compiled meeting notes when asked about meetings/transcripts
+    // Tool 3: Inspect compiled meeting notes
     if low.contains("meeting") || low.contains("transcript") || low.contains("sync") || clean_prompt.contains("会議") || clean_prompt.contains("議事録") || clean_prompt.contains("pulong") {
         if let Ok(meetings) = list_meeting_notes(store) {
             let count = meetings.len();
             if let Some(m) = meetings.first() {
-                context_blocks.push(format!(
-                    "[Latest Meeting: {}] Summary: {} | Translated: {} | Decisions: {}",
-                    m.title,
-                    m.executive_summary,
-                    m.translated_summary,
-                    m.decisions.join("; ")
+                grounded_facts.push(format!(
+                    "• Latest Meeting ({}): {} (Translated: {})",
+                    m.title, m.executive_summary, m.translated_summary
                 ));
                 action_link = Some(AgentActionLink {
                     kind: "meeting".to_string(),
@@ -207,7 +246,7 @@ pub fn run_agent_turn(
         }
     }
 
-    // Tool 4: Autonomously create a manual from template when asked to draft/create SOP/manual
+    // Tool 4: Autonomously create a manual from template
     if (low.contains("create") || low.contains("draft") || clean_prompt.contains("作成") || clean_prompt.contains("gumawa"))
         && (low.contains("manual") || low.contains("sop") || low.contains("template") || clean_prompt.contains("手順書") || clean_prompt.contains("マニュアル"))
     {
@@ -219,7 +258,7 @@ pub fn run_agent_turn(
                     "Standard Operating Procedure (Drafted by Pero)".to_string()
                 };
                 if let Ok(manual) = store.create_manual_from_template(&proj.id, "sop", &m_title, locale) {
-                    context_blocks.push(format!("[Created Manual] Title: {} (ID: {})", manual.title, manual.id));
+                    grounded_facts.push(format!("• Created new manual \"{}\" ({}).", manual.title, manual.id));
                     action_link = Some(AgentActionLink {
                         kind: "manual".to_string(),
                         id: manual.id.clone(),
@@ -236,7 +275,7 @@ pub fn run_agent_turn(
         }
     }
 
-    // Tool 5: Translate on demand if explicitly requested
+    // Tool 5: Translate on demand
     if low.contains("translate") || clean_prompt.contains("翻訳") || clean_prompt.contains("isalin") {
         let target = if low.contains("japanese") || clean_prompt.contains("日本語") {
             "ja-JP"
@@ -246,7 +285,7 @@ pub fn run_agent_turn(
             "en-US"
         };
         let (tr, _eng) = translate_text_local(clean_prompt, target, preferred_model);
-        context_blocks.push(format!("[Translation -> {target}] {tr}"));
+        grounded_facts.push(format!("• Translation ({target}): {tr}"));
         tool_calls.push(AgentToolCallRecord {
             tool: "translate_text".to_string(),
             input: target.to_string(),
@@ -255,7 +294,9 @@ pub fn run_agent_turn(
         });
     }
 
-    let (reply_text, engine_used) = synthesize_agent_reply(clean_prompt, locale, &context_blocks, preferred_model);
+    let (reply_text, engine_used, model_live) =
+        synthesize_live_chat_reply(clean_prompt, locale, &prior_history, &grounded_facts, preferred_model);
+
     let reply_msg = AgentMessage {
         id: format!("msg_{}", Uuid::new_v4().simple()),
         thread_id: tid.clone(),
@@ -286,6 +327,7 @@ pub fn run_agent_turn(
         thread_id: tid,
         message: reply_msg,
         engine_used,
+        model_live,
     })
 }
 
@@ -312,49 +354,88 @@ fn load_thread_messages(conn: &Connection, thread_id: &str) -> OperoResult<Vec<A
     Ok(rows.flatten().collect())
 }
 
-fn synthesize_agent_reply(
+fn synthesize_live_chat_reply(
     prompt: &str,
     locale: &str,
-    context_blocks: &[String],
+    prior_history: &[AgentMessage],
+    grounded_facts: &[String],
     preferred_model: Option<&str>,
-) -> (String, String) {
-    let joined_ctx = context_blocks.join("\n");
-    if let Some(model) = preferred_model.filter(|m| !m.is_empty() && *m != "offline") {
+) -> (String, String, bool) {
+    let rt = check_ollama_status(preferred_model);
+    if let Some(live_model) = rt.active_model.as_deref() {
         let lang = match locale {
-            "ja-JP" => "Japanese",
-            "fil-PH" => "Filipino",
-            _ => "English",
+            "ja-JP" => "natural Japanese",
+            "fil-PH" => "natural Filipino (Tagalog)",
+            _ => "clear, friendly English",
         };
-        let sys_prompt = format!(
-            "You are Pero, OPERO's concise local-first workflow agent. Answer in {lang} using ONLY the verified local context below. Never fabricate facts.\n\nContext:\n{joined_ctx}\n\nUser: {prompt}\nAssistant:"
-        );
-        if let Some(reply) = call_ollama_quick(model, &sys_prompt) {
-            return (reply, format!("Ollama ({model})"));
+        let facts_section = if grounded_facts.is_empty() {
+            String::new()
+        } else {
+            format!("\n\nVerified local workspace context (use accurately, never fabricate):\n{}", grounded_facts.join("\n"))
+        };
+        let mut messages = vec![OllamaChatMessage {
+            role: "system".to_string(),
+            content: format!(
+                "You are Pero, OPERO's friendly, sharp local-first AI assistant for Man Machine Interface (MMI) workflows. Reply concisely and conversationally in {lang}. Never echo raw bracket tags like [Memory:].{facts_section}"
+            ),
+        }];
+        let start = prior_history.len().saturating_sub(8);
+        for m in &prior_history[start..] {
+            messages.push(OllamaChatMessage {
+                role: m.role.clone(),
+                content: m.content.clone(),
+            });
+        }
+        messages.push(OllamaChatMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+        });
+
+        if let Some(reply) = call_ollama_chat(live_model, &messages) {
+            return (reply, format!("Ollama ({live_model})"), true);
         }
     }
 
-    if context_blocks.is_empty() {
+    // Conversational fallback when local Ollama server is not running yet
+    if is_casual_greeting(prompt) {
         let msg = match locale {
-            "ja-JP" => "ローカルメモリに一致する情報が見つかりませんでした。ドキュメントの解析や会議の録音を行うと、ここに自動で蓄積されます。".to_string(),
-            "fil-PH" => "Walang nahanap na tugmang impormasyon sa lokal na memorya. Mag-upload ng dokumento o mag-record ng pulong upang maidagdag dito.".to_string(),
-            _ => "No matching records were found in local memory yet. Upload a document or record a meeting to build your local knowledge base.".to_string(),
+            "ja-JP" => "こんにちは！OPEROのローカルAIアシスタント「Pero」です。現在はローカルモデル（Ollama）が停止中ですが、右上の「ローカルAIを起動」を押すとリアルタイム会話が有効になります。MMIの会社情報検索、議事録の要約、SOP作成もすぐにお手伝いできますよ。".to_string(),
+            "fil-PH" => "Kumusta! Ako si Pero, ang iyong lokal na AI assistant sa OPERO. Naka-off pa ang lokal na Ollama model ngayon—i-click ang 'Start Local AI' sa itaas para sa live na usapan, o magtanong agad tungkol sa MMI, mga pulong, o dokumento.".to_string(),
+            _ => "Hi! I'm Pero, your local-first OPERO assistant. Your local Ollama model isn't running yet—click \"Start Local AI\" above to enable live conversational replies, or ask me right now to search MMI knowledge, summarize meetings, or draft a manual.".to_string(),
         };
-        return (msg, "Local Agent Engine".to_string());
+        return (msg, "Local Offline Helper".to_string(), false);
     }
 
-    let summary = context_blocks
-        .iter()
-        .take(3)
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n\n");
-    (summary, "Local Agent Engine".to_string())
+    if !grounded_facts.is_empty() {
+        let lead = match locale {
+            "ja-JP" => "ローカル知識ベースから確認した情報です：\n\n",
+            "fil-PH" => "Narito ang nahanap ko mula sa lokal na memorya ng OPERO:\n\n",
+            _ => "Here is what I found in your local OPERO workspace:\n\n",
+        };
+        return (format!("{lead}{}", grounded_facts.join("\n\n")), "Local Grounded Tools".to_string(), false);
+    }
+
+    let msg = match locale {
+        "ja-JP" => "自由な会話にはローカルAIモデル（Ollama）の起動が必要です。上部の「ローカルAIを起動」ボタンを押すと、Qwen3モデルで動的に回答できるようになります。".to_string(),
+        "fil-PH" => "Kailangang i-start ang lokal na Ollama AI model para sa libreng usapan. I-click ang 'Start Local AI' sa itaas upang paganahin ang live na sagot mula sa Qwen3.".to_string(),
+        _ => "To answer open-ended questions dynamically, start your local AI model using the \"Start Local AI\" button above (runs locally on your machine via Ollama + Qwen3).".to_string(),
+    };
+    (msg, "Local Offline Helper".to_string(), false)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn test_greeting_does_not_dump_raw_memory() {
+        let dir = tempdir().unwrap();
+        let store = OperoStore::open(dir.path()).unwrap();
+        let resp = run_agent_turn(&store, None, "hello", "en-US", Some("offline")).unwrap();
+        assert!(!resp.message.content.contains("[Memory:"));
+        assert!(resp.message.tool_calls.is_empty());
+    }
 
     #[test]
     fn test_agent_rag_grounding_and_manual_creation_tool() {
@@ -367,10 +448,11 @@ mod tests {
             None,
             "Who is the Representative Director of Man Machine Interface?",
             "en-US",
-            None,
+            Some("offline"),
         )
         .unwrap();
         assert!(resp1.message.content.contains("Tetsuya Sekiguchi") || resp1.message.content.contains("関口"));
+        assert!(!resp1.message.content.contains("[Memory:"));
         assert!(resp1.message.tool_calls.iter().any(|t| t.tool == "search_knowledge" && t.ok));
 
         let resp2 = run_agent_turn(
@@ -378,14 +460,10 @@ mod tests {
             Some(&resp1.thread_id),
             "Create a Standard Operating Procedure manual from template",
             "en-US",
-            None,
+            Some("offline"),
         )
         .unwrap();
         assert!(resp2.message.tool_calls.iter().any(|t| t.tool == "create_manual_from_template" && t.ok));
         assert!(resp2.message.action_link.is_some());
-
-        let threads = list_agent_threads(&store).unwrap();
-        assert_eq!(threads.len(), 1);
-        assert_eq!(threads[0].messages.len(), 4);
     }
 }

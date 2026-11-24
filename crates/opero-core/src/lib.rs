@@ -11,6 +11,7 @@ pub mod meeting_compiler;
 pub mod meeting_notes;
 pub mod memory;
 pub mod models;
+pub mod ollama_runtime;
 pub mod permissions;
 pub mod pipeline;
 pub mod profile;

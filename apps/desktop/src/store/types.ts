@@ -85,9 +85,12 @@ export interface OperoStoreState {
   lastExportNotice: string | null;
   statusMessage: string | null;
   compilingOverlay: CompilingOverlayState | null;
+  pendingAgentPrompt: string | null;
 
   setNavMode: (mode: WorkspaceNavMode) => void;
   setCompilingOverlay: (overlay: CompilingOverlayState | null) => void;
+  openAgentWithPrompt: (prompt: string) => void;
+  clearPendingAgentPrompt: () => void;
   toggleLeft: () => void;
   toggleRight: () => void;
   toggleSolidFallback: () => void;
