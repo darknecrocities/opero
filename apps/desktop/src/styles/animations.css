@@ -63,6 +63,28 @@
   }
 }
 
+@keyframes onboardSwipeNext {
+  0% {
+    opacity: 0;
+    transform: translateX(72px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes onboardSwipePrev {
+  0% {
+    opacity: 0;
+    transform: translateX(-72px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes peroFloatGentle {
   0%,
   100% {
@@ -84,6 +106,14 @@
 
 .opero-view-enter {
   animation: operoViewEnter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.onboard-swipe-next {
+  animation: onboardSwipeNext 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.onboard-swipe-prev {
+  animation: onboardSwipePrev 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes operoBubbleIn {
@@ -381,6 +411,8 @@ textarea:focus {
   .opero-ball,
   .onboard-ball.active,
   .opero-view-enter,
+  .onboard-swipe-next,
+  .onboard-swipe-prev,
   .pero-float {
     animation: none;
   }

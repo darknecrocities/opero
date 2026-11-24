@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { getUiDictionary, PERSONALITY_OPTIONS } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OPERO_CURATED_OUTFITS, PeroStateMascot, type OperoAppState } from '@opero/mascot';
 import type { OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
+
+const BIO_STORAGE_KEY = 'opero_profile_bio_v1';
 
 const PREVIEW_STATES: { id: OperoAppState; label: string }[] = [
   { id: 'ready', label: 'Ready' },
@@ -12,11 +14,37 @@ const PREVIEW_STATES: { id: OperoAppState; label: string }[] = [
   { id: 'exported', label: 'Celebrate' },
 ];
 
+function loadSavedBio(): string {
+  try {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(BIO_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveBio(bio: string): void {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(BIO_STORAGE_KEY, bio);
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+function formatOperatorId(name: string): string {
+  const seed = (name.trim() || 'MMI Operator').toUpperCase();
+  let hash = 10421;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 90000;
+  }
+  return `OPERO-${String(hash + 10000).slice(0, 5)}`;
+}
+
 export const ProfileIdCardPanel: React.FC = () => {
   const {
     uiLocale,
     userProfile,
-    role,
     soundEnabled,
     peroCapColor,
     peroJacketColor,
@@ -28,11 +56,27 @@ export const ProfileIdCardPanel: React.FC = () => {
   const dict = getUiDictionary(uiLocale);
   const [name, setName] = useState<string>(userProfile.name);
   const [occupation, setOccupation] = useState<string>(userProfile.occupation);
+  const [bio, setBio] = useState<string>(() => loadSavedBio());
   const [personality, setPersonality] = useState<OperoPersonality>(userProfile.personality);
   const [previewState, setPreviewState] = useState<OperoAppState>('ready');
 
+  const operatorId = useMemo(() => formatOperatorId(name), [name]);
+  const toneLabel = useMemo(() => {
+    const opt = PERSONALITY_OPTIONS.find((item) => item.id === personality);
+    return opt ? opt.label[uiLocale] : personality;
+  }, [personality, uiLocale]);
+
+  const localeLabel =
+    uiLocale === 'ja-JP' ? '日本語 (ja-JP)' : uiLocale === 'fil-PH' ? 'Filipino (fil-PH)' : 'English (en-US)';
+
+  const defaultBio =
+    uiLocale === 'ja-JP'
+      ? 'OPEROで日々の業務手順や会議記録をシンプルに整理しています。'
+      : 'Documenting workflows, meetings, and everyday operations with OPERO.';
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    saveBio(bio.trim());
     await saveOnboardingProfile({
       name: name.trim() || 'MMI Operator',
       occupation: occupation.trim() || 'Operations',
@@ -56,122 +100,161 @@ export const ProfileIdCardPanel: React.FC = () => {
   return (
     <section
       aria-label="Operator ID Card and Pero Outfit Studio"
-      className="glass-regular opero-card"
       style={{
-        borderRadius: '22px',
-        overflow: 'hidden',
         width: '100%',
-        maxWidth: '980px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
+        maxWidth: '820px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '22px',
       }}
     >
-      {/* Left Horizontal ID Card Face */}
-      <div
+      {/* Classic Minimal Horizontal ID Card */}
+      <article
+        aria-label="Minimal Operator ID Card"
         style={{
-          background: 'linear-gradient(155deg, #0F172A 0%, #16243D 65%, #1E3252 100%)',
-          color: '#FFFFFF',
-          padding: '24px 26px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          gap: '18px',
-          position: 'relative',
+          background: '#FFFFFF',
+          border: '2px solid #0F172A',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-          <div>
-            <div className="mono" style={{ fontSize: '10.5px', letterSpacing: '0.12em', color: '#69BCFC', fontWeight: 700 }}>
-              OPERO · MMI OPERATOR ID
-            </div>
-            <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px' }}>
-              Man Machine Interface, Inc.
-            </div>
-          </div>
-          <span
-            className="mono"
-            style={{
-              fontSize: '10.5px',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              border: '1px solid rgba(105, 188, 252, 0.35)',
-              color: '#E0F2FE',
-            }}
-          >
-            {role.toUpperCase()} · {uiLocale}
+        {/* Minimal Top Header Strip */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '11px 22px',
+            borderBottom: '1.5px solid #0F172A',
+            background: '#FFFFFF',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '13.5px', fontWeight: 800, letterSpacing: '0.06em', color: '#0F172A' }}>
+            OPERO
+          </span>
+          <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 500 }}>
+            Man Machine Interface
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '4px 0' }}>
-          <div className="pero-float">
-            <PeroStateMascot
-              state={previewState}
-              size={168}
-              capColor={peroCapColor}
-              jacketColor={peroJacketColor}
-            />
+        {/* Horizontal 2-Column Body: Big Mascot Portrait Left, Clean Details + ID Right */}
+        <div className="minimal-id-card-body">
+          {/* Left Portrait + Signature Name */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <div className="pero-float">
+              <PeroStateMascot
+                state={previewState}
+                size={204}
+                capColor={peroCapColor}
+                jacketColor={peroJacketColor}
+              />
+            </div>
+
+            <div
+              style={{
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                fontStyle: 'italic',
+                fontSize: '21px',
+                color: '#0F172A',
+                letterSpacing: '0.01em',
+                lineHeight: 1.15,
+              }}
+            >
+              {name.trim() || 'MMI Operator'}
+            </div>
+
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {PREVIEW_STATES.map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    playJiggSfx('click', soundEnabled);
+                    setPreviewState(st.id);
+                  }}
+                  style={{
+                    border: previewState === st.id ? '1px solid #0F172A' : '1px solid #E2EAF2',
+                    background: previewState === st.id ? '#0F172A' : '#FFFFFF',
+                    color: previewState === st.id ? '#FFFFFF' : 'var(--ink-muted)',
+                    borderRadius: '999px',
+                    padding: '3px 9px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms ease, color 150ms ease, border-color 150ms ease',
+                  }}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            {PREVIEW_STATES.map((st) => (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => {
-                  playJiggSfx('click', soundEnabled);
-                  setPreviewState(st.id);
-                }}
-                style={{
-                  border: previewState === st.id ? '1px solid #69BCFC' : '1px solid rgba(255,255,255,0.16)',
-                  background: previewState === st.id ? 'rgba(105, 188, 252, 0.22)' : 'rgba(255,255,255,0.06)',
-                  color: '#FFFFFF',
-                  borderRadius: '999px',
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  transition: 'background-color 150ms ease, border-color 150ms ease',
-                }}
-              >
-                {st.label}
-              </button>
-            ))}
+          {/* Right Minimal Details Lines + Bottom ID Number */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', minHeight: '220px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+              <div style={{ borderBottom: '1px solid #E2EAF2', paddingBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '2px' }}>
+                  {uiLocale === 'ja-JP' ? '氏名' : 'Name'}
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
+                  {name.trim() || 'MMI Operator'}
+                </div>
+              </div>
+
+              <div style={{ borderBottom: '1px solid #E2EAF2', paddingBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '2px' }}>
+                  {uiLocale === 'ja-JP' ? '役割・職種' : 'Role'}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 500, color: '#0F172A' }}>
+                  {occupation.trim() || 'Operations'}
+                </div>
+              </div>
+
+              <div style={{ borderBottom: '1px solid #E2EAF2', paddingBottom: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '2px' }}>
+                  {uiLocale === 'ja-JP' ? '自己紹介' : 'About'}
+                </div>
+                <div style={{ fontSize: '13.5px', lineHeight: 1.5, color: '#334155' }}>
+                  {bio.trim() || defaultBio}
+                </div>
+              </div>
+
+              <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)' }}>
+                {toneLabel} · {localeLabel}
+              </div>
+            </div>
+
+            <div
+              className="mono"
+              style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                color: '#0F172A',
+                paddingTop: '4px',
+              }}
+            >
+              ID: {operatorId}
+            </div>
           </div>
         </div>
+      </article>
 
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              {name || 'MMI Operator'}
-            </div>
-            <div style={{ fontSize: '12.5px', color: '#CBD5E1', marginTop: '2px' }}>
-              {occupation || 'Operations'}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
-              title={`Cap ${peroCapColor}`}
-              style={{ width: '16px', height: '16px', borderRadius: '999px', background: peroCapColor, border: '1.5px solid #FFFFFF' }}
-            />
-            <span
-              title={`Jacket ${peroJacketColor}`}
-              style={{ width: '16px', height: '16px', borderRadius: '999px', background: peroJacketColor, border: '1.5px solid #FFFFFF' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Right Editable Operator Details & Pero Outfit Customizer */}
+      {/* Clean Profile Editor & Pero Outfit Studio */}
       <form
         onSubmit={(e) => void handleSave(e)}
         style={{
-          padding: '24px 26px',
+          padding: '22px 24px',
+          borderRadius: '18px',
+          border: '1px solid var(--border)',
+          background: '#FFFFFF',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
-          background: '#FFFFFF',
         }}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12.5px', fontWeight: 600 }}>
             <span>{uiLocale === 'ja-JP' ? '氏名' : 'Name'}</span>
             <input
@@ -193,25 +276,45 @@ export const ProfileIdCardPanel: React.FC = () => {
               style={{ padding: '9px 11px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF', fontSize: '13px' }}
             />
           </label>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12.5px', fontWeight: 600 }}>
+            <span>{uiLocale === 'ja-JP' ? 'Operoのスタイル' : 'Opero Tone'}</span>
+            <select
+              aria-label="Opero Tone"
+              value={personality}
+              onChange={(e) => setPersonality(e.target.value as OperoPersonality)}
+              style={{ padding: '9px 11px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF', fontSize: '13px' }}
+            >
+              {PERSONALITY_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label[uiLocale]}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12.5px', fontWeight: 600 }}>
-          <span>{uiLocale === 'ja-JP' ? 'Operoのスタイル' : 'Opero Tone'}</span>
-          <select
-            aria-label="Opero Tone"
-            value={personality}
-            onChange={(e) => setPersonality(e.target.value as OperoPersonality)}
-            style={{ padding: '9px 11px', borderRadius: '10px', border: '1px solid var(--border-strong)', background: '#FFFFFF', fontSize: '13px' }}
-          >
-            {PERSONALITY_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label[uiLocale]}
-              </option>
-            ))}
-          </select>
+          <span>{uiLocale === 'ja-JP' ? '自己紹介・メモ' : 'Short Description'}</span>
+          <textarea
+            aria-label="User Description"
+            rows={2}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder={defaultBio}
+            style={{
+              padding: '9px 11px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-strong)',
+              background: '#FFFFFF',
+              fontSize: '13px',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+            }}
+          />
         </label>
 
-        {/* Pero Outfit Customizer (Synced Across Entire App) */}
+        {/* Pero Outfit Studio (Synced Across Entire App) */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
             <div>
@@ -262,7 +365,7 @@ export const ProfileIdCardPanel: React.FC = () => {
             })}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
             <label
               style={{
                 display: 'flex',

@@ -76,10 +76,12 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       timeout: 6000,
     });
 
-    // 5. Settings Hub via shortcut (Meta+,): Horizontal Operator ID Card & Pero Outfit Studio
+    // 5. Settings Hub via shortcut (Meta+,): Minimal Horizontal ID Card, User Description & Pero Outfit Studio
     await page.keyboard.press('Meta+,');
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Operator ID Card and Pero Outfit Studio' })).toBeVisible();
+    await expect(page.getByRole('article', { name: 'Minimal Operator ID Card' })).toBeVisible();
+    await expect(page.getByLabel('User Description')).toBeVisible();
     await expect(page.getByLabel('Pero Cap Color')).toBeVisible();
     await expect(page.getByLabel('Pero Jacket Color')).toBeVisible();
     await page.getByRole('tab', { name: 'AI Models' }).click();
