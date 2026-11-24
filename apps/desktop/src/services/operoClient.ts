@@ -1,17 +1,21 @@
 import type {
+  DashboardAnalytics,
   DualCoreMemoryStats,
   ExportFormat,
   FirstClassLocale,
   Manual,
   MemoryChunk,
   MemorySearchHit,
+  OperoPersonality,
   OsPermissionSnapshot,
   PermissionSurface,
   Project,
   RecordingSession,
+  UserProfile,
 } from '@opero/shared-types';
 
-const DAEMON_BASE = 'http://127.0.0.1:4317/api/v1';
+const DAEMON_PORT = (import.meta.env?.VITE_OPERO_DAEMON_PORT as string | undefined) || '4317';
+const DAEMON_BASE = `http://127.0.0.1:${DAEMON_PORT}/api/v1`;
 
 async function fetchLocal<T>(path: string, init?: RequestInit, timeoutMs = 4000): Promise<T> {
   const controller = new AbortController();
@@ -119,4 +123,30 @@ export const operoClient = {
       { method: 'POST', body: JSON.stringify({ manual, format, locale }) },
       15000,
     ),
+
+  getProfile: () => fetchLocal<{ profile: UserProfile }>('/profile'),
+
+  saveProfile: (payload: {
+    name: string;
+    occupation: string;
+    personality: OperoPersonality;
+    defaultLocale: FirstClassLocale;
+    soundEnabled: boolean;
+    onboardingCompleted: boolean;
+    peroCapColor?: string;
+    peroJacketColor?: string;
+  }) => fetchLocal<{ profile: UserProfile }>('/profile', { method: 'PUT', body: JSON.stringify(payload) }),
+
+  getAnalytics: () => fetchLocal<{ analytics: DashboardAnalytics }>('/analytics'),
+
+  createManualFromTemplate: (payload: {
+    projectId?: string;
+    templateId: string;
+    title?: string;
+    sourceLocale: FirstClassLocale;
+  }) =>
+    fetchLocal<{ manual: Manual }>('/manuals/from-template', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };

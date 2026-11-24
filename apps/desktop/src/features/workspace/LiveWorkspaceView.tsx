@@ -191,7 +191,7 @@ export const LiveWorkspaceView: React.FC = () => {
                 <button
                   type="button"
                   className="opero-btn"
-                  onClick={() => setNavMode('memory')}
+                  onClick={() => setNavMode('settings')}
                 >
                   <JiggIcon name="permissions" size={16} variant="duotone" />
                   <span>Verify OS Permissions</span>

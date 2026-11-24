@@ -5,19 +5,24 @@ import { OperoLogo } from '@opero/mascot';
 import type { OperatorRole } from '@opero/shared-types';
 import { useOperoStore, type WorkspaceNavMode } from '../store/useOperoStore';
 
-const NAV_ITEMS: { mode: WorkspaceNavMode; icon: string; shortcut: string; labelKey: keyof ReturnType<typeof getUiDictionary> }[] = [
+const NAV_ITEMS: {
+  mode: WorkspaceNavMode;
+  icon: string;
+  shortcut: string;
+  labelKey: keyof ReturnType<typeof getUiDictionary>;
+}[] = [
+  { mode: 'dashboard', icon: 'home', shortcut: '⌘0', labelKey: 'navDashboard' },
   { mode: 'capture', icon: 'capture', shortcut: '⌥Space', labelKey: 'navLiveCapture' },
   { mode: 'studio', icon: 'studio', shortcut: '⌘1', labelKey: 'navStudio' },
-  { mode: 'router', icon: 'router', shortcut: '⌘2', labelKey: 'navModelRouter' },
-  { mode: 'outputs', icon: 'outputs', shortcut: '⌘3', labelKey: 'navOutputs' },
-  { mode: 'library', icon: 'library', shortcut: '⌘4', labelKey: 'navLibrary' },
-  { mode: 'memory', icon: 'memory', shortcut: '⌘5', labelKey: 'navMemoryPermissions' },
+  { mode: 'templates', icon: 'outputs', shortcut: '⌘2', labelKey: 'navTemplates' },
+  { mode: 'settings', icon: 'settings', shortcut: '⌘,', labelKey: 'navSettings' },
 ];
 
 export const LeftSidebar: React.FC = () => {
   const {
     navMode,
     uiLocale,
+    userProfile,
     sessions,
     activeSessionId,
     role,
@@ -30,19 +35,14 @@ export const LeftSidebar: React.FC = () => {
 
   return (
     <aside className="opero-left-rail" aria-label="Primary Workspace Navigation">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '2px 4px 8px' }}>
-        <OperoLogo variant="squircle" size={38} title="OPERO Official App Icon" />
-        <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.025em' }}>
-            OPERO
-          </div>
-          <div className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-            MMI Local-First v1.0
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 4px 10px' }}>
+        <OperoLogo variant="squircle" size={36} title="OPERO App Icon" />
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.03em' }}>
+          OPERO
         </div>
       </div>
 
-      <nav aria-label="Workspace Views" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      <nav aria-label="Workspace Views" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {NAV_ITEMS.map((item) => (
           <button
             key={item.mode}
@@ -80,10 +80,10 @@ export const LeftSidebar: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {sessions.length === 0 ? (
             <div style={{ padding: '10px 8px', fontSize: '12px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
-              No recorded sessions yet. Start a live capture to build your first evidence-linked manual.
+              No sessions yet.
             </div>
           ) : (
-            sessions.map((sess) => {
+            sessions.slice(0, 12).map((sess) => {
               const isSel = sess.id === activeSessionId;
               const isLive = sess.status === 'recording';
               return (
@@ -104,7 +104,7 @@ export const LeftSidebar: React.FC = () => {
                     </span>
                   </div>
                   <div className="mono" style={{ fontSize: '11px', color: isLive ? 'var(--danger)' : 'var(--ink-muted)', paddingLeft: '21px' }}>
-                    {isLive ? 'Live · Recording' : `${sess.status} · ${sess.eventCount} events`}
+                    {isLive ? 'REC' : `${sess.status} · ${sess.eventCount}`}
                   </div>
                 </button>
               );
@@ -114,13 +114,30 @@ export const LeftSidebar: React.FC = () => {
       </div>
 
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button
+          type="button"
+          onClick={() => setNavMode('settings')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            textAlign: 'start',
+          }}
+        >
           <JiggIcon name="user" size={18} variant="duotone" />
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 600 }}>MMI Operator</div>
-            <div className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>Local Vault</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+              {userProfile.name || 'MMI Operator'}
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>
+              {userProfile.occupation || 'Operations'}
+            </div>
           </div>
-        </div>
+        </button>
         <select
           aria-label="Operator Role"
           value={role}

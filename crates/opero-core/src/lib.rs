@@ -5,6 +5,7 @@ pub mod memory;
 pub mod models;
 pub mod permissions;
 pub mod pipeline;
+pub mod profile;
 
 #[cfg(test)]
 mod tests {
