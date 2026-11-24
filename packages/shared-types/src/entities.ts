@@ -212,6 +212,37 @@ export interface ModelProfile {
   researchOnly?: boolean;
 }
 
+export type OperoPersonality =
+  | 'calm_concise'
+  | 'friendly_guide'
+  | 'technical_direct'
+  | 'formal_sop';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  occupation: string;
+  personality: OperoPersonality;
+  defaultLocale: FirstClassLocale;
+  soundEnabled: boolean;
+  onboardingCompleted: boolean;
+  peroCapColor: string;
+  peroJacketColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardAnalytics {
+  totalSessions: number;
+  completedSessions: number;
+  meetingSessions: number;
+  talkingMinutes: number;
+  totalCapturedEvents: number;
+  totalManuals: number;
+  verifiedSteps: number;
+  dailyActivity: number[];
+}
+
 export interface ProblemDetails {
   type: string;
   title: string;

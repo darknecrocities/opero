@@ -1,5 +1,5 @@
 import React from 'react';
-import { JiggIcon } from '@opero/jiggicons';
+import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OperoLogo } from '@opero/mascot';
 import { useOperoStore } from '../store/useOperoStore';
 
@@ -8,7 +8,7 @@ export const TopWindowBar: React.FC = () => {
     leftOpen,
     rightOpen,
     solidFallback,
-    daemonOnline,
+    soundEnabled,
     toggleLeft,
     toggleRight,
     toggleSolidFallback,
@@ -22,24 +22,23 @@ export const TopWindowBar: React.FC = () => {
         <button
           type="button"
           className="opero-btn"
-          onClick={toggleLeft}
+          onClick={() => {
+            playJiggSfx('click', soundEnabled);
+            toggleLeft();
+          }}
           aria-label="Toggle left sidebar"
-          title="Toggle Left Sidebar"
-          style={{ minHeight: '32px', padding: '4px 8px' }}
+          title="Toggle Sidebar (⌘B)"
+          style={{ minHeight: '32px', padding: '4px 9px' }}
         >
           <JiggIcon name="library" size={16} variant="outline" />
           <span>{leftOpen ? 'Hide Nav' : 'Nav'}</span>
         </button>
-        <span className={`status-pill ${daemonOnline ? 'verified' : 'paused'}`}>
-          <JiggIcon name={daemonOnline ? 'verified' : 'shield'} size={13} variant="duotone" />
-          <span>{daemonOnline ? 'Local SQLite + RAG Active' : 'Offline Preview Mode'}</span>
-        </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <OperoLogo variant="mark" size={22} title="OPERO Workspace Mark" />
+        <OperoLogo variant="mark" size={22} title="OPERO Mark" />
         <strong style={{ fontFamily: 'var(--font-display)', fontSize: '14px', letterSpacing: '-0.02em' }}>
-          OPERO Workspace
+          OPERO
         </strong>
       </div>
 
@@ -47,11 +46,14 @@ export const TopWindowBar: React.FC = () => {
         <button
           type="button"
           className="opero-btn"
-          onClick={toggleSolidFallback}
+          onClick={() => {
+            playJiggSfx('click', soundEnabled);
+            toggleSolidFallback();
+          }}
           style={{ minHeight: '32px', padding: '4px 10px' }}
         >
           <JiggIcon name="eye" size={15} variant="duotone" />
-          <span>{solidFallback ? 'Solid: ON' : 'Liquid Glass'}</span>
+          <span>{solidFallback ? 'Solid' : 'Glass'}</span>
         </button>
         <button
           type="button"
@@ -66,20 +68,25 @@ export const TopWindowBar: React.FC = () => {
         <button
           type="button"
           className="opero-btn"
-          onClick={() => setNavMode('memory')}
-          aria-label="OS Permissions and Dual-Core Memory"
+          onClick={() => setNavMode('settings')}
+          aria-label="Open Settings"
+          title="Settings (⌘,)"
           style={{ minHeight: '32px', padding: '4px 8px' }}
         >
-          <JiggIcon name="permissions" size={16} variant="duotone" />
+          <JiggIcon name="settings" size={16} variant="duotone" />
         </button>
         <button
           type="button"
           className="opero-btn"
-          onClick={toggleRight}
+          onClick={() => {
+            playJiggSfx('click', soundEnabled);
+            toggleRight();
+          }}
           aria-label="Toggle right utility sidebar"
+          title="Toggle Utility Rail (⌘⇧B)"
           style={{ minHeight: '32px', padding: '4px 8px' }}
         >
-          <JiggIcon name="settings" size={16} variant="outline" />
+          <JiggIcon name="panel" size={16} variant="outline" />
           <span>{rightOpen ? 'Hide Rail' : 'Rail'}</span>
         </button>
       </div>

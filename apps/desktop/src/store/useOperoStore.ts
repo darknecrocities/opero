@@ -1,146 +1,40 @@
 import { create } from 'zustand';
-import type {
-  AnnotationOverlay,
-  DualCoreMemoryStats,
-  ExportFormat,
-  FirstClassLocale,
-  Manual,
-  MemorySearchHit,
-  ModelProfile,
-  OperatorRole,
-  OsPermissionSnapshot,
-  PermissionSurface,
-  Project,
-  RecordingSession,
-} from '@opero/shared-types';
-import type { OperoAppState } from '@opero/mascot';
+import type { RecordingSession, UserProfile } from '@opero/shared-types';
+import { playJiggSfx } from '@opero/jiggicons';
 import { operoClient } from '../services/operoClient';
+import {
+  DEFAULT_ANALYTICS,
+  DEFAULT_MEMORY_STATS,
+  DEFAULT_MODELS,
+  DEFAULT_PROFILE,
+  loadCachedProfile,
+  saveCachedProfile,
+} from './defaults';
+import type { ExportHistoryItem, ImpulseSample, OperoStoreState, WorkspaceNavMode } from './types';
 
-export type WorkspaceNavMode = 'capture' | 'studio' | 'router' | 'outputs' | 'library' | 'memory';
+export { DEFAULT_MODELS };
+export type { ExportHistoryItem, ImpulseSample, OperoStoreState, WorkspaceNavMode };
 
-export const DEFAULT_MODELS: readonly ModelProfile[] = [
-  {
-    id: 'ollama-qwen3-4b',
-    runtime: 'ollama',
-    modelName: 'qwen3:4b-instruct-q4_K_M',
-    revision: 'q4_K_M',
-    quantization: '4-bit',
-    ramTierGb: 16,
-    licenseRef: 'Apache-2.0',
-    capabilities: ['draft', 'summarize', 'translate'],
-    active: true,
-  },
-  {
-    id: 'ollama-gemma3-4b',
-    runtime: 'ollama',
-    modelName: 'gemma3:4b-it-qat',
-    revision: 'qat',
-    quantization: '4-bit',
-    ramTierGb: 16,
-    licenseRef: 'Gemma Terms',
-    capabilities: ['draft', 'translate', 'vision'],
-    active: false,
-  },
-  {
-    id: 'apple-metal-local',
-    runtime: 'apple_metal',
-    modelName: 'Apple Silicon On-Device (MLX)',
-    revision: 'metal-fp16',
-    quantization: '4-bit',
-    ramTierGb: 16,
-    licenseRef: 'Local Hardware',
-    capabilities: ['draft', 'summarize'],
-    active: false,
-  },
-  {
-    id: 'offline-deterministic',
-    runtime: 'offline_deterministic',
-    modelName: 'Offline Evidence + OCR Engine',
-    revision: 'v1.0.0',
-    quantization: 'Zero-Weight',
-    ramTierGb: 8,
-    licenseRef: 'MIT',
-    capabilities: ['draft', 'summarize', 'translate'],
-    active: false,
-  },
-];
-
-export interface ImpulseSample {
-  seq: number;
-  label: string;
-  eventType: string;
-  timestamp: string;
-  intensity: number;
-}
-
-interface OperoStoreState {
-  navMode: WorkspaceNavMode;
-  leftOpen: boolean;
-  rightOpen: boolean;
-  solidFallback: boolean;
-  uiLocale: FirstClassLocale;
-  targetLocale: FirstClassLocale;
-  role: OperatorRole;
-  speechEnabled: boolean;
-  activeModelId: string;
-  peroState: OperoAppState;
-  peroCapColor: string;
-  peroJacketColor: string;
-  daemonOnline: boolean;
-  projects: Project[];
-  sessions: RecordingSession[];
-  activeSessionId: string | null;
-  activeManual: Manual | null;
-  impulses: ImpulseSample[];
-  elapsedMs: number;
-  permissions: OsPermissionSnapshot | null;
-  memoryStats: DualCoreMemoryStats;
-  memoryHits: MemorySearchHit[];
-  quickPromptReply: string | null;
-  lastExportNotice: string | null;
-  statusMessage: string | null;
-
-  setNavMode: (mode: WorkspaceNavMode) => void;
-  toggleLeft: () => void;
-  toggleRight: () => void;
-  toggleSolidFallback: () => void;
-  setUiLocale: (locale: FirstClassLocale) => void;
-  setTargetLocale: (locale: FirstClassLocale) => void;
-  setRole: (role: OperatorRole) => void;
-  setSpeechEnabled: (enabled: boolean) => void;
-  setActiveModelId: (id: string) => void;
-  setPeroOutfit: (cap: string, jacket: string) => void;
-  setActiveSessionId: (id: string | null) => void;
-  tickTimer: (deltaMs: number) => void;
-
-  bootstrap: () => Promise<void>;
-  startRecordingFlow: (title: string) => Promise<void>;
-  pauseOrResumeFlow: () => Promise<void>;
-  stopAndDraftFlow: () => Promise<void>;
-  snapWorkflowAction: (label: string, windowTitle?: string) => Promise<void>;
-  verifyStep: (stepId: string) => void;
-  updateStepText: (stepId: string, locale: FirstClassLocale, title: string, body: string) => void;
-  addAnnotation: (stepId: string, overlay: AnnotationOverlay) => void;
-  runQuickPrompt: (prompt: string) => Promise<void>;
-  requestOsPermission: (surface: PermissionSurface) => Promise<void>;
-  openOsSettings: (surface: PermissionSurface) => Promise<void>;
-  runExport: (format: ExportFormat) => Promise<void>;
-}
+const cachedInitial = loadCachedProfile();
 
 export const useOperoStore = create<OperoStoreState>((set, get) => ({
-  navMode: 'capture',
+  navMode: 'dashboard',
   leftOpen: true,
   rightOpen: true,
   solidFallback: false,
-  uiLocale: 'en-US',
-  targetLocale: 'en-US',
+  uiLocale: cachedInitial?.defaultLocale ?? 'en-US',
+  targetLocale: cachedInitial?.defaultLocale ?? 'en-US',
   role: 'author',
   speechEnabled: false,
+  soundEnabled: cachedInitial?.soundEnabled ?? true,
   activeModelId: 'ollama-qwen3-4b',
   peroState: 'ready',
-  peroCapColor: '#69BCFC',
-  peroJacketColor: '#69BCFC',
+  peroCapColor: cachedInitial?.peroCapColor ?? '#69BCFC',
+  peroJacketColor: cachedInitial?.peroJacketColor ?? '#69BCFC',
   daemonOnline: false,
+  userProfile: cachedInitial ?? DEFAULT_PROFILE,
+  showOnboarding: !(cachedInitial?.onboardingCompleted ?? false),
+  analytics: DEFAULT_ANALYTICS,
   projects: [],
   sessions: [],
   activeSessionId: null,
@@ -148,25 +42,44 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   impulses: [],
   elapsedMs: 0,
   permissions: null,
-  memoryStats: {
-    episodicCount: 0,
-    semanticCount: 6,
-    vectorCount: 6,
-    embeddingModel: 'opero-rust-trigram-384-i8',
-    embeddingDims: 384,
-    estimatedRamBytes: 2688,
-    sqliteWalBytes: 49152,
-  },
+  memoryStats: DEFAULT_MEMORY_STATS,
   memoryHits: [],
+  exportHistory: [],
   quickPromptReply: null,
   lastExportNotice: null,
   statusMessage: null,
 
-  setNavMode: (navMode) => set({ navMode }),
+  setNavMode: (navMode) => {
+    playJiggSfx('nav', get().soundEnabled);
+    set({ navMode });
+  },
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
   toggleSolidFallback: () => set((s) => ({ solidFallback: !s.solidFallback })),
-  setUiLocale: (uiLocale) => set({ uiLocale }),
+  toggleSound: () => {
+    const next = !get().soundEnabled;
+    const p = { ...get().userProfile, soundEnabled: next };
+    saveCachedProfile(p);
+    set({ soundEnabled: next, userProfile: p });
+    if (next) playJiggSfx('click', true);
+    if (get().daemonOnline) {
+      void operoClient.saveProfile({
+        name: p.name,
+        occupation: p.occupation,
+        personality: p.personality,
+        defaultLocale: p.defaultLocale,
+        soundEnabled: next,
+        onboardingCompleted: p.onboardingCompleted,
+        peroCapColor: p.peroCapColor,
+        peroJacketColor: p.peroJacketColor,
+      });
+    }
+  },
+  setUiLocale: (uiLocale) => {
+    const p = { ...get().userProfile, defaultLocale: uiLocale };
+    saveCachedProfile(p);
+    set({ uiLocale, targetLocale: uiLocale, userProfile: p });
+  },
   setTargetLocale: (targetLocale) => set({ targetLocale }),
   setRole: (role) => set({ role }),
   setSpeechEnabled: (speechEnabled) => set({ speechEnabled }),
@@ -177,37 +90,127 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [h, pRes, sRes, mRes] = await Promise.all([
+      const [h, pRes, sRes, mRes, profRes, anRes] = await Promise.all([
         operoClient.health(),
         operoClient.listProjects(),
         operoClient.listSessions(),
         operoClient.searchMemory('Save Inventory', 'en-US', 5),
+        operoClient.getProfile(),
+        operoClient.getAnalytics(),
       ]);
       let projects = pRes.projects;
       if (projects.length === 0) {
         const created = await operoClient.createProject({
-          title: 'MMI Inventory Operations',
-          owner: 'MMI Operations Author',
+          title: 'OPERO Workspace',
+          owner: profRes.profile.name || 'MMI Operator',
           department: 'Operations',
-          defaultLocale: 'en-US',
+          defaultLocale: profRes.profile.defaultLocale,
         });
         projects = [created.project];
       }
+      saveCachedProfile(profRes.profile);
       set({
         daemonOnline: true,
         permissions: h.permissions,
         memoryStats: h.memory,
         memoryHits: mRes.hits,
+        userProfile: profRes.profile,
+        showOnboarding: !profRes.profile.onboardingCompleted,
+        uiLocale: profRes.profile.defaultLocale,
+        targetLocale: profRes.profile.defaultLocale,
+        soundEnabled: profRes.profile.soundEnabled,
+        peroCapColor: profRes.profile.peroCapColor,
+        peroJacketColor: profRes.profile.peroJacketColor,
+        analytics: anRes.analytics,
         projects,
         sessions: sRes.sessions,
         activeSessionId: sRes.sessions[0]?.id ?? null,
       });
     } catch {
+      set({ daemonOnline: false });
+    }
+  },
+
+  refreshAnalytics: async () => {
+    if (!get().daemonOnline) return;
+    try {
+      const { analytics } = await operoClient.getAnalytics();
+      set({ analytics });
+    } catch {
+      // Non-fatal
+    }
+  },
+
+  saveOnboardingProfile: async (input) => {
+    const state = get();
+    const soundEnabled = input.soundEnabled ?? state.soundEnabled;
+    const onboardingCompleted = input.onboardingCompleted ?? true;
+    const nextLocal: UserProfile = {
+      ...state.userProfile,
+      name: input.name.trim(),
+      occupation: input.occupation.trim(),
+      personality: input.personality,
+      defaultLocale: input.defaultLocale,
+      soundEnabled,
+      onboardingCompleted,
+      updatedAt: new Date().toISOString(),
+    };
+    if (state.daemonOnline) {
+      const { profile } = await operoClient.saveProfile({
+        name: nextLocal.name,
+        occupation: nextLocal.occupation,
+        personality: nextLocal.personality,
+        defaultLocale: nextLocal.defaultLocale,
+        soundEnabled: nextLocal.soundEnabled,
+        onboardingCompleted: nextLocal.onboardingCompleted,
+        peroCapColor: state.peroCapColor,
+        peroJacketColor: state.peroJacketColor,
+      });
+      saveCachedProfile(profile);
       set({
-        daemonOnline: false,
-        statusMessage: 'Local Rust daemon (127.0.0.1:4317) standby — start opero-daemon for SQLite persistence.',
+        userProfile: profile,
+        uiLocale: profile.defaultLocale,
+        targetLocale: profile.defaultLocale,
+        soundEnabled: profile.soundEnabled,
+        showOnboarding: !profile.onboardingCompleted,
+        navMode: 'dashboard',
+        peroState: 'ready',
+      });
+    } else {
+      saveCachedProfile(nextLocal);
+      set({
+        userProfile: nextLocal,
+        uiLocale: nextLocal.defaultLocale,
+        targetLocale: nextLocal.defaultLocale,
+        soundEnabled: nextLocal.soundEnabled,
+        showOnboarding: !nextLocal.onboardingCompleted,
+        navMode: 'dashboard',
       });
     }
+    playJiggSfx('success', soundEnabled);
+  },
+
+  replayOnboarding: () => {
+    playJiggSfx('nav', get().soundEnabled);
+    set({ showOnboarding: true });
+  },
+
+  createManualFromTemplate: async (templateId, title) => {
+    const state = get();
+    const projectId = state.projects[0]?.id;
+    if (state.daemonOnline) {
+      const { manual } = await operoClient.createManualFromTemplate({
+        projectId,
+        templateId,
+        title,
+        sourceLocale: state.targetLocale,
+      });
+      set({ activeManual: manual, navMode: 'studio', peroState: 'verified-draft' });
+      void get().refreshAnalytics();
+      playJiggSfx('success', state.soundEnabled);
+      return manual;
+    }
+    return null;
   },
 
   startRecordingFlow: async (title) => {
@@ -223,11 +226,12 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       set((s) => ({
         sessions: [session, ...s.sessions],
         activeSessionId: session.id,
+        navMode: 'capture',
         peroState: 'recording',
         elapsedMs: 0,
         impulses: [],
-        statusMessage: `Recording active: ${session.title}`,
       }));
+      void get().refreshAnalytics();
     } else {
       const localSess: RecordingSession = {
         id: `sess_${Date.now()}`,
@@ -246,11 +250,13 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       set((s) => ({
         sessions: [localSess, ...s.sessions],
         activeSessionId: localSess.id,
+        navMode: 'capture',
         peroState: 'recording',
         elapsedMs: 0,
         impulses: [],
       }));
     }
+    playJiggSfx('step', state.soundEnabled);
   },
 
   pauseOrResumeFlow: async () => {
@@ -265,9 +271,10 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       peroState: nextStatus === 'paused' ? 'paused' : 'recording',
       sessions: s.sessions.map((item) => (item.id === active.id ? { ...item, status: nextStatus } : item)),
     }));
+    playJiggSfx('click', state.soundEnabled);
   },
 
-  snapWorkflowAction: async (label, windowTitle = 'MMI Inventory Portal (在庫管理)') => {
+  snapWorkflowAction: async (label, windowTitle = 'MMI Inventory Portal') => {
     const state = get();
     const active = state.sessions.find((s) => s.id === state.activeSessionId);
     if (!active || active.status !== 'recording') return;
@@ -306,6 +313,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         peroState: 'recording',
       };
     });
+    void get().refreshAnalytics();
+    playJiggSfx('step', state.soundEnabled);
   },
 
   stopAndDraftFlow: async () => {
@@ -325,6 +334,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
           peroState: manual.steps.some((st) => st.reviewStatus === 'needs_review') ? 'needs-review' : 'verified-draft',
           sessions: s.sessions.map((item) => (item.id === active.id ? { ...item, status: 'completed' } : item)),
         }));
+        void get().refreshAnalytics();
+        playJiggSfx('success', state.soundEnabled);
         return;
       }
     }
@@ -332,6 +343,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       peroState: 'ready',
       sessions: s.sessions.map((item) => (item.id === active.id ? { ...item, status: 'completed' } : item)),
     }));
+    void get().refreshAnalytics();
   },
 
   verifyStep: (stepId) =>
@@ -340,10 +352,9 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       const steps = s.activeManual.steps.map((st) =>
         st.id === stepId ? { ...st, reviewStatus: 'verified' as const } : st,
       );
-      const allVerified = steps.every((st) => st.reviewStatus === 'verified');
       return {
         activeManual: { ...s.activeManual, steps },
-        peroState: allVerified ? 'verified-draft' : s.peroState,
+        peroState: steps.every((st) => st.reviewStatus === 'verified') ? 'verified-draft' : s.peroState,
       };
     }),
 
@@ -353,13 +364,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       const steps = s.activeManual.steps.map((st) => {
         if (st.id !== stepId) return st;
         const existing = st.variants[locale];
-        return {
-          ...st,
-          variants: {
-            ...st.variants,
-            [locale]: { ...existing, title, body },
-          },
-        };
+        return { ...st, variants: { ...st.variants, [locale]: { ...existing, title, body } } };
       });
       return { activeManual: { ...s.activeManual, steps } };
     }),
@@ -379,19 +384,11 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
     if (state.daemonOnline) {
       const { hits, stats } = await operoClient.searchMemory(prompt, state.targetLocale, 5);
       const summary = hits.length
-        ? `Dual-Core RAG grounded on ${hits.length} local memory chunk(s): ${hits.map((h) => `[${h.chunk.coreType}] ${h.chunk.title}`).join(' · ')}`
-        : 'No prior memory chunks matched; indexed query context locally.';
-      set({
-        memoryHits: hits,
-        memoryStats: stats,
-        quickPromptReply: summary,
-        peroState: 'ready',
-      });
+        ? `Grounded on ${hits.length} memory chunk(s): ${hits.map((h) => h.chunk.title).join(' · ')}`
+        : 'Indexed query context locally.';
+      set({ memoryHits: hits, memoryStats: stats, quickPromptReply: summary, peroState: 'ready' });
     } else {
-      set({
-        quickPromptReply: `Offline Quick Prompt ready for "${prompt}" (connect local Rust daemon for SQLite RAG).`,
-        peroState: 'ready',
-      });
+      set({ quickPromptReply: `Offline prompt ready for "${prompt}".`, peroState: 'ready' });
     }
   },
 
@@ -404,21 +401,33 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   openOsSettings: async (surface) => {
     if (!get().daemonOnline) return;
     const { openedUri } = await operoClient.openPermissionSettings(surface);
-    set({ statusMessage: `Opened native OS Privacy Settings (${openedUri})` });
+    set({ statusMessage: `Opened OS Privacy Settings (${openedUri})` });
   },
 
-  runExport: async (format) => {
+  runExport: async (format, manualOverride) => {
     const state = get();
-    if (!state.activeManual) {
-      set({ lastExportNotice: 'Record or select a manual with at least one step before exporting.' });
+    const target = manualOverride ?? state.activeManual;
+    if (!target) {
+      set({ lastExportNotice: 'Select or create a manual before exporting.' });
       return;
     }
     if (state.daemonOnline) {
-      const { artifact } = await operoClient.exportManual(state.activeManual, format, state.targetLocale);
-      set({
+      const { artifact } = await operoClient.exportManual(target, format, state.targetLocale);
+      const entry: ExportHistoryItem = {
+        id: `exp_${Date.now()}`,
+        format,
+        locale: state.targetLocale,
+        title: target.title,
+        byteSize: artifact.byteSize,
+        sha256: artifact.sha256,
+        createdAt: new Date().toISOString(),
+      };
+      set((s) => ({
         peroState: 'exported',
-        lastExportNotice: `Exported ${artifact.format.toUpperCase()} (${artifact.byteSize} bytes · SHA-256 ${artifact.sha256.slice(0, 12)})`,
-      });
+        exportHistory: [entry, ...s.exportHistory].slice(0, 20),
+        lastExportNotice: `Exported ${artifact.format.toUpperCase()} (${artifact.byteSize} B)`,
+      }));
+      playJiggSfx('success', state.soundEnabled);
     }
   },
 }));

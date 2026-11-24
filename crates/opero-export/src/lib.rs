@@ -1,5 +1,7 @@
 pub mod redactor;
 pub mod writers;
+#[cfg(test)]
+mod template_tests;
 
 #[cfg(test)]
 mod tests {

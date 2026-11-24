@@ -36,7 +36,16 @@ def main() -> int:
     ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     img.save(OUT_DIR / "icon.ico", format="ICO", sizes=ico_sizes)
 
-    # 3. macOS Retina .icns via iconutil
+    # 3. macOS Menu Bar monochrome template icon (44x44 @2x)
+    from PIL import ImageDraw
+    tray = Image.new("RGBA", (44, 44), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(tray)
+    draw.rounded_rectangle((4, 4, 40, 40), radius=11, outline=(0, 0, 0, 255), width=4)
+    draw.ellipse((13, 13, 31, 31), outline=(0, 0, 0, 255), width=4)
+    draw.ellipse((19, 19, 25, 25), fill=(0, 0, 0, 255))
+    tray.save(OUT_DIR / "tray-icon.png", format="PNG")
+
+    # 4. macOS Retina .icns via iconutil
     if shutil.which("iconutil"):
         iconset = OUT_DIR / "opero.iconset"
         if iconset.exists():

@@ -1,3 +1,5 @@
+mod tray;
+
 use opero_core::permissions::{
     inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt,
     OsPermissionSnapshot, PermissionSurface,
@@ -34,6 +36,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 opero_daemon::start_embedded_daemon(data_dir, 4317, speech_enabled).await;
             });
+            tray::setup_system_tray(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

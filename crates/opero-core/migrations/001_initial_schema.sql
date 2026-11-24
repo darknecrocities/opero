@@ -253,3 +253,17 @@ CREATE TABLE IF NOT EXISTS memory_vectors (
 CREATE INDEX IF NOT EXISTS idx_events_session_seq ON captured_events(session_id, sequence);
 CREATE INDEX IF NOT EXISTS idx_steps_manual_order ON workflow_steps(manual_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_memory_core_project ON memory_chunks(core_type, project_id);
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  name TEXT NOT NULL DEFAULT '',
+  occupation TEXT NOT NULL DEFAULT '',
+  personality TEXT NOT NULL DEFAULT 'calm_concise',
+  default_locale TEXT NOT NULL DEFAULT 'en-US' CHECK(default_locale IN ('en-US','ja-JP','fil-PH')),
+  sound_enabled INTEGER NOT NULL DEFAULT 1,
+  onboarding_completed INTEGER NOT NULL DEFAULT 0,
+  pero_cap_color TEXT NOT NULL DEFAULT '#69BCFC',
+  pero_jacket_color TEXT NOT NULL DEFAULT '#69BCFC',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
