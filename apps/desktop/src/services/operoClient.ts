@@ -5,6 +5,7 @@ import type {
   DualCoreMemoryStats,
   ExportFormat,
   FirstClassLocale,
+  HardwareProfile,
   Manual,
   MemoryChunk,
   MemorySearchHit,
@@ -206,4 +207,13 @@ export const operoClient = {
       manual: Manual;
       artifact: { format: string; locale: string; filePath: string; sha256: string; byteSize: number } | null;
     }>(`/analyzer/documents/${docId}/report`, { method: 'POST', body: JSON.stringify(payload) }, 15000),
+
+  getHardwareProfile: () => fetchLocal<{ hardware: HardwareProfile }>('/system/hardware'),
+
+  pullModel: (modelTag: string) =>
+    fetchLocal<{ hardware: HardwareProfile }>(
+      '/models/pull',
+      { method: 'POST', body: JSON.stringify({ modelTag }) },
+      300000,
+    ),
 };

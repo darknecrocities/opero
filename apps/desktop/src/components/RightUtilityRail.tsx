@@ -9,6 +9,7 @@ export const RightUtilityRail: React.FC = () => {
     uiLocale,
     targetLocale,
     activeModelId,
+    hardwareProfile,
     speechEnabled,
     soundEnabled,
     memoryStats,
@@ -32,15 +33,32 @@ export const RightUtilityRail: React.FC = () => {
 
   return (
     <aside className="opero-right-rail" aria-label="Workspace Utility Rail">
-      <section className="rail-panel" aria-label={dict.modelRouterTitle}>
-        <strong style={{ fontFamily: 'var(--font-display)', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <JiggIcon name="router" size={16} variant="duotone" />
-          <span>{dict.modelRouterTitle}</span>
-        </strong>
+      <section className="rail-panel" aria-label="AI Model">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <strong style={{ fontFamily: 'var(--font-display)', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <JiggIcon name="router" size={16} variant="duotone" />
+            <span>AI Model</span>
+          </strong>
+          <button
+            type="button"
+            className="opero-btn"
+            onClick={() => setNavMode('settings')}
+            style={{ minHeight: '24px', padding: '2px 7px', fontSize: '11px' }}
+          >
+            All Models
+          </button>
+        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        {hardwareProfile && (
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+            {hardwareProfile.cpuName} · {hardwareProfile.totalRamGb} GB memory
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {DEFAULT_MODELS.map((m) => {
             const active = m.id === activeModelId;
+            const fitsRam = !hardwareProfile || hardwareProfile.totalRamGb >= m.ramTierGb;
             return (
               <button
                 key={m.id}
@@ -50,15 +68,29 @@ export const RightUtilityRail: React.FC = () => {
                   playJiggSfx('click', soundEnabled);
                   setActiveModelId(m.id);
                 }}
-                style={{ padding: '7px 9px', border: active ? '1px solid var(--border-strong)' : '1px solid var(--border)' }}
+                style={{
+                  padding: '9px 10px',
+                  border: active ? '1.5px solid var(--brand-sky)' : '1px solid var(--border)',
+                  background: active ? 'var(--brand-sky-soft)' : '#FFFFFF',
+                  alignItems: 'flex-start',
+                }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', textAlign: 'start' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{m.modelName}</span>
-                  <span className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>
-                    {m.ramTierGb}GB · {m.quantization}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'start', flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)' }}>
+                      {m.displayName ?? m.modelName}
+                    </span>
+                    {active && <JiggIcon name="verified" size={14} variant="duotone" />}
+                  </div>
+                  {m.shortDescription && (
+                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)', lineHeight: 1.4 }}>
+                      {m.shortDescription}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '10.5px', color: fitsRam ? 'var(--ink-muted)' : 'var(--warning)' }}>
+                    {m.capabilitySummary ?? m.capabilities.join(' · ')} · {m.ramTierGb} GB+
                   </span>
                 </div>
-                {active && <JiggIcon name="verified" size={15} variant="duotone" />}
               </button>
             );
           })}
