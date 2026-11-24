@@ -33,11 +33,17 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await expect(page.getByText('MMI Local-First v1.0')).toHaveCount(0);
     await expect(page.getByText('Local SQLite + RAG Active')).toHaveCount(0);
 
-    // 3. Dashboard greeting & Black/White analytics cards
+    // 3. Redesigned Dashboard: greeting, 6 Quick Launch tiles, analytics cards, Quick Ask Pero
     await expect(page.getByText(/Good (morning|afternoon|evening)/i)).toBeVisible({ timeout: 6000 });
     await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Quick Launch Shortcuts' })).toBeVisible();
     await expect(page.getByText('Sessions & Meetings')).toBeVisible();
     await expect(page.getByText('Talking & Documented Steps')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Quick Ask Pero' })).toBeVisible();
+
+    // Verify smooth sidebar hide/show slide toggle
+    await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
+    await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
 
     // 4. Working keyboard shortcuts (Meta+2 Templates, Meta+, Settings, Meta+0 Dashboard)
     await page.keyboard.press('Meta+2');
@@ -94,10 +100,18 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await expect(page.getByTestId('pero-compiling-overlay')).toBeHidden({ timeout: 10000 });
     await expect(page.getByText(/日本語訳/).first()).toBeVisible({ timeout: 6000 });
 
-    // 8. Pero Agent via shortcut (Meta+5): grounded RAG tool-calling query about MMI Director
+    // 8. Pero Agent via shortcut (Meta+5): Pero face avatar, clean greeting ("hello"), and grounded MMI RAG query
     await page.keyboard.press('Meta+5');
     await expect(page.getByRole('heading', { name: 'Pero Agent' })).toBeVisible();
-    await page.getByRole('button', { name: /Representative Director of Man Machine Interface/i }).click();
+    await expect(page.getByLabel('Pero AI Profile').first()).toBeVisible();
+    await page.getByLabel('Ask Pero Agent').fill('hello');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('article').filter({ hasText: /Pero|assistant|Hi|Hello/i }).first()).toBeVisible({
+      timeout: 6000,
+    });
+    await expect(page.getByText('[Memory:')).toHaveCount(0);
+    await page.getByLabel('Ask Pero Agent').fill('Who is the Representative Director of Man Machine Interface?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.getByText(/Tetsuya Sekiguchi|関口/).first()).toBeVisible({ timeout: 8000 });
     await expect(page.getByText(/Actions taken/i).first()).toBeVisible();
 
