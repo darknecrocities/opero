@@ -122,10 +122,13 @@ pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_m
     let mut status = check_ollama_status(Some(target_tag));
     if !status.running {
         if let Some(bin) = find_ollama_binary() {
+            let ollama_home = data_dir.join("ollama-home");
             let models_dir = data_dir.join("ollama-models");
+            let _ = std::fs::create_dir_all(&ollama_home);
             let _ = std::fs::create_dir_all(&models_dir);
             let _ = Command::new(&bin)
                 .arg("serve")
+                .env("HOME", &ollama_home)
                 .env("OLLAMA_MODELS", &models_dir)
                 .env("OLLAMA_HOST", "127.0.0.1:11434")
                 .stdout(Stdio::null())
@@ -144,8 +147,11 @@ pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_m
 
     if status.running && !status.active_model_ready && pull_if_missing {
         if let Some(bin) = find_ollama_binary() {
+            let ollama_home = data_dir.join("ollama-home");
+            let _ = std::fs::create_dir_all(&ollama_home);
             let _ = Command::new(&bin)
                 .args(["pull", target_tag])
+                .env("HOME", &ollama_home)
                 .env("OLLAMA_HOST", "127.0.0.1:11434")
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
