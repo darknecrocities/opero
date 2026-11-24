@@ -44,6 +44,8 @@ target/
 .next/
 out/
 coverage/
+test-results/
+playwright-report/
 
 # Python / Script Cache
 __pycache__/
