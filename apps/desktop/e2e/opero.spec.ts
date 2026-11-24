@@ -58,6 +58,8 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('tab', { name: 'History' }).click();
     await page.getByRole('tab', { name: 'OS Access' }).click();
     await page.getByRole('tab', { name: 'Sound & Motion' }).click();
+    await page.getByRole('tab', { name: 'Updates' }).click();
+    await expect(page.getByRole('button', { name: /Check for Updates/i })).toBeVisible();
 
     // 6. Back to Dashboard via Meta+0
     await page.keyboard.press('Meta+0');

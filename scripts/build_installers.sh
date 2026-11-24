@@ -21,6 +21,13 @@ if [ -n "$MAC_DMG" ]; then
   hdiutil verify "$OUT_DIR/$(basename "$MAC_DMG")"
 fi
 
+# Prevent macOS Spotlight / LaunchServices from registering a duplicate OPERO.app inside target/
+if [ -d "$ROOT_DIR/target/release/bundle/macos/OPERO.app" ]; then
+  rm -rf "$ROOT_DIR/target/release/bundle/macos/OPERO.app"
+fi
+mkdir -p "$ROOT_DIR/target/release/bundle"
+touch "$ROOT_DIR/target/release/bundle/.metadata_never_index"
+
 echo "=== [4/4] Building Windows .exe (NSIS) Installer (if cross-toolchain available) ==="
 if command -v makensis >/dev/null 2>&1 && command -v cargo-xwin >/dev/null 2>&1; then
   pnpm --filter @opero/desktop tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis

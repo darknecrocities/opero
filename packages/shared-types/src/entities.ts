@@ -243,6 +243,26 @@ export interface DashboardAnalytics {
   dailyActivity: number[];
 }
 
+export interface UpdateCheckResult {
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  channel: string;
+  releaseName: string;
+  releaseNotes: string;
+  publishedAt: string;
+  releaseUrl: string;
+  assetName: string | null;
+  assetDownloadUrl: string | null;
+  expectedSha256: string | null;
+}
+
+export interface UpdateInstallResult {
+  status: string;
+  message: string;
+  replacedExisting: boolean;
+}
+
 export interface ProblemDetails {
   type: string;
   title: string;

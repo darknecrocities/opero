@@ -5,8 +5,9 @@ import { PeroStateMascot } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality, PermissionSurface } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
 import { useOperoStore } from '../../store/useOperoStore';
+import { UpdatesPanel } from './UpdatesPanel';
 
-type SettingsTab = 'profile' | 'language' | 'memory' | 'history' | 'privacy' | 'sound';
+type SettingsTab = 'profile' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -49,6 +50,7 @@ export const SettingsView: React.FC = () => {
     { id: 'history', icon: 'docs', label: dict.settingsTabHistory },
     { id: 'privacy', icon: 'permissions', label: dict.settingsTabPrivacy },
     { id: 'sound', icon: 'voice', label: dict.settingsTabSound },
+    { id: 'updates', icon: 'refresh', label: 'Updates' },
   ];
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -332,6 +334,8 @@ export const SettingsView: React.FC = () => {
           </div>
         </section>
       )}
+
+      {tab === 'updates' && <UpdatesPanel />}
     </div>
   );
 };
