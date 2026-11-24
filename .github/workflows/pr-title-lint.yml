@@ -1,0 +1,25 @@
+name: PR Title Lint (Conventional Commits)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr-title:
+    name: Enforce Conventional PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Title Format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          python3 - <<'EOF'
+          import os, re, sys
+          title = os.environ.get("PR_TITLE", "").strip()
+          pattern = r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{5,120}$"
+          if not re.match(pattern, title):
+              print(f"[FAIL] PR title '{title}' does not follow Conventional Commits.")
+              print("Expected: <type>(<scope>): <short imperative summary>")
+              sys.exit(1)
+          print(f"[PASS] Conventional PR title verified: {title}")
+          EOF
