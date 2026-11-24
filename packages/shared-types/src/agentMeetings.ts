@@ -34,6 +34,16 @@ export interface AgentChatResponse {
   threadId: string;
   message: AgentMessage;
   engineUsed: string;
+  modelLive: boolean;
+}
+
+export interface OllamaRuntimeStatus {
+  running: boolean;
+  binaryAvailable: boolean;
+  installedModels: string[];
+  activeModel: string | null;
+  activeModelReady: boolean;
+  guidance: string;
 }
 
 export type MeetingAudioSource = 'system_and_mic' | 'mic_only' | 'system_only';

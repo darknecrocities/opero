@@ -50,12 +50,18 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   lastExportNotice: null,
   statusMessage: null,
   compilingOverlay: null,
+  pendingAgentPrompt: null,
 
   setNavMode: (navMode) => {
     playJiggSfx('nav', get().soundEnabled);
     set({ navMode });
   },
   setCompilingOverlay: (compilingOverlay) => set({ compilingOverlay }),
+  openAgentWithPrompt: (prompt) => {
+    playJiggSfx('nav', get().soundEnabled);
+    set({ navMode: 'agent', pendingAgentPrompt: prompt });
+  },
+  clearPendingAgentPrompt: () => set({ pendingAgentPrompt: null }),
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
   toggleSolidFallback: () => set((s) => ({ solidFallback: !s.solidFallback })),

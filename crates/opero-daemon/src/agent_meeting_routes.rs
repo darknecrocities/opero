@@ -10,6 +10,7 @@ use opero_core::meeting_notes::{
     compile_meeting_to_manual, get_meeting_note, list_meeting_notes, start_meeting_recording,
     stop_and_compile_meeting,
 };
+use opero_core::ollama_runtime::{check_ollama_status, ensure_ollama_runtime};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -153,8 +154,34 @@ async fn export_meeting(
     Ok(Json(serde_json::json!({ "manual": manual, "artifact": artifact })))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EnsureRuntimeReq {
+    model_tag: Option<String>,
+    pull_if_missing: Option<bool>,
+}
+
+async fn get_runtime_status() -> Result<Json<serde_json::Value>, ApiError> {
+    let status = check_ollama_status(Some("qwen3:1.7b"));
+    Ok(Json(serde_json::json!({ "runtime": status })))
+}
+
+async fn post_ensure_runtime(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<EnsureRuntimeReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let status = ensure_ollama_runtime(
+        &state.store.data_dir,
+        req.model_tag.as_deref(),
+        req.pull_if_missing.unwrap_or(true),
+    );
+    Ok(Json(serde_json::json!({ "runtime": status })))
+}
+
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
+        .route("/api/v1/models/runtime-status", get(get_runtime_status))
+        .route("/api/v1/models/ensure-runtime", post(post_ensure_runtime))
         .route("/api/v1/agent/threads", get(list_threads))
         .route("/api/v1/agent/chat", post(chat_turn))
         .route("/api/v1/agent/threads/{id}", delete(remove_thread))

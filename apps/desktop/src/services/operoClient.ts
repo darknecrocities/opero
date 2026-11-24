@@ -14,6 +14,7 @@ import type {
   MeetingNoteRecord,
   MemoryChunk,
   MemorySearchHit,
+  OllamaRuntimeStatus,
   OperoPersonality,
   OsPermissionSnapshot,
   PermissionSurface,
@@ -220,6 +221,16 @@ export const operoClient = {
       '/models/pull',
       { method: 'POST', body: JSON.stringify({ modelTag }) },
       300000,
+    ),
+
+  getModelRuntimeStatus: () =>
+    fetchLocal<{ runtime: OllamaRuntimeStatus }>('/models/runtime-status'),
+
+  ensureModelRuntime: (payload: { modelTag?: string; pullIfMissing?: boolean }) =>
+    fetchLocal<{ runtime: OllamaRuntimeStatus }>(
+      '/models/ensure-runtime',
+      { method: 'POST', body: JSON.stringify(payload) },
+      180000,
     ),
 
   listAgentThreads: () => fetchLocal<{ threads: AgentThread[] }>('/agent/threads'),
