@@ -4,6 +4,7 @@ members = [
   "crates/opero-core",
   "crates/opero-export",
   "crates/opero-daemon",
+  "apps/desktop/src-tauri",
 ]
 
 [workspace.package]
@@ -31,3 +32,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tempfile = "3.14"
+
+[profile.release.build-override]
+opt-level = 0
+debug = true

@@ -1,0 +1,119 @@
+:root {
+  --bg: #FFFFFF;
+  --bg-subtle: #F4F9FF;
+  --brand-sky: #69BCFC;
+  --brand-sky-soft: #EBF6FF;
+  --border-strong: #B9E0FE;
+  --bg-glass: rgba(255, 255, 255, 0.74);
+  --bg-glass-thin: rgba(255, 255, 255, 0.68);
+  --bg-glass-ultra: rgba(255, 255, 255, 0.62);
+  --accent: #0F172A;
+  --ink: #0F172A;
+  --ink-muted: #526071;
+  --border: #E2EAF2;
+  --success: #16865B;
+  --success-soft: #ECFDF5;
+  --warning: #B7791F;
+  --warning-soft: #FFFBEB;
+  --danger: #C43D4B;
+  --danger-soft: #FEF2F2;
+  --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  --font-sans: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 1000;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #FFFFFF;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.skip-link:focus {
+  left: 12px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.glass-regular {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.glass-thin {
+  background: var(--bg-glass-thin);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-strong);
+}
+
+.glass-ultra {
+  background: var(--bg-glass-ultra);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+.solid-fallback .glass-regular,
+.solid-fallback .glass-thin,
+.solid-fallback .glass-ultra {
+  background: #FFFFFF;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-regular,
+  .glass-thin,
+  .glass-ultra {
+    background: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.jigg-icon {
+  color: var(--ink);
+}
+
+.jigg-icon [fill-opacity],
+.jigg-icon [opacity='0.2'],
+.jigg-icon [opacity='0.25'] {
+  fill: var(--brand-sky);
+}
