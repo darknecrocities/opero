@@ -6,6 +6,7 @@ export interface OperoUiDictionary {
   navLiveCapture: string;
   navStudio: string;
   navTemplates: string;
+  navAnalyzer: string;
   navSettings: string;
   sessionsHeader: string;
   newSession: string;
@@ -73,6 +74,7 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     navLiveCapture: 'Live Capture',
     navStudio: 'OPERO Studio',
     navTemplates: 'Templates',
+    navAnalyzer: 'Document Analyzer',
     navSettings: 'Settings',
     sessionsHeader: 'SESSIONS',
     newSession: 'New',
@@ -138,6 +140,7 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     navLiveCapture: 'ライブ収録',
     navStudio: 'OPERO スタジオ',
     navTemplates: 'テンプレート',
+    navAnalyzer: 'ドキュメント解析',
     navSettings: '設定',
     sessionsHeader: 'セッション',
     newSession: '新規',
@@ -203,6 +206,7 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     navLiveCapture: 'Live Capture',
     navStudio: 'OPERO Studio',
     navTemplates: 'Mga Template',
+    navAnalyzer: 'Pagsusuri ng Dokumento',
     navSettings: 'Mga Setting',
     sessionsHeader: 'MGA SESYON',
     newSession: 'Bago',

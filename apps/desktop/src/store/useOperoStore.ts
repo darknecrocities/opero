@@ -86,6 +86,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   setActiveModelId: (activeModelId) => set({ activeModelId }),
   setPeroOutfit: (peroCapColor, peroJacketColor) => set({ peroCapColor, peroJacketColor }),
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
+  openManualInStudio: (activeManual) => set({ activeManual, navMode: 'studio', peroState: 'verified-draft' }),
   tickTimer: (deltaMs) => set((s) => ({ elapsedMs: s.elapsedMs + deltaMs })),
 
   bootstrap: async () => {

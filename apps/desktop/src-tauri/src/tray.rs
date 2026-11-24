@@ -19,6 +19,7 @@ pub fn setup_system_tray(app: &App) -> tauri::Result<()> {
     let snap_frame = MenuItem::with_id(app, "snap_frame", "Snap Frame Now", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let open_templates = MenuItem::with_id(app, "open_templates", "MMI Templates", true, None::<&str>)?;
+    let open_analyzer = MenuItem::with_id(app, "open_analyzer", "Document Analyzer", true, None::<&str>)?;
     let open_settings = MenuItem::with_id(app, "open_settings", "Settings", true, None::<&str>)?;
     let check_updates = MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
@@ -32,6 +33,7 @@ pub fn setup_system_tray(app: &App) -> tauri::Result<()> {
             &snap_frame,
             &sep1,
             &open_templates,
+            &open_analyzer,
             &open_settings,
             &check_updates,
             &sep2,

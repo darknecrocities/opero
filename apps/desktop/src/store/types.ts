@@ -16,7 +16,7 @@ import type {
 } from '@opero/shared-types';
 import type { OperoAppState } from '@opero/mascot';
 
-export type WorkspaceNavMode = 'dashboard' | 'capture' | 'studio' | 'templates' | 'settings';
+export type WorkspaceNavMode = 'dashboard' | 'capture' | 'studio' | 'templates' | 'analyzer' | 'settings';
 
 export interface ImpulseSample {
   seq: number;
@@ -80,6 +80,7 @@ export interface OperoStoreState {
   setActiveModelId: (id: string) => void;
   setPeroOutfit: (cap: string, jacket: string) => void;
   setActiveSessionId: (id: string | null) => void;
+  openManualInStudio: (manual: Manual) => void;
   tickTimer: (deltaMs: number) => void;
 
   bootstrap: () => Promise<void>;
