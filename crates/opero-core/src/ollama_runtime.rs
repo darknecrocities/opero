@@ -67,7 +67,17 @@ pub fn list_live_ollama_models() -> Option<Vec<String>> {
 
 pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus {
     let binary_available = find_ollama_binary().is_some();
-    let pref = preferred_model.filter(|m| !m.is_empty() && *m != "offline");
+    if preferred_model == Some("offline") {
+        return OllamaRuntimeStatus {
+            running: false,
+            binary_available,
+            installed_models: Vec::new(),
+            active_model: None,
+            active_model_ready: false,
+            guidance: "Built-In Offline mode selected.".to_string(),
+        };
+    }
+    let pref = preferred_model.filter(|m| !m.is_empty());
 
     if let Some(installed) = list_live_ollama_models() {
         let active_model = pref
