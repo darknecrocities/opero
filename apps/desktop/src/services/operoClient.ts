@@ -11,6 +11,8 @@ import type {
   PermissionSurface,
   Project,
   RecordingSession,
+  UpdateCheckResult,
+  UpdateInstallResult,
   UserProfile,
 } from '@opero/shared-types';
 
@@ -149,4 +151,13 @@ export const operoClient = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  checkForUpdates: () => fetchLocal<{ update: UpdateCheckResult }>('/updates/check', undefined, 8000),
+
+  installUpdate: (assetDownloadUrl: string, expectedSha256?: string | null) =>
+    fetchLocal<{ result: UpdateInstallResult }>(
+      '/updates/install',
+      { method: 'POST', body: JSON.stringify({ assetDownloadUrl, expectedSha256 }) },
+      180000,
+    ),
 };

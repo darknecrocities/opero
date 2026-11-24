@@ -9,6 +9,7 @@ use opero_core::db::OperoStore;
 use opero_core::error::OperoError;
 use opero_core::memory::dual_core::{delete_memory_chunk, get_memory_stats, query_dual_core_memory, upsert_memory_chunk};
 use opero_core::permissions::{inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt, PermissionSurface};
+use opero_core::updater::{check_for_official_update, download_and_replace_update};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -364,6 +365,23 @@ async fn create_manual_from_template(
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "manual": manual }))))
 }
 
+async fn check_updates() -> Result<Json<serde_json::Value>, ApiError> {
+    let update = check_for_official_update()?;
+    Ok(Json(serde_json::json!({ "update": update })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InstallUpdateReq {
+    asset_download_url: String,
+    expected_sha256: Option<String>,
+}
+
+async fn install_update(Json(req): Json<InstallUpdateReq>) -> Result<Json<serde_json::Value>, ApiError> {
+    let result = download_and_replace_update(&req.asset_download_url, req.expected_sha256.as_deref())?;
+    Ok(Json(serde_json::json!({ "result": result })))
+}
+
 pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
     let state = Arc::new(AppState { store, speech_enabled });
     let allowed_origins = [
@@ -394,6 +412,8 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
         .route("/api/v1/memory", get(search_memory).post(add_memory))
         .route("/api/v1/memory/{id}", delete(remove_memory))
         .route("/api/v1/exports", post(export_manual))
+        .route("/api/v1/updates/check", get(check_updates))
+        .route("/api/v1/updates/install", post(install_update))
         .layer(RequestBodyLimitLayer::new(1024 * 100))
         .layer(cors)
         .with_state(state)

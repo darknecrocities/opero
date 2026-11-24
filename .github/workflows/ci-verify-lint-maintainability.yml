@@ -2,9 +2,9 @@ name: CI — Verify, Lint & Code Maintainability
 
 on:
   push:
-    branches: [main, develop, "feat/**", "fix/**", "docs/**", "ci/**", "refactor/**"]
+    branches: [main, staging, develop, "feat/**", "fix/**", "docs/**", "ci/**", "refactor/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [main, staging, develop]
 
 jobs:
   maintainability-and-lint:
@@ -52,8 +52,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 12
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -75,6 +73,9 @@ jobs:
           DAEMON_PID=$!
           pnpm --filter @opero/desktop exec vite preview --host 127.0.0.1 --port 5173 &
           VITE_PID=$!
-          trap "kill $DAEMON_PID $VITE_PID 2>/dev/null || true; rm -rf $TMP_DATA" EXIT
-          sleep 2
+          trap 'kill $DAEMON_PID $VITE_PID 2>/dev/null || true; rm -rf "$TMP_DATA"' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4317/api/v1/health >/dev/null && curl -sf http://127.0.0.1:5173 >/dev/null && break
+            sleep 0.5
+          done
           pnpm --filter @opero/desktop test:e2e

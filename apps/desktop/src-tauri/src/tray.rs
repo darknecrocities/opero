@@ -20,6 +20,7 @@ pub fn setup_system_tray(app: &App) -> tauri::Result<()> {
     let sep1 = PredefinedMenuItem::separator(app)?;
     let open_templates = MenuItem::with_id(app, "open_templates", "MMI Templates", true, None::<&str>)?;
     let open_settings = MenuItem::with_id(app, "open_settings", "Settings", true, None::<&str>)?;
+    let check_updates = MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let quit_opero = MenuItem::with_id(app, "quit_opero", "Quit OPERO", true, None::<&str>)?;
 
@@ -32,6 +33,7 @@ pub fn setup_system_tray(app: &App) -> tauri::Result<()> {
             &sep1,
             &open_templates,
             &open_settings,
+            &check_updates,
             &sep2,
             &quit_opero,
         ],

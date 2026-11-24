@@ -38,7 +38,7 @@ export const App: React.FC = () => {
         const s = useOperoStore.getState();
         if (payload === 'open_dashboard') s.setNavMode('dashboard');
         else if (payload === 'open_templates') s.setNavMode('templates');
-        else if (payload === 'open_settings') s.setNavMode('settings');
+        else if (payload === 'open_settings' || payload === 'check_updates') s.setNavMode('settings');
         else if (payload === 'snap_frame') void s.snapWorkflowAction('QuickBar Snap');
         else if (payload === 'toggle_capture') {
           const active = s.sessions.find((sess) => sess.id === s.activeSessionId);
