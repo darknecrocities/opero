@@ -17,6 +17,11 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     const dialog = page.getByRole('dialog', { name: 'OPERO Welcome Onboarding' });
     if (await dialog.isVisible({ timeout: 2500 }).catch(() => false)) {
       await expect(page.getByRole('heading', { name: 'Opero', exact: true })).toBeVisible();
+      for (const clip of ['/audio/pero/welcome-opero.mp3', '/audio/pero/step-0-en.mp3', '/audio/pero/step-0-ja.mp3']) {
+        const res = await page.request.get(clip);
+        expect(res.status()).toBe(200);
+        expect((await res.body()).byteLength).toBeGreaterThan(10000);
+      }
       await expect(page.getByTestId('pero-click-cue')).toContainText('hey! click me');
       await page.getByRole('button', { name: /Interact with Pero/i }).click();
       await expect(page.getByTestId('pero-click-cue')).toContainText("Hi! I'm Pero! Welcome to Opero!");
