@@ -48,45 +48,65 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
   if (lang === 'ja-JP') {
     switch (ctx.step) {
       case 0:
-        return 'やっほー！ペロだよ！オペロへようこそ！';
+        return 'こんにちは、ペロだよ。オペロへようこそ。';
       case 1:
-        return cleanName ? `わあ、${cleanName}さん！よろしくね！` : 'ねえねえ、お名前なんていうの？';
+        return cleanName ? `わあ、${cleanName}さん、はじめまして！よろしくね。` : 'こんにちは！お名前を教えてくれる？';
       case 2:
-        return cleanRole ? `すごい！${cleanRole}なんだね！かっこいい！` : 'どんなお仕事してるの？';
+        return cleanRole
+          ? `わあ、${cleanRole}なんだね。すてきだね。`
+          : cleanName
+            ? `${cleanName}さんは、どんなお仕事をされているの？`
+            : 'どんなお仕事をされているの？';
       case 3:
-        return `わかった！${toneJa}でお話しするね！`;
+        return cleanName
+          ? `わかったよ、${cleanName}さん。${toneJa}でお話しするね。`
+          : `わかったよ。${toneJa}でお話しするね。`;
       case 4:
-        return '英語も日本語もフィリピン語も話せるよ！';
+        return cleanName
+          ? `${cleanName}さん、英語も日本語もフィリピン語も話せるよ。`
+          : '英語も日本語もフィリピン語も話せるよ。';
       case 5:
         return ctx.privacyAccepted
-          ? 'やった！ぜんぶパソコンの中で安全だよ！'
-          : 'だいじょうぶ！ぜんぶ端末の中で守るよ！';
+          ? 'ありがとう。ぜんぶ端末の中で大切に守るね。'
+          : '安心してね。ぜんぶこの端末の中だけで安全に守るよ。';
       default:
         return cleanName
-          ? `やったー、${cleanName}さん！準備かんりょう！いこうね！`
-          : 'やったー！準備かんりょう！いこうね！';
+          ? `やったね、${cleanName}さん。いつでも始められるよ。`
+          : 'やったね。準備が整ったよ。いつでも始められるよ。';
     }
   }
 
   switch (ctx.step) {
     case 0:
-      return "Hi! I'm Pero! Welcome to Opero!";
+      return "Ooh, hi there! I'm Pero — welcome to Opero.";
     case 1:
-      return cleanName ? `Ooh, hi ${cleanName}! Nice to meet you!` : "Ooh! What's your name?";
+      return cleanName ? `Ooh, hi ${cleanName}! Nice to meet you!` : 'Ooh, hi! What should I call you?';
     case 2:
-      return cleanRole ? `Whoa, ${cleanRole} sounds super cool!` : 'What cool stuff do you do?';
+      if (cleanRole) {
+        return cleanName ? `Ooh, ${cleanName}, ${cleanRole} sounds wonderful!` : `Ooh, ${cleanRole} sounds wonderful!`;
+      }
+      return cleanName ? `Ooh, ${cleanName}, what kind of work do you do?` : 'Ooh, what kind of work do you do?';
     case 3:
-      return `Okay! I'll talk in ${toneEn} style!`;
+      return cleanName
+        ? `Got it, ${cleanName} — I'll speak in a ${toneEn} tone.`
+        : `Got it — I'll speak in a ${toneEn} tone.`;
     case 4:
-      return 'I speak English, Japanese, and Filipino!';
+      return cleanName
+        ? `Whenever you're ready, ${cleanName} — I speak English, Japanese, and Filipino.`
+        : "Whenever you're ready — I speak English, Japanese, and Filipino.";
     case 5:
-      return ctx.privacyAccepted
-        ? 'Yay! Everything stays safe on your computer!'
-        : "Don't worry! Everything stays private right here!";
+      if (ctx.privacyAccepted) {
+        return cleanName
+          ? `Thank you, ${cleanName} — everything stays safe right here on your device.`
+          : 'Thank you — everything stays safe right here on your device.';
+      }
+      return cleanName
+        ? `Don't worry, ${cleanName} — everything stays private right here on your device.`
+        : "Don't worry — everything stays private right here on your device.";
     default:
       return cleanName
-        ? `Yay ${cleanName}! We're all set! Let's go!`
-        : "Yay! We're all set! Let's go!";
+        ? `Yay, ${cleanName}! Everything is ready whenever you are.`
+        : 'Yay! Everything is ready whenever you are.';
   }
 }
 
