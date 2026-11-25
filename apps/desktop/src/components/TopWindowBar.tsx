@@ -121,7 +121,7 @@ export const TopWindowBar: React.FC = () => {
                 flexDirection: 'column',
                 gap: '4px',
                 zIndex: 60,
-                background: '#FFFFFF',
+                background: 'var(--bg-surface)',
               }}
             >
               {EXPORT_ITEMS.map((item) => (

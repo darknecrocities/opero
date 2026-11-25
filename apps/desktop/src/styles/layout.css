@@ -3,7 +3,7 @@
   grid-template-rows: 48px 1fr;
   height: 100vh;
   width: 100%;
-  background: var(--bg);
+  background: var(--bg-canvas);
   overflow: hidden;
 }
 
@@ -13,7 +13,7 @@
   justify-content: space-between;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(250, 249, 247, 0.84);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   z-index: 20;
@@ -149,7 +149,7 @@
 }
 
 .opero-center-stage {
-  background: var(--bg);
+  background: var(--bg-canvas);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -166,7 +166,7 @@
   padding: 6px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--bg-surface);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -176,7 +176,7 @@
 }
 
 .opero-btn:hover {
-  background: var(--brand-sky-soft);
+  background: var(--bg-hover);
   border-color: var(--border-strong);
 }
 
@@ -225,17 +225,18 @@
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(250, 249, 247, 0.72);
 }
 
 .nav-item.active {
-  background: var(--brand-sky-soft);
+  background: var(--bg-surface);
   border-color: var(--border-strong);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   font-weight: 600;
 }
 
 .rail-panel {
-  background: var(--bg);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px;

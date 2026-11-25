@@ -52,7 +52,7 @@ export const TemplatesView: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: '22px',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%)',
+        background: 'transparent',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>

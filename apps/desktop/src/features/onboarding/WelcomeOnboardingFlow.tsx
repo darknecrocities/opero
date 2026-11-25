@@ -183,7 +183,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         position: 'fixed',
         inset: 0,
         zIndex: 100,
-        background: 'radial-gradient(circle at 50% 22%, #FAF9F7 0%, #F2F1EE 56%, #ECEBE7 100%)',
+        background: 'var(--bg-canvas)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

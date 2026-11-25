@@ -77,8 +77,8 @@ export const StudioView: React.FC = () => {
         </div>
       </div>
 
-      {/* Center Solid #FFFFFF Document Sheet (Zero Mascot Clutter [UI-004]) */}
-      <div style={{ padding: '22px 28px', overflowY: 'auto', background: '#FFFFFF' }}>
+      {/* Center Solid Warm Paper Document Sheet (Zero Mascot Clutter [UI-004]) */}
+      <div style={{ padding: '22px 28px', overflowY: 'auto', background: 'var(--bg-surface)' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
             <div>
