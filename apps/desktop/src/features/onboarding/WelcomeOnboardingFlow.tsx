@@ -1,31 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { getUiDictionary, PERSONALITY_OPTIONS } from '@opero/i18n';
 import { playJiggSfx } from '@opero/jiggicons';
-import { PeroStateMascot, type OperoAppState } from '@opero/mascot';
+import { PeroMascot, type PeroMotionId } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
+import { OnboardingCompleteStep } from './OnboardingCompleteStep';
+import { OnboardingConfetti } from './OnboardingConfetti';
 import { OnboardingPrivacyStep } from './OnboardingPrivacyStep';
+import {
+  getOnboardingStepSpec,
+  ONBOARDING_STEP_SPECS,
+  TONE_TO_PERO_MOTION,
+  TOTAL_SCREENS,
+} from './onboardingSteps';
 
-const TOTAL_SCREENS = 6;
 const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
-
-const BALL_COLORS: readonly string[] = [
-  '#69BCFC',
-  '#38A3F1',
-  '#0F172A',
-  '#69BCFC',
-  '#38A3F1',
-  '#16865B',
-];
-
-const STEP_PERO_STATE: Record<number, OperoAppState> = {
-  0: 'ready',
-  1: 'capturing',
-  2: 'processing',
-  3: 'verified-draft',
-  4: 'verified-draft',
-  5: 'exported',
-};
 
 export const WelcomeOnboardingFlow: React.FC = () => {
   const { userProfile, soundEnabled, saveOnboardingProfile, setUiLocale } = useOperoStore();
@@ -36,17 +25,51 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   const [personality, setPersonality] = useState<OperoPersonality>(userProfile.personality);
   const [locale, setLocale] = useState<FirstClassLocale>(userProfile.defaultLocale);
   const [privacyAccepted, setPrivacyAccepted] = useState<boolean>(false);
+  const [boopTick, setBoopTick] = useState<number>(0);
+  const [confettiBurst, setConfettiBurst] = useState<number>(1);
   const [saving, setSaving] = useState<boolean>(false);
   const swipeStartX = useRef<number | null>(null);
 
   const dict = getUiDictionary(locale);
+  const spec = getOnboardingStepSpec(step);
+
+  const activeMotion: PeroMotionId = useMemo(() => {
+    if (step === 1 && name.trim().length > 0) return 'thumbs-up';
+    if (step === 3) return TONE_TO_PERO_MOTION[personality] ?? 'thinking-processing';
+    if (step === 5 && privacyAccepted) return 'thumbs-up';
+    if (step === 6) return boopTick % 2 === 1 ? 'verified-celebrate' : 'jump-cheer';
+    return spec.defaultMotion;
+  }, [step, name, personality, privacyAccepted, boopTick, spec.defaultMotion]);
+
+  const activeWhisper = useMemo(() => {
+    if (step === 1 && name.trim().length > 0) {
+      if (locale === 'ja-JP') return `こんにちは、${name.trim()}さん！`;
+      if (locale === 'fil-PH') return `Kumusta, ${name.trim()}!`;
+      return `Nice to meet you, ${name.trim()}!`;
+    }
+    if (step === 5 && privacyAccepted) {
+      if (locale === 'ja-JP') return '同意ありがとうございます！';
+      if (locale === 'fil-PH') return 'Salamat! Ligtas at lokal tayo.';
+      return 'All set — safe and local!';
+    }
+    return spec.whisper[locale];
+  }, [step, name, privacyAccepted, locale, spec.whisper]);
+
+  const canAdvanceFromStep = (current: number): boolean => {
+    if (current === 1 && !name.trim()) return false;
+    if (current === 5 && !privacyAccepted) return false;
+    return current < TOTAL_SCREENS - 1;
+  };
 
   const goNext = () => {
-    if (step === 1 && !name.trim()) return;
-    if (step >= TOTAL_SCREENS - 1) return;
-    playJiggSfx('step', soundEnabled);
+    if (!canAdvanceFromStep(step)) return;
+    const nextStep = Math.min(TOTAL_SCREENS - 1, step + 1);
+    playJiggSfx(nextStep === TOTAL_SCREENS - 1 ? 'success' : 'step', soundEnabled);
+    if (nextStep === TOTAL_SCREENS - 1) {
+      setConfettiBurst((b) => b + 1);
+    }
     setDirection('next');
-    setStep((s) => Math.min(TOTAL_SCREENS - 1, s + 1));
+    setStep(nextStep);
   };
 
   const goBack = () => {
@@ -54,6 +77,14 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     playJiggSfx('click', soundEnabled);
     setDirection('prev');
     setStep((s) => Math.max(0, s - 1));
+  };
+
+  const handlePeroTap = () => {
+    playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
+    setBoopTick((t) => t + 1);
+    if (step === TOTAL_SCREENS - 1) {
+      setConfettiBurst((b) => b + 1);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -66,17 +97,15 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     if (swipeStartX.current === null) return;
     const deltaX = e.clientX - swipeStartX.current;
     swipeStartX.current = null;
-    if (deltaX <= -56) {
-      goNext();
-    } else if (deltaX >= 56) {
-      goBack();
-    }
+    if (deltaX <= -56) goNext();
+    else if (deltaX >= 56) goBack();
   };
 
   const handleLocalePick = (nextLocale: FirstClassLocale) => {
     playJiggSfx('click', soundEnabled);
     setLocale(nextLocale);
     setUiLocale(nextLocale);
+    setBoopTick((t) => t + 1);
   };
 
   const handleFinish = async () => {
@@ -113,37 +142,76 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         position: 'fixed',
         inset: 0,
         zIndex: 100,
-        background: 'radial-gradient(circle at 50% 24%, #F4F9FF 0%, #FFFFFF 58%)',
+        background: 'radial-gradient(circle at 50% 22%, #FAF9F7 0%, #F2F1EE 56%, #ECEBE7 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '32px 24px',
-        overflowX: 'hidden',
+        overflow: 'hidden',
       }}
     >
+      {step === 6 && <OnboardingConfetti burstKey={confettiBurst} />}
+
       <div
         key={step}
         className={direction === 'next' ? 'onboard-swipe-next' : 'onboard-swipe-prev'}
         style={{
           width: '100%',
-          maxWidth: '480px',
+          maxWidth: '500px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '26px',
+          gap: '22px',
           textAlign: 'center',
+          position: 'relative',
+          zIndex: 2,
         }}
       >
-        <div className="pero-float">
-          <PeroStateMascot
-            state={STEP_PERO_STATE[step] ?? 'ready'}
-            size={step === 0 ? 210 : 144}
-            capColor={userProfile.peroCapColor}
-            jacketColor={userProfile.peroJacketColor}
-          />
+        {/* Frameless Clucky-inspired playful whisper + interactive tap-to-boop Pero */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <span
+            key={`${step}-${activeWhisper}-${boopTick}`}
+            className="onboard-whisper"
+            style={{
+              fontSize: '12.5px',
+              fontWeight: 500,
+              color: '#64748B',
+              letterSpacing: '-0.01em',
+              minHeight: '18px',
+            }}
+          >
+            {activeWhisper}
+          </span>
+
+          <button
+            type="button"
+            aria-label="Interact with Pero"
+            onClick={handlePeroTap}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <span className="pero-float" style={{ display: 'inline-flex' }}>
+              <span key={boopTick} className={boopTick > 0 ? 'pero-boop-spring' : undefined}>
+                <PeroMascot
+                  motion={activeMotion}
+                  size={spec.mascotSize}
+                  capColor={userProfile.peroCapColor}
+                  jacketColor={userProfile.peroJacketColor}
+                />
+              </span>
+            </span>
+          </button>
         </div>
 
+        {/* Monochrome White & Gray Pill-Morphing Progress Track */}
         <div
           role="progressbar"
           aria-valuenow={step + 1}
@@ -152,17 +220,17 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           aria-label="Onboarding setup progress"
           className="onboard-balls"
         >
-          {BALL_COLORS.map((color, idx) => {
-            const isActive = idx === step;
-            const isDone = idx < step;
+          {ONBOARDING_STEP_SPECS.map((item) => {
+            const isActive = item.index === step;
+            const isDone = item.index < step;
             return (
               <span
-                key={isActive ? `ball-${idx}-step-${step}` : `ball-${idx}`}
+                key={isActive ? `dot-${item.index}-step-${step}` : `dot-${item.index}`}
                 className={`onboard-ball ${isActive ? 'active' : ''}`}
                 style={{
-                  backgroundColor: isActive || isDone ? color : '#E2EAF2',
-                  boxShadow: isActive ? `0 6px 16px ${color}55` : 'none',
-                  opacity: isDone ? 0.65 : 1,
+                  width: isActive ? '26px' : '9px',
+                  height: '9px',
+                  backgroundColor: isActive ? '#0F172A' : isDone ? '#78716C' : '#D6D3CD',
                 }}
               />
             );
@@ -197,26 +265,29 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 <span
                   aria-hidden="true"
                   className="opero-letter"
-                  style={{ color: '#69BCFC', animationDelay: '300ms' }}
+                  style={{ color: '#94A3B8', animationDelay: '300ms' }}
                 >
                   .
                 </span>
               </h1>
-              <p style={{ margin: 0, fontSize: '15px', color: 'var(--ink-muted)', letterSpacing: '-0.01em' }}>
+              <p
+                className="onboard-stagger-2"
+                style={{ margin: 0, fontSize: '15px', color: '#475569', letterSpacing: '-0.01em' }}
+              >
                 {dict.welcomeSubtitle}
               </p>
             </div>
 
             <button
               type="button"
-              className="opero-btn primary"
+              className="opero-btn primary onboard-stagger-3"
               onClick={goNext}
               style={{
-                minWidth: '176px',
+                minWidth: '184px',
                 minHeight: '46px',
                 borderRadius: '999px',
                 fontSize: '15px',
-                marginTop: '6px',
+                marginTop: '4px',
               }}
             >
               {dict.welcomeGetStarted}
@@ -226,7 +297,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 1 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
               {dict.onboardingNameTitle}
             </h2>
             <input
@@ -237,14 +308,14 @@ export const WelcomeOnboardingFlow: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleInputKeyDown}
               placeholder={dict.onboardingNamePlaceholder}
-              className="onboard-hairline-input"
+              className="onboard-hairline-input onboard-stagger-2"
             />
           </div>
         )}
 
         {step === 2 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
               {dict.onboardingOccupationTitle}
             </h2>
             <input
@@ -255,17 +326,17 @@ export const WelcomeOnboardingFlow: React.FC = () => {
               onChange={(e) => setOccupation(e.target.value)}
               onKeyDown={handleInputKeyDown}
               placeholder={dict.onboardingOccupationPlaceholder}
-              className="onboard-hairline-input"
+              className="onboard-hairline-input onboard-stagger-2"
             />
           </div>
         )}
 
         {step === 3 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
               {dict.onboardingPersonalityTitle}
             </h2>
-            <div style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="onboard-stagger-2" style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {PERSONALITY_OPTIONS.map((opt) => {
                 const active = personality === opt.id;
                 return (
@@ -276,13 +347,14 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                     onClick={() => {
                       playJiggSfx('click', soundEnabled);
                       setPersonality(opt.id);
+                      setBoopTick((t) => t + 1);
                     }}
                   >
                     <span>
                       <span style={{ fontSize: '15px', fontWeight: active ? 700 : 500, display: 'block' }}>
                         {opt.label[locale]}
                       </span>
-                      <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>{opt.hint[locale]}</span>
+                      <span style={{ fontSize: '12px', color: '#64748B' }}>{opt.hint[locale]}</span>
                     </span>
                     <span
                       aria-hidden="true"
@@ -303,10 +375,10 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 4 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
               {dict.onboardingLanguageTitle}
             </h2>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div className="onboard-stagger-2" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {(
                 [
                   { id: 'en-US', label: 'English' },
@@ -338,6 +410,20 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             onToggle={(next) => {
               playJiggSfx('click', soundEnabled);
               setPrivacyAccepted(next);
+              if (next) setBoopTick((t) => t + 1);
+            }}
+          />
+        )}
+
+        {step === 6 && (
+          <OnboardingCompleteStep
+            locale={locale}
+            name={name}
+            occupation={occupation}
+            onReplayConfetti={() => {
+              playJiggSfx('success', soundEnabled);
+              setConfettiBurst((b) => b + 1);
+              setBoopTick((t) => t + 1);
             }}
           />
         )}
@@ -346,11 +432,11 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           <div
             style={{
               width: '100%',
-              maxWidth: step === 5 ? '480px' : '360px',
+              maxWidth: step === 5 ? '480px' : '380px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginTop: '10px',
+              marginTop: '6px',
             }}
           >
             <button type="button" className="onboard-ghost-btn" onClick={goBack}>
@@ -361,7 +447,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 type="button"
                 className="opero-btn primary"
                 onClick={goNext}
-                disabled={step === 1 && !name.trim()}
+                disabled={!canAdvanceFromStep(step)}
                 style={{ borderRadius: '999px', padding: '8px 24px', minHeight: '42px' }}
               >
                 {dict.onboardingContinue}
@@ -371,8 +457,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 type="button"
                 className="opero-btn primary"
                 onClick={() => void handleFinish()}
-                disabled={saving || !privacyAccepted}
-                style={{ borderRadius: '999px', padding: '8px 24px', minHeight: '42px' }}
+                disabled={saving}
+                style={{ borderRadius: '999px', padding: '10px 28px', minHeight: '46px', fontSize: '15px' }}
               >
                 {dict.onboardingFinish}
               </button>
