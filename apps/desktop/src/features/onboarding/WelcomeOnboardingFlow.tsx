@@ -70,9 +70,9 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   }, [step, name, personality, privacyAccepted, boopTick, spec.defaultMotion]);
 
   const cueText = useMemo(() => {
-    if (spokenLine) return spokenLine.text;
-    return locale === 'ja-JP' ? '↗ ねえ、クリックして！' : '↗ hey! click me';
-  }, [spokenLine, locale]);
+    const activeLang: PeroVoiceLang = spokenLine?.lang ?? (locale === 'ja-JP' ? 'ja-JP' : 'en-US');
+    return buildDynamicPeroLine({ step, name, occupation, personality, privacyAccepted }, activeLang);
+  }, [spokenLine, locale, step, name, occupation, personality, privacyAccepted]);
 
   const canAdvanceFromStep = (current: number): boolean => {
     if (current === 1 && !name.trim()) return false;
