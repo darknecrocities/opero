@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
     routing::{get, post, put},
     Json, Router,
 };
@@ -47,14 +48,61 @@ async fn ingest_document(
         )));
     };
 
-    let doc = analyze_document_bytes(
-        &req.filename,
-        &bytes,
-        req.locale.as_deref().unwrap_or("en-US"),
-        req.preferred_model.as_deref(),
-    )?;
+    let filename = req.filename.clone();
+    let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
+    let preferred = req.preferred_model.clone();
+    let bytes_for_parse = bytes.clone();
+    let doc = tokio::task::spawn_blocking(move || {
+        analyze_document_bytes(&filename, &bytes_for_parse, &locale, preferred.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Document analysis task failed: {e}"))))??;
+
+    // Persist original file bytes for visual PDF/document preview
+    let docs_dir = state.store.data_dir.join("documents");
+    let _ = std::fs::create_dir_all(&docs_dir);
+    let ext = match doc.file_format.as_str() {
+        "pdf" => "pdf",
+        "docx" => "docx",
+        "doc" => "doc",
+        "markdown" => "md",
+        _ => "txt",
+    };
+    let _ = std::fs::write(docs_dir.join(format!("{}.{ext}", doc.id)), &bytes);
+
     state.store.save_analyzed_document(&doc)?;
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "document": doc }))))
+}
+
+async fn get_document_file(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
+    if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return ApiError(OperoError::Validation("Invalid document ID.".to_string())).into_response();
+    }
+    let docs_dir = state.store.data_dir.join("documents");
+    for (ext, mime) in [
+        ("pdf", "application/pdf"),
+        ("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        ("md", "text/markdown; charset=utf-8"),
+        ("txt", "text/plain; charset=utf-8"),
+    ] {
+        let p = docs_dir.join(format!("{id}.{ext}"));
+        if let Ok(bytes) = std::fs::read(&p) {
+            return (
+                StatusCode::OK,
+                [
+                    (header::CONTENT_TYPE, HeaderValue::from_static(mime)),
+                    (header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")),
+                    (header::CACHE_CONTROL, HeaderValue::from_static("private, max-age=300")),
+                ],
+                bytes,
+            )
+                .into_response();
+        }
+    }
+    ApiError(OperoError::NotFound(format!("Stored file for document {id} not found."))).into_response()
 }
 
 #[derive(Deserialize)]
@@ -171,6 +219,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/v1/models/pull", post(pull_model))
         .route("/api/v1/memory/seed-mmi", post(seed_mmi_memory))
         .route("/api/v1/analyzer/documents", get(list_documents))
+        .route("/api/v1/analyzer/documents/{id}/file", get(get_document_file))
         .route("/api/v1/analyzer/explain-region", post(explain_region))
         .route("/api/v1/analyzer/documents/{id}/annotations", put(save_annotations))
         .route("/api/v1/analyzer/documents/{id}/report", post(compile_report))

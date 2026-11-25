@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock, ExportFormat } from '@opero/shared-types';
-import { ResizeHandle } from '../../components/ResizeHandle';
 import { operoClient } from '../../services/operoClient';
 import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
+import { AnalyzerLoadingMascot } from './AnalyzerLoadingMascot';
 import { AnalyzerReportPanel } from './AnalyzerReportPanel';
 import { DocumentCanvas, type AnalyzerTool } from './DocumentCanvas';
+import type { VisualAnnotationDraft } from './PdfPreviewSurface';
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -27,13 +28,13 @@ export const DocumentAnalyzerView: React.FC = () => {
   const dict = getUiDictionary(uiLocale);
   const feat = getFeatureStrings(uiLocale);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [splitPct, setSplitPct] = useState<number>(54);
 
   const [docs, setDocs] = useState<AnalyzedDocument[]>([]);
   const [activeDoc, setActiveDoc] = useState<AnalyzedDocument | null>(null);
   const [activeTool, setActiveTool] = useState<AnalyzerTool>('select');
   const [selectedAnnId, setSelectedAnnId] = useState<string | null>(null);
   const [busyUpload, setBusyUpload] = useState(false);
+  const [uploadingFilename, setUploadingFilename] = useState('');
   const [busyBlockId, setBusyBlockId] = useState<string | null>(null);
   const [busyExport, setBusyExport] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export const DocumentAnalyzerView: React.FC = () => {
 
   const handleUploadFile = async (file: File) => {
     setBusyUpload(true);
+    setUploadingFilename(file.name);
     setError(null);
     setExportNotice(null);
     try {
@@ -126,6 +128,49 @@ export const DocumentAnalyzerView: React.FC = () => {
     }
   };
 
+  const handlePlaceVisualAnnotation = async (draft: VisualAnnotationDraft) => {
+    if (!activeDoc) return;
+    setBusyBlockId('visual-pdf');
+    setError(null);
+    try {
+      const { explanation } = await operoClient.explainRegion({
+        excerpt: draft.excerpt,
+        contextTitle: `Page ${draft.pageNumber} (${draft.kind.toUpperCase()})`,
+        kind: draft.kind,
+        locale: targetLocale,
+        preferredModel: selectedOllamaTag,
+      });
+      const nextAnn: DocumentAnnotation = {
+        id: `ann_${Date.now()}`,
+        number: activeDoc.annotations.length + 1,
+        kind: draft.kind,
+        source: 'manual',
+        blockId: `pdf-page-${draft.pageNumber}`,
+        x: draft.x,
+        y: draft.y,
+        w: draft.w,
+        h: draft.h,
+        targetX: draft.targetX,
+        targetY: draft.targetY,
+        title: explanation.title,
+        excerpt: draft.excerpt.slice(0, 160),
+        explanation: explanation.explanation,
+        reasoning: explanation.reasoning,
+        suggestedFix: explanation.suggestedFix,
+        severity: explanation.severity,
+      };
+      const updatedAnns = [...activeDoc.annotations, nextAnn];
+      const { document } = await operoClient.saveDocumentAnnotations(activeDoc.id, updatedAnns);
+      setActiveDoc(document);
+      setSelectedAnnId(nextAnn.id);
+      playJiggSfx('step', soundEnabled);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to annotate PDF region.');
+    } finally {
+      setBusyBlockId(null);
+    }
+  };
+
   const persistAnnotations = async (next: DocumentAnnotation[]) => {
     if (!activeDoc) return;
     const renumbered = next.map((a, idx) => ({ ...a, number: idx + 1 }));
@@ -168,10 +213,10 @@ export const DocumentAnalyzerView: React.FC = () => {
       style={{
         height: '100%',
         overflowY: 'auto',
-        padding: '24px 28px',
+        padding: '22px 24px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '18px',
+        gap: '16px',
         background: 'transparent',
       }}
     >
@@ -231,7 +276,9 @@ export const DocumentAnalyzerView: React.FC = () => {
         </div>
       )}
 
-      {!activeDoc ? (
+      {busyUpload ? (
+        <AnalyzerLoadingMascot filename={uploadingFilename} />
+      ) : !activeDoc ? (
         <div
           className="glass-regular"
           style={{
@@ -262,48 +309,42 @@ export const DocumentAnalyzerView: React.FC = () => {
         </div>
       ) : (
         <div
+          data-testid="analyzer-split-grid"
           style={{
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'stretch',
-            flexWrap: 'wrap',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+            gap: '16px',
+            alignItems: 'start',
             minWidth: 0,
           }}
         >
-          <div style={{ flex: `1 1 ${splitPct}%`, minWidth: '300px' }}>
-            <DocumentCanvas
-              doc={activeDoc}
-              activeTool={activeTool}
-              selectedAnnId={selectedAnnId}
-              busyBlockId={busyBlockId}
-              onSelectTool={setActiveTool}
-              onSelectAnnotation={setSelectedAnnId}
-              onAnnotateBlock={(blk, tool) => void handleAnnotateBlock(blk, tool)}
-            />
-          </div>
-          <ResizeHandle
-            ariaLabel="Resize document canvas and report inspector"
-            onResizeDelta={(dx) => setSplitPct((p) => Math.max(36, Math.min(68, p + dx * 0.12)))}
-            onReset={() => setSplitPct(54)}
+          <DocumentCanvas
+            doc={activeDoc}
+            fileUrl={activeDoc.fileFormat === 'pdf' ? operoClient.getDocumentFileUrl(activeDoc.id) : null}
+            activeTool={activeTool}
+            selectedAnnId={selectedAnnId}
+            busyBlockId={busyBlockId}
+            onSelectTool={setActiveTool}
+            onSelectAnnotation={setSelectedAnnId}
+            onAnnotateBlock={(blk, tool) => void handleAnnotateBlock(blk, tool)}
+            onPlaceVisualAnnotation={(draft) => void handlePlaceVisualAnnotation(draft)}
           />
-          <div style={{ flex: `1 1 ${98 - splitPct}%`, minWidth: '280px' }}>
-            <AnalyzerReportPanel
-              doc={activeDoc}
-              selectedAnnId={selectedAnnId}
-              exportNotice={exportNotice}
-              busyExport={busyExport}
-              onSelectAnnotation={setSelectedAnnId}
-              onDeleteAnnotation={(id) =>
-                void persistAnnotations(activeDoc.annotations.filter((a) => a.id !== id))
-              }
-              onUpdateAnnotation={(updated) =>
-                void persistAnnotations(
-                  activeDoc.annotations.map((a) => (a.id === updated.id ? updated : a)),
-                )
-              }
-              onCompileAndExport={(fmt) => void handleCompileAndExport(fmt)}
-            />
-          </div>
+          <AnalyzerReportPanel
+            doc={activeDoc}
+            selectedAnnId={selectedAnnId}
+            exportNotice={exportNotice}
+            busyExport={busyExport}
+            onSelectAnnotation={setSelectedAnnId}
+            onDeleteAnnotation={(id) =>
+              void persistAnnotations(activeDoc.annotations.filter((a) => a.id !== id))
+            }
+            onUpdateAnnotation={(updated) =>
+              void persistAnnotations(
+                activeDoc.annotations.map((a) => (a.id === updated.id ? updated : a)),
+              )
+            }
+            onCompileAndExport={(fmt) => void handleCompileAndExport(fmt)}
+          />
         </div>
       )}
     </div>

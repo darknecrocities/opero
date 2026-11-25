@@ -178,6 +178,8 @@ export const operoClient = {
 
   listAnalyzedDocs: () => fetchLocal<{ documents: AnalyzedDocument[] }>('/analyzer/documents'),
 
+  getDocumentFileUrl: (docId: string) => `${DAEMON_BASE}/analyzer/documents/${encodeURIComponent(docId)}/file`,
+
   ingestDocument: (payload: {
     filename: string;
     contentBase64?: string;
@@ -188,7 +190,7 @@ export const operoClient = {
     fetchLocal<{ document: AnalyzedDocument }>(
       '/analyzer/ingest',
       { method: 'POST', body: JSON.stringify(payload) },
-      25000,
+      45000,
     ),
 
   explainRegion: (payload: {
