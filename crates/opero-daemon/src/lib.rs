@@ -186,12 +186,22 @@ async fn generate_manual(
     Path(id): Path<String>,
     Json(req): Json<GenerateManualReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    let started = std::time::Instant::now();
     let manual = state.store.generate_manual_from_session(
         &id,
         req.template_id.as_deref().unwrap_or("sop"),
         req.source_locale.as_deref().unwrap_or("en-US"),
     )?;
-    Ok(Json(serde_json::json!({ "manual": manual })))
+    let processing_time_ms = started.elapsed().as_millis() as u64;
+    Ok(Json(serde_json::json!({ "manual": manual, "processingTimeMs": processing_time_ms })))
+}
+
+async fn remove_project(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let deleted = state.store.delete_project_cascade(&id)?;
+    Ok(Json(serde_json::json!({ "deleted": deleted })))
 }
 
 #[derive(Deserialize)]
@@ -438,6 +448,7 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
         .route("/api/v1/profile", get(get_profile).put(save_profile))
         .route("/api/v1/analytics", get(get_analytics))
         .route("/api/v1/projects", get(list_projects).post(create_project))
+        .route("/api/v1/projects/{id}", delete(remove_project))
         .route("/api/v1/sessions", get(list_sessions).post(start_session))
         .route("/api/v1/sessions/{id}/status", post(update_session_status))
         .route("/api/v1/sessions/{id}/events", post(record_event))

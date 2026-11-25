@@ -142,6 +142,59 @@ impl OperoStore {
         Ok(rows.flatten().collect())
     }
 
+    /// One-step cascading project deletion (MMI Q15 client project-closure rule).
+    pub fn delete_project_cascade(&self, project_id: &str) -> OperoResult<bool> {
+        let conn = self.conn()?;
+        let session_ids: Vec<String> = conn
+            .prepare("SELECT id FROM recording_sessions WHERE project_id = ?1")?
+            .query_map(params![project_id], |r| r.get(0))?
+            .flatten()
+            .collect();
+        for sid in &session_ids {
+            let rel_paths: Vec<String> = conn
+                .prepare("SELECT relative_path FROM screenshots WHERE session_id = ?1")?
+                .query_map(params![sid], |r| r.get(0))?
+                .flatten()
+                .collect();
+            for rel in rel_paths {
+                let _ = std::fs::remove_file(self.data_dir.join(&rel));
+            }
+            let _ = std::fs::remove_dir_all(self.data_dir.join("sessions").join(sid));
+        }
+
+        // Clean up exported files & FTS5 shadow rows before CASCADE deletes
+        let export_paths: Vec<String> = conn
+            .prepare(
+                "SELECT e.file_path FROM export_records e
+                 INNER JOIN manuals m ON m.id = e.manual_id
+                 WHERE m.project_id = ?1",
+            )?
+            .query_map(params![project_id], |r| r.get(0))?
+            .flatten()
+            .collect();
+        for fp in export_paths {
+            let _ = std::fs::remove_file(fp);
+        }
+
+        let _ = conn.execute(
+            "DELETE FROM content_variants_fts WHERE step_id IN (
+                SELECT ws.id FROM workflow_steps ws
+                INNER JOIN manuals m ON m.id = ws.manual_id
+                WHERE m.project_id = ?1
+            )",
+            params![project_id],
+        );
+        let _ = conn.execute(
+            "DELETE FROM memory_chunks_fts WHERE chunk_id IN (
+                SELECT id FROM memory_chunks WHERE project_id = ?1
+            )",
+            params![project_id],
+        );
+        let _ = conn.execute("DELETE FROM audit_logs WHERE project_id = ?1", params![project_id]);
+        let removed = conn.execute("DELETE FROM projects WHERE id = ?1", params![project_id])?;
+        Ok(removed > 0)
+    }
+
     pub fn list_sessions(&self) -> OperoResult<Vec<RecordingSession>> {
         let conn = self.conn()?;
         let mut stmt = conn.prepare(
@@ -208,5 +261,41 @@ impl OperoStore {
             params![id, project_id, actor, action, detail, Utc::now().to_rfc3339()],
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_delete_project_cascade_removes_children_and_files() {
+        let tmp = std::env::temp_dir().join(format!("opero-del-test-{}", Uuid::new_v4().simple()));
+        let store = OperoStore::open(&tmp).unwrap();
+        let proj = store.create_project("Client Closure Test", "tester", "RD", "ja-JP").unwrap();
+        let sess = store.start_session(&proj.id, "Entry/Exit Demo", "standard", true).unwrap();
+        let _ = store.record_event_and_frame(
+            &sess.id,
+            "click",
+            "Nyutaishitsu.exe",
+            "入退室管理",
+            120,
+            80,
+            1.0,
+            "button",
+            "新規登録",
+            &[],
+            0.0,
+            false,
+        ).unwrap();
+        let manual = store.generate_manual_from_session(&sess.id, "sop", "ja-JP").unwrap();
+        assert!(!manual.steps.is_empty());
+
+        let deleted = store.delete_project_cascade(&proj.id).unwrap();
+        assert!(deleted);
+        assert!(store.list_projects(true).unwrap().iter().all(|p| p.id != proj.id));
+        assert!(store.list_sessions().unwrap().iter().all(|s| s.id != sess.id));
+        assert!(!tmp.join("sessions").join(&sess.id).exists());
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

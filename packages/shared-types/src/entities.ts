@@ -209,6 +209,7 @@ export interface ModelProfile {
   capabilitySummary?: string;
   languagesLabel?: string;
   downloadSizeLabel?: string;
+  estimatedModelRamGb?: number;
   revision: string;
   quantization: string;
   ramTierGb: 4 | 8 | 16 | 32;
@@ -223,6 +224,11 @@ export interface HardwareProfile {
   cpuCores: number;
   totalRamGb: number;
   freeDiskGb: number;
+  gpuName?: string;
+  hasDedicatedGpu?: boolean;
+  computeMode?: 'cpu-only' | 'metal' | 'dedicated-gpu' | string;
+  maxModelRamGb?: number;
+  recommendationReason?: string;
   osName: string;
   recommendedTier: 'offline' | 'compact' | 'balanced' | 'deep' | string;
   recommendedModelId: string;
