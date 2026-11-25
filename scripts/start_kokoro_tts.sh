@@ -6,14 +6,17 @@ set -euo pipefail
 # Usage: bash scripts/start_kokoro_tts.sh
 
 PORT="${OPERO_KOKORO_PORT:-4320}"
+export HF_HOME="${HF_HOME:-$HOME/Library/Application Support/OPERO/hf-cache}"
 echo "Starting OPERO Kokoro-82M (Apache 2.0) local neural child-voice server on http://127.0.0.1:${PORT}/speak ..."
 
-uv run --with "kokoro>=0.9.4" --with "misaki[ja]" --with "soundfile" --with "fastapi" --with "uvicorn" python3 - <<'PY'
+uv run --with "kokoro>=0.9.4" --with "misaki[ja]" --with "soundfile" --with "fugashi" --with "unidic-lite" --with "jaconv" --with "mojimoji" --with "fastapi" --with "uvicorn" python3 - <<'PY'
 import io
 import os
 import subprocess
 import tempfile
 import soundfile as sf
+import unidic, unidic_lite
+unidic.DICDIR = unidic_lite.DICDIR
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from kokoro import KPipeline
@@ -24,7 +27,7 @@ pipelines = {}
 
 def get_pipeline(lang_code: str) -> KPipeline:
     if lang_code not in pipelines:
-        pipelines[lang_code] = KPipeline(lang_code=lang_code)
+        pipelines[lang_code] = KPipeline(lang_code=lang_code, repo_id="hexgrad/Kokoro-82M")
     return pipelines[lang_code]
 
 class SpeakReq(BaseModel):
@@ -36,9 +39,9 @@ class SpeakReq(BaseModel):
 def speak(req: SpeakReq):
     is_ja = req.lang.lower().startswith("ja")
     lang_code = "j" if is_ja else "a"
-    voice = "jf_alpha" if is_ja else "af_sky"
+    voice = "jf_alpha" if is_ja else "af_heart"
     pipe = get_pipeline(lang_code)
-    chunks = [audio for _, _, audio in pipe(req.text, voice=voice, speed=1.08)]
+    chunks = [audio for _, _, audio in pipe(req.text, voice=voice, speed=1.06)]
     if not chunks:
         return Response(status_code=500)
     import numpy as np
