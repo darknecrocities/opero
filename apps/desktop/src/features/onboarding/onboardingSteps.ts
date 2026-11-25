@@ -16,7 +16,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 0,
     defaultMotion: 'wave-hello',
-    mascotSize: 216,
+    mascotSize: 288,
     whisper: {
       'en-US': 'Tap me to say hi!',
       'ja-JP': 'タップして挨拶しよう！',
@@ -26,7 +26,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 1,
     defaultMotion: 'monocle-inspect',
-    mascotSize: 152,
+    mascotSize: 210,
     whisper: {
       'en-US': 'Who am I teaming up with?',
       'ja-JP': 'お名前を教えてください',
@@ -36,7 +36,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 2,
     defaultMotion: 'writing-manual',
-    mascotSize: 152,
+    mascotSize: 210,
     whisper: {
       'en-US': 'Jotting down your craft...',
       'ja-JP': '役割をメモしています…',
@@ -46,7 +46,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 3,
     defaultMotion: 'thinking-processing',
-    mascotSize: 152,
+    mascotSize: 204,
     whisper: {
       'en-US': 'Pick how I should sound.',
       'ja-JP': '話し方のスタイルを選んでね',
@@ -56,7 +56,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 4,
     defaultMotion: 'walk-waddle',
-    mascotSize: 152,
+    mascotSize: 210,
     whisper: {
       'en-US': 'Ready in three languages!',
       'ja-JP': '3言語ですぐに対応します！',
@@ -66,7 +66,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 5,
     defaultMotion: 'privacy-shield',
-    mascotSize: 144,
+    mascotSize: 184,
     whisper: {
       'en-US': '100% local & private on-device.',
       'ja-JP': 'すべて端末内で安全に処理します',
@@ -76,7 +76,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   {
     index: 6,
     defaultMotion: 'jump-cheer',
-    mascotSize: 224,
+    mascotSize: 288,
     whisper: {
       'en-US': 'Woohoo! Everything is ready!',
       'ja-JP': 'やったね！準備完了です！',

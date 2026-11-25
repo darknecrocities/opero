@@ -4,6 +4,7 @@ import { playJiggSfx } from '@opero/jiggicons';
 import { PeroMascot, type PeroMotionId } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
+import { OnboardingAmbientBg } from './OnboardingAmbientBg';
 import { OnboardingCompleteStep } from './OnboardingCompleteStep';
 import { OnboardingConfetti } from './OnboardingConfetti';
 import { OnboardingPrivacyStep } from './OnboardingPrivacyStep';
@@ -15,6 +16,7 @@ import {
 } from './onboardingSteps';
 
 const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
+const BOOP_SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
 export const WelcomeOnboardingFlow: React.FC = () => {
   const { userProfile, soundEnabled, saveOnboardingProfile, setUiLocale } = useOperoStore();
@@ -151,6 +153,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         overflow: 'hidden',
       }}
     >
+      <OnboardingAmbientBg step={step} boopTick={boopTick} />
       {step === 6 && <OnboardingConfetti burstKey={confettiBurst} />}
 
       <div
@@ -188,16 +191,24 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             type="button"
             aria-label="Interact with Pero"
             onClick={handlePeroTap}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              padding: 0,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="onboard-pero-stage"
           >
+            {boopTick > 0 && (
+              <span key={`sparks-${boopTick}`} aria-hidden="true" className="onboard-boop-sparks">
+                {BOOP_SPARK_ANGLES.map((deg, idx) => (
+                  <span
+                    key={deg}
+                    className="onboard-boop-spark"
+                    style={
+                      {
+                        '--spark-deg': `${deg}deg`,
+                        backgroundColor: idx % 3 === 0 ? '#69BCFC' : idx % 2 === 0 ? '#0F172A' : '#A8A29E',
+                      } as React.CSSProperties
+                    }
+                  />
+                ))}
+              </span>
+            )}
             <span className="pero-float" style={{ display: 'inline-flex' }}>
               <span key={boopTick} className={boopTick > 0 ? 'pero-boop-spring' : undefined}>
                 <PeroMascot
@@ -208,6 +219,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 />
               </span>
             </span>
+            <span aria-hidden="true" className="onboard-ground-shadow" />
           </button>
         </div>
 
@@ -280,13 +292,13 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
             <button
               type="button"
-              className="opero-btn primary onboard-stagger-3"
+              className="opero-btn primary onboard-cta-sheen onboard-stagger-3"
               onClick={goNext}
               style={{
-                minWidth: '184px',
-                minHeight: '46px',
+                minWidth: '196px',
+                minHeight: '48px',
                 borderRadius: '999px',
-                fontSize: '15px',
+                fontSize: '15.5px',
                 marginTop: '4px',
               }}
             >
@@ -455,7 +467,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             ) : (
               <button
                 type="button"
-                className="opero-btn primary"
+                className="opero-btn primary onboard-cta-sheen"
                 onClick={() => void handleFinish()}
                 disabled={saving}
                 style={{ borderRadius: '999px', padding: '10px 28px', minHeight: '46px', fontSize: '15px' }}
