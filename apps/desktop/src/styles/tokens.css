@@ -18,6 +18,8 @@
   --danger: #C43D4B;
   --danger-soft: #FEF2F2;
   --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  --font-playful: 'Fredoka', 'M PLUS Rounded 1c', 'Plus Jakarta Sans', sans-serif;
+  --font-hand: 'Patrick Hand', 'M PLUS Rounded 1c', cursive;
   --font-sans: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }

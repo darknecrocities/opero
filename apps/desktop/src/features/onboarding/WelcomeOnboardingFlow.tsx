@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getUiDictionary, PERSONALITY_OPTIONS } from '@opero/i18n';
 import { playJiggSfx } from '@opero/jiggicons';
 import { PeroMascot, type PeroMotionId } from '@opero/mascot';
@@ -14,12 +14,18 @@ import {
   TONE_TO_PERO_MOTION,
   TOTAL_SCREENS,
 } from './onboardingSteps';
+import {
+  buildDynamicPeroLine,
+  speakPeroDynamic,
+  stopPeroVoice,
+  type PeroVoiceLang,
+} from './peroVoicePlayer';
 
 const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
 const BOOP_SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
 export const WelcomeOnboardingFlow: React.FC = () => {
-  const { userProfile, soundEnabled, saveOnboardingProfile, setUiLocale } = useOperoStore();
+  const { userProfile, soundEnabled, toggleSound, saveOnboardingProfile, setUiLocale } = useOperoStore();
   const [step, setStep] = useState<number>(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [name, setName] = useState<string>(userProfile.name);
@@ -28,12 +34,23 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   const [locale, setLocale] = useState<FirstClassLocale>(userProfile.defaultLocale);
   const [privacyAccepted, setPrivacyAccepted] = useState<boolean>(false);
   const [boopTick, setBoopTick] = useState<number>(0);
+  const [stepTapCount, setStepTapCount] = useState<number>(0);
+  const [spokenLine, setSpokenLine] = useState<{ text: string; lang: PeroVoiceLang } | null>(null);
   const [confettiBurst, setConfettiBurst] = useState<number>(1);
   const [saving, setSaving] = useState<boolean>(false);
   const swipeStartX = useRef<number | null>(null);
+  const introPlayedRef = useRef<boolean>(false);
 
   const dict = getUiDictionary(locale);
   const spec = getOnboardingStepSpec(step);
+
+  useEffect(() => {
+    if (step !== 0 || introPlayedRef.current || !soundEnabled) return;
+    introPlayedRef.current = true;
+    void speakPeroDynamic('Opero!', 'en-US', soundEnabled);
+  }, [step, soundEnabled]);
+
+  useEffect(() => () => stopPeroVoice(), []);
 
   const activeMotion: PeroMotionId = useMemo(() => {
     if (step === 1 && name.trim().length > 0) return 'thumbs-up';
@@ -43,19 +60,10 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     return spec.defaultMotion;
   }, [step, name, personality, privacyAccepted, boopTick, spec.defaultMotion]);
 
-  const activeWhisper = useMemo(() => {
-    if (step === 1 && name.trim().length > 0) {
-      if (locale === 'ja-JP') return `こんにちは、${name.trim()}さん！`;
-      if (locale === 'fil-PH') return `Kumusta, ${name.trim()}!`;
-      return `Nice to meet you, ${name.trim()}!`;
-    }
-    if (step === 5 && privacyAccepted) {
-      if (locale === 'ja-JP') return '同意ありがとうございます！';
-      if (locale === 'fil-PH') return 'Salamat! Ligtas at lokal tayo.';
-      return 'All set — safe and local!';
-    }
-    return spec.whisper[locale];
-  }, [step, name, privacyAccepted, locale, spec.whisper]);
+  const cueText = useMemo(() => {
+    if (spokenLine) return spokenLine.text;
+    return locale === 'ja-JP' ? '↗ ねえ、クリックして！' : '↗ hey! click me';
+  }, [spokenLine, locale]);
 
   const canAdvanceFromStep = (current: number): boolean => {
     if (current === 1 && !name.trim()) return false;
@@ -63,30 +71,41 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     return current < TOTAL_SCREENS - 1;
   };
 
+  const transitionToStep = (nextStep: number, dir: 'next' | 'prev') => {
+    stopPeroVoice();
+    setStepTapCount(0);
+    setSpokenLine(null);
+    setDirection(dir);
+    setStep(nextStep);
+  };
+
   const goNext = () => {
     if (!canAdvanceFromStep(step)) return;
     const nextStep = Math.min(TOTAL_SCREENS - 1, step + 1);
     playJiggSfx(nextStep === TOTAL_SCREENS - 1 ? 'success' : 'step', soundEnabled);
-    if (nextStep === TOTAL_SCREENS - 1) {
-      setConfettiBurst((b) => b + 1);
-    }
-    setDirection('next');
-    setStep(nextStep);
+    if (nextStep === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
+    transitionToStep(nextStep, 'next');
   };
 
   const goBack = () => {
     if (step <= 0) return;
     playJiggSfx('click', soundEnabled);
-    setDirection('prev');
-    setStep((s) => Math.max(0, s - 1));
+    transitionToStep(Math.max(0, step - 1), 'prev');
   };
 
   const handlePeroTap = () => {
-    playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
+    const nextTap = stepTapCount + 1;
+    const voiceLang: PeroVoiceLang = nextTap % 2 === 1 ? 'en-US' : 'ja-JP';
+    const line = buildDynamicPeroLine(
+      { step, name, occupation, personality, privacyAccepted },
+      voiceLang,
+    );
+    setStepTapCount(nextTap);
+    setSpokenLine({ text: line, lang: voiceLang });
     setBoopTick((t) => t + 1);
-    if (step === TOTAL_SCREENS - 1) {
-      setConfettiBurst((b) => b + 1);
-    }
+    if (step === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
+    playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
+    void speakPeroDynamic(line, voiceLang, soundEnabled);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -111,6 +130,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   };
 
   const handleFinish = async () => {
+    stopPeroVoice();
     setSaving(true);
     try {
       await saveOnboardingProfile({
@@ -156,37 +176,35 @@ export const WelcomeOnboardingFlow: React.FC = () => {
       <OnboardingAmbientBg step={step} boopTick={boopTick} />
       {step === 6 && <OnboardingConfetti burstKey={confettiBurst} />}
 
+      <button
+        type="button"
+        aria-label="Toggle Pero voice and sound"
+        onClick={() => {
+          if (soundEnabled) stopPeroVoice();
+          toggleSound();
+        }}
+        className="onboard-ghost-btn"
+        style={{ position: 'fixed', top: '18px', right: '22px', zIndex: 4, fontSize: '12.5px' }}
+      >
+        {soundEnabled ? 'Voice: ON' : 'Voice: OFF'}
+      </button>
+
       <div
         key={step}
         className={direction === 'next' ? 'onboard-swipe-next' : 'onboard-swipe-prev'}
         style={{
           width: '100%',
-          maxWidth: '500px',
+          maxWidth: '520px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '22px',
+          gap: '20px',
           textAlign: 'center',
           position: 'relative',
           zIndex: 2,
         }}
       >
-        {/* Frameless Clucky-inspired playful whisper + interactive tap-to-boop Pero */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <span
-            key={`${step}-${activeWhisper}-${boopTick}`}
-            className="onboard-whisper"
-            style={{
-              fontSize: '12.5px',
-              fontWeight: 500,
-              color: '#64748B',
-              letterSpacing: '-0.01em',
-              minHeight: '18px',
-            }}
-          >
-            {activeWhisper}
-          </span>
-
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
             aria-label="Interact with Pero"
@@ -221,9 +239,16 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             </span>
             <span aria-hidden="true" className="onboard-ground-shadow" />
           </button>
+
+          <span
+            key={`${step}-${cueText}-${boopTick}`}
+            data-testid="pero-click-cue"
+            className="onboard-click-cue onboard-whisper"
+          >
+            {cueText}
+          </span>
         </div>
 
-        {/* Monochrome White & Gray Pill-Morphing Progress Track */}
         <div
           role="progressbar"
           aria-valuenow={step + 1}
@@ -254,15 +279,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
               <h1
                 aria-label="Opero"
-                style={{
-                  margin: 0,
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '64px',
-                  fontWeight: 800,
-                  letterSpacing: '-0.055em',
-                  lineHeight: 1,
-                  color: '#0F172A',
-                }}
+                onClick={() => void speakPeroDynamic('Opero!', 'en-US', soundEnabled)}
+                className="onboard-playful-wordmark"
               >
                 {WORDMARK_LETTERS.map((ch, idx) => (
                   <span
@@ -274,18 +292,11 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                     {ch}
                   </span>
                 ))}
-                <span
-                  aria-hidden="true"
-                  className="opero-letter"
-                  style={{ color: '#94A3B8', animationDelay: '300ms' }}
-                >
+                <span aria-hidden="true" className="opero-letter" style={{ color: '#94A3B8', animationDelay: '300ms' }}>
                   .
                 </span>
               </h1>
-              <p
-                className="onboard-stagger-2"
-                style={{ margin: 0, fontSize: '15px', color: '#475569', letterSpacing: '-0.01em' }}
-              >
+              <p className="onboard-stagger-2" style={{ margin: 0, fontSize: '16px', color: '#475569', fontFamily: 'var(--font-playful)', fontWeight: 500 }}>
                 {dict.welcomeSubtitle}
               </p>
             </div>
@@ -294,13 +305,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
               type="button"
               className="opero-btn primary onboard-cta-sheen onboard-stagger-3"
               onClick={goNext}
-              style={{
-                minWidth: '196px',
-                minHeight: '48px',
-                borderRadius: '999px',
-                fontSize: '15.5px',
-                marginTop: '4px',
-              }}
+              style={{ minWidth: '196px', minHeight: '48px', borderRadius: '999px', fontSize: '15.5px', marginTop: '4px' }}
             >
               {dict.welcomeGetStarted}
             </button>
@@ -309,9 +314,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 1 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
-              {dict.onboardingNameTitle}
-            </h2>
+            <h2 className="onboard-playful-heading onboard-stagger-1">{dict.onboardingNameTitle}</h2>
             <input
               type="text"
               aria-label="Your name"
@@ -327,9 +330,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 2 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
-              {dict.onboardingOccupationTitle}
-            </h2>
+            <h2 className="onboard-playful-heading onboard-stagger-1">{dict.onboardingOccupationTitle}</h2>
             <input
               type="text"
               aria-label="Your occupation"
@@ -345,9 +346,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 3 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
-              {dict.onboardingPersonalityTitle}
-            </h2>
+            <h2 className="onboard-playful-heading onboard-stagger-1">{dict.onboardingPersonalityTitle}</h2>
             <div className="onboard-stagger-2" style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {PERSONALITY_OPTIONS.map((opt) => {
                 const active = personality === opt.id;
@@ -387,9 +386,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
         {step === 4 && (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <h2 className="onboard-stagger-1" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#0F172A' }}>
-              {dict.onboardingLanguageTitle}
-            </h2>
+            <h2 className="onboard-playful-heading onboard-stagger-1">{dict.onboardingLanguageTitle}</h2>
             <div className="onboard-stagger-2" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {(
                 [
