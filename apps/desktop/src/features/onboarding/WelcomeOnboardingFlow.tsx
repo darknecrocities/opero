@@ -16,6 +16,7 @@ import {
 } from './onboardingSteps';
 import {
   buildDynamicPeroLine,
+  prefetchPeroVoice,
   speakPeroDynamic,
   stopPeroVoice,
   type PeroVoiceLang,
@@ -43,6 +44,17 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   const dict = getUiDictionary(locale);
   const spec = getOnboardingStepSpec(step);
+
+  useEffect(() => {
+    if (!soundEnabled) return;
+    const timer = setTimeout(() => {
+      if (step === 0) prefetchPeroVoice('Opero!', 'en-US');
+      const ctx = { step, name, occupation, personality, privacyAccepted };
+      prefetchPeroVoice(buildDynamicPeroLine(ctx, 'en-US'), 'en-US');
+      prefetchPeroVoice(buildDynamicPeroLine(ctx, 'ja-JP'), 'ja-JP');
+    }, 260);
+    return () => clearTimeout(timer);
+  }, [step, name, occupation, personality, privacyAccepted, soundEnabled]);
 
   useEffect(() => {
     if (step !== 0 || introPlayedRef.current || !soundEnabled) return;

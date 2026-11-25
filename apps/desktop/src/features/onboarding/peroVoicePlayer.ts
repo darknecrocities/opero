@@ -14,9 +14,26 @@ export interface DynamicVoiceContext {
 const DAEMON_PORT = (import.meta.env?.VITE_OPERO_DAEMON_PORT as string | undefined) || '4317';
 const SPEAK_ENDPOINT = `http://127.0.0.1:${DAEMON_PORT}/api/v1/speech/speak`;
 
-let activeAudio: HTMLAudioElement | null = null;
-let activeBlobUrl: string | null = null;
-let activeFetchCtrl: AbortController | null = null;
+const audioBufferCache = new Map<string, ArrayBuffer>();
+const inflightPrefetch = new Map<string, Promise<ArrayBuffer | null>>();
+
+let voiceAudioCtx: AudioContext | null = null;
+let activeSourceNode: AudioBufferSourceNode | null = null;
+let activePlayToken = 0;
+
+function getVoiceAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  const Ctor =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  if (!voiceAudioCtx) voiceAudioCtx = new Ctor();
+  return voiceAudioCtx;
+}
+
+function cacheKey(text: string, lang: PeroVoiceLang): string {
+  return `${lang}::${text.trim()}`;
+}
 
 export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLang): string {
   const cleanName = ctx.name.trim();
@@ -70,25 +87,63 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
   }
 }
 
+async function fetchSpeechBytes(text: string, lang: PeroVoiceLang): Promise<ArrayBuffer | null> {
+  const key = cacheKey(text, lang);
+  const cached = audioBufferCache.get(key);
+  if (cached) return cached;
+
+  const existing = inflightPrefetch.get(key);
+  if (existing) return existing;
+
+  const job = (async (): Promise<ArrayBuffer | null> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(SPEAK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang }),
+        signal: controller.signal,
+      });
+      if (!res.ok || res.status === 204) return null;
+      const bytes = await res.arrayBuffer();
+      if (bytes.byteLength < 256) return null;
+      if (audioBufferCache.size > 40) audioBufferCache.clear();
+      audioBufferCache.set(key, bytes);
+      return bytes;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+      inflightPrefetch.delete(key);
+    }
+  })();
+
+  inflightPrefetch.set(key, job);
+  return job;
+}
+
+export function prefetchPeroVoice(text: string, lang: PeroVoiceLang): void {
+  if (!text.trim()) return;
+  void fetchSpeechBytes(text, lang);
+}
+
 export function stopPeroVoice(): void {
-  if (activeFetchCtrl) {
-    activeFetchCtrl.abort();
-    activeFetchCtrl = null;
-  }
-  if (activeAudio) {
-    activeAudio.pause();
-    activeAudio.src = '';
-    activeAudio = null;
-  }
-  if (activeBlobUrl) {
-    URL.revokeObjectURL(activeBlobUrl);
-    activeBlobUrl = null;
+  activePlayToken += 1;
+  if (activeSourceNode) {
+    try {
+      activeSourceNode.stop();
+      activeSourceNode.disconnect();
+    } catch {
+      // Node may already have ended
+    }
+    activeSourceNode = null;
   }
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
     } catch {
-      // Ignore speechSynthesis cancel errors in restricted environments
+      // Ignore speechSynthesis errors in restricted environments
     }
   }
 }
@@ -99,12 +154,13 @@ function speakWithWebSpeechFallback(text: string, lang: PeroVoiceLang): void {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = lang;
-    utter.pitch = 1.52;
+    utter.pitch = 1.65;
     utter.rate = 1.06;
     const voices = window.speechSynthesis.getVoices();
     const prefix = lang.slice(0, 2).toLowerCase();
     const match =
       voices.find((v) => v.name.toLowerCase().includes('junior') && prefix === 'en') ??
+      voices.find((v) => v.name.toLowerCase().includes('kyoko') && prefix === 'ja') ??
       voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
     if (match) utter.voice = match;
     window.speechSynthesis.speak(utter);
@@ -120,49 +176,37 @@ export async function speakPeroDynamic(
 ): Promise<boolean> {
   if (!enabled || !text.trim()) return false;
   stopPeroVoice();
+  const token = activePlayToken;
 
-  const controller = new AbortController();
-  activeFetchCtrl = controller;
-  const timeout = setTimeout(() => controller.abort(), 3500);
+  const rawBytes = await fetchSpeechBytes(text, lang);
+  if (token !== activePlayToken) return false;
 
-  try {
-    const res = await fetch(SPEAK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang }),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
-    const blob = await res.blob();
-    if (controller.signal.aborted || blob.size < 256) return false;
-
-    const url = URL.createObjectURL(blob);
-    activeBlobUrl = url;
-    const audio = new Audio(url);
-    activeAudio = audio;
-    audio.onended = () => {
-      if (activeBlobUrl === url) {
-        URL.revokeObjectURL(url);
-        activeBlobUrl = null;
+  if (rawBytes) {
+    try {
+      const ctx = getVoiceAudioContext();
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+        const decoded = await ctx.decodeAudioData(rawBytes.slice(0));
+        if (token !== activePlayToken) return false;
+        const source = ctx.createBufferSource();
+        source.buffer = decoded;
+        source.connect(ctx.destination);
+        source.onended = () => {
+          if (activeSourceNode === source) activeSourceNode = null;
+        };
+        activeSourceNode = source;
+        source.start(0);
+        return true;
       }
-      if (activeAudio === audio) activeAudio = null;
-    };
-    audio.onerror = () => {
-      if (activeBlobUrl === url) {
-        URL.revokeObjectURL(url);
-        activeBlobUrl = null;
-      }
-      if (activeAudio === audio) activeAudio = null;
-    };
-    await audio.play();
-    return true;
-  } catch {
-    if (!controller.signal.aborted) {
-      speakWithWebSpeechFallback(text, lang);
+    } catch {
+      // Fall through to Web Speech fallback if Web Audio decode fails
     }
-    return false;
-  } finally {
-    clearTimeout(timeout);
-    if (activeFetchCtrl === controller) activeFetchCtrl = null;
   }
+
+  if (token === activePlayToken) {
+    speakWithWebSpeechFallback(text, lang);
+  }
+  return false;
 }

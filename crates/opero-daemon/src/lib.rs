@@ -413,6 +413,7 @@ async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<Spea
             bytes,
         )
             .into_response(),
+        Ok(Err(OperoError::Process(_))) => StatusCode::NO_CONTENT.into_response(),
         Ok(Err(e)) => ApiError(e).into_response(),
         Err(e) => ApiError(OperoError::Process(format!("TTS task error: {e}"))).into_response(),
     }
