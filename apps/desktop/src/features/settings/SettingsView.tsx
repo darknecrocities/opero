@@ -4,18 +4,18 @@ import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { FirstClassLocale, PermissionSurface } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
 import { useOperoStore } from '../../store/useOperoStore';
+import { AgentCapabilitiesPanel } from './AgentCapabilitiesPanel';
 import { ModelsPanel } from './ModelsPanel';
 import { ProfileIdCardPanel } from './ProfileIdCardPanel';
 import { UpdatesPanel } from './UpdatesPanel';
 
-type SettingsTab = 'profile' | 'models' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
+type SettingsTab = 'profile' | 'agent' | 'models' | 'language' | 'memory' | 'history' | 'privacy' | 'sound' | 'updates';
 
 export const SettingsView: React.FC = () => {
   const {
     uiLocale,
     targetLocale,
     soundEnabled,
-    solidFallback,
     permissions,
     memoryStats,
     memoryHits,
@@ -24,7 +24,6 @@ export const SettingsView: React.FC = () => {
     setUiLocale,
     setTargetLocale,
     toggleSound,
-    toggleSolidFallback,
     replayOnboarding,
     requestOsPermission,
     openOsSettings,
@@ -38,7 +37,8 @@ export const SettingsView: React.FC = () => {
 
   const tabs: { id: SettingsTab; icon: string; label: string }[] = [
     { id: 'profile', icon: 'user', label: dict.settingsTabProfile },
-    { id: 'models', icon: 'router', label: 'AI Models' },
+    { id: 'agent', icon: 'router', label: 'Pero Agent' },
+    { id: 'models', icon: 'studio', label: 'AI Models' },
     { id: 'language', icon: 'translate', label: dict.settingsTabLanguage },
     { id: 'memory', icon: 'memory', label: dict.settingsTabMemory },
     { id: 'history', icon: 'docs', label: dict.settingsTabHistory },
@@ -259,17 +259,10 @@ export const SettingsView: React.FC = () => {
               {soundEnabled ? 'Sound: ON' : 'Sound: OFF'}
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700 }}>Surface Style</div>
-              <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Liquid Glass or Solid White</div>
-            </div>
-            <button type="button" className="opero-btn" onClick={toggleSolidFallback}>
-              {solidFallback ? 'Solid White' : 'Liquid Glass'}
-            </button>
-          </div>
         </section>
       )}
+
+      {tab === 'agent' && <AgentCapabilitiesPanel />}
 
       {tab === 'models' && <ModelsPanel />}
 

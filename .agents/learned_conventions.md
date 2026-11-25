@@ -17,6 +17,7 @@
 - **[UI-008] (2026-11-24)**: Use a Voxt-inspired 3-column Dual-Sidebar Workspace (Left Sessions/Modes + Center Pure White Stage with Impulse Scrubber, Split Tabs, and Docked Quick Prompt + Right Model Router, OCR/Voice, Dual-Core Memory, and Export) with frameless, natural Pero presence (zero boxed mascot cards, zero placeholders).
 - **[UI-009] (2026-11-24)**: OPERO onboarding must be completely cardless (no modal boxes or bordered choice cards), using editorial frameless inputs, staggered 'Opero.' wordmark, and 5 bouncing colored progress balls across all 5 onboarding screens.
 - **[UI-010] (2026-11-25)**: Use onboarding's warm white-and-light-grayish palette (--bg-canvas radial #FAF9F7 -> #F2F1EE -> #ECEBE7, --bg #F2F1EE, --bg-surface #FAF9F7, --bg-subtle #EAE8E3, --border #DDDAD3) across the entire desktop app shell and all views instead of pure #FFFFFF.
+- **[UI-011] (2026-11-25)**: All Japanese text across UI dictionaries, onboarding voice scripts, templates, Dashboard, Pero Agent prompts, and MMI knowledge must use polite Japanese (です/ます・ください・丁寧語), never casual タメ口 (だよ/ね/〜て止め).
 ## System Architecture (`[ARCH-xxx]`)
 
 - **[ARCH-001] (2026-11-22)**: Local-first by default and capture-independent-of-inference: recording sessions (`OPERO Capture`) must function reliably and persist raw evidence even when the local AI runtime (`Ollama` / `llama.cpp`) is stopped, missing, or incompatible.

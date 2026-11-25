@@ -28,7 +28,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Repeatable operational steps with prerequisites and sign-off.',
-      'ja-JP': '前提条件と承認ゲートを備えた標準業務手順。',
+      'ja-JP': '前提条件と承認ゲートを備えた標準業務手順です。',
       'fil-PH': 'Mga hakbang sa operasyon na may mga kinakailangan at pagsusuri.',
     },
     sections: {
@@ -48,7 +48,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Clear interface walkthroughs for everyday application users.',
-      'ja-JP': '日常業務の画面操作をわかりやすく整理したガイド。',
+      'ja-JP': '日常業務の画面操作を分かりやすく整理したガイドです。',
       'fil-PH': 'Malinaw na gabay sa araw-araw na paggamit ng aplikasyon.',
     },
     sections: {
@@ -68,7 +68,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Role-gated corporate system operations with audit checks.',
-      'ja-JP': '権限管理と監査確認を含む社内システム運用手順。',
+      'ja-JP': '権限管理と監査確認を含む社内システム運用手順です。',
       'fil-PH': 'Operasyon ng panloob na sistema na may seguridad at audit.',
     },
     sections: {
@@ -88,7 +88,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Day-one workstation setup and mentored starter workflows.',
-      'ja-JP': '初日の端末設定からメンター伴走の初回業務までを案内。',
+      'ja-JP': '初日の端末設定からメンター伴走の初回業務までをご案内します。',
       'fil-PH': 'Pag-setup sa unang araw at unang gabay na workflow.',
     },
     sections: {
@@ -108,7 +108,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Symptom triage, root-cause checks, and verified rollback.',
-      'ja-JP': '発生事象の一次切り分けから復旧・ロールバック手順まで。',
+      'ja-JP': '発生事象の一次切り分けから復旧・ロールバック手順までを整理します。',
       'fil-PH': 'Pagsusuri ng sintomas, solusyon, at beripikadong pagbabalik.',
     },
     sections: {
@@ -128,7 +128,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Deterministic engineering runbooks with backup verification.',
-      'ja-JP': '環境条件とバックアップ検証を含むエンジニアリング手順。',
+      'ja-JP': '環境条件とバックアップ検証を含むエンジニアリング手順です。',
       'fil-PH': 'Teknikal na pamamaraan na may beripikasyon at backup.',
     },
     sections: {
@@ -148,7 +148,7 @@ export const MMI_DOCUMENT_TEMPLATES: MmiTemplateDefinition[] = [
     },
     description: {
       'en-US': 'Policy approvals, form filing, and compliant retention.',
-      'ja-JP': '承認確認・申請登録・規程に基づく保管手順を標準化。',
+      'ja-JP': '承認確認・申請登録・規程に基づく保管手順を標準化します。',
       'fil-PH': 'Pag-apruba ng patakaran, paghahain, at maayos na pag-iingat.',
     },
     sections: {

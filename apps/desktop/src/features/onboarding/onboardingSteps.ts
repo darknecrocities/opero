@@ -19,7 +19,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
     mascotSize: 288,
     whisper: {
       'en-US': 'Tap me to say hi!',
-      'ja-JP': 'タップして挨拶しよう！',
+      'ja-JP': 'タップしてご挨拶しましょう',
       'fil-PH': 'I-tap ako para mag-hi!',
     },
   },
@@ -49,7 +49,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
     mascotSize: 204,
     whisper: {
       'en-US': 'Pick how I should sound.',
-      'ja-JP': '話し方のスタイルを選んでね',
+      'ja-JP': '話し方のスタイルをお選びください',
       'fil-PH': 'Piliin kung paano ako magsasalita.',
     },
   },
@@ -79,7 +79,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
     mascotSize: 288,
     whisper: {
       'en-US': 'Woohoo! Everything is ready!',
-      'ja-JP': 'やったね！準備完了です！',
+      'ja-JP': '設定が完了しました。準備完了です！',
       'fil-PH': 'Yehey! Handang-handa na!',
     },
   },
@@ -110,7 +110,7 @@ export function getCompletionCopy(locale: FirstClassLocale, rawName: string): Co
       eyebrow: 'セットアップ完了',
       title: `準備が整いました、${safeName}さん。`,
       subtitle: 'すべてローカル完結で、いつでもワークフローを記録・整理できます。',
-      replayConfetti: 'もう一度お祝いする',
+      replayConfetti: 'もう一度お祝いします',
     };
   }
   if (locale === 'fil-PH') {

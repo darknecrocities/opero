@@ -197,7 +197,7 @@ impl OperoStore {
             };
             let variants_spec = [
                 ("en-US", format!("Step {:02} — Select \"{}\"", order_index, label), format!("In {}, select \"{}\" to proceed with the documented operation.", primary.application.window_title, label)),
-                ("ja-JP", format!("手順 {:02} — 「{}」を選択する", order_index, label), format!("{} の画面上で「{}」をクリックし、操作を進めます。", primary.application.window_title, label)),
+                ("ja-JP", format!("手順 {:02} — 「{}」を選択します", order_index, label), format!("{} の画面上で「{}」をクリックし、操作を進めます。", primary.application.window_title, label)),
                 ("fil-PH", format!("Hakbang {:02} — Piliin ang \"{}\"", order_index, label), format!("Sa {}, piliin ang \"{}\" upang maipagpatuloy ang proseso.", primary.application.window_title, label)),
             ];
             let mut variant_map = serde_json::Map::new();

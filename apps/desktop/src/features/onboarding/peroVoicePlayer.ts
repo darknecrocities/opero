@@ -48,31 +48,33 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
   if (lang === 'ja-JP') {
     switch (ctx.step) {
       case 0:
-        return 'こんにちは、ペロだよ。オペロへようこそ。';
+        return 'こんにちは、ペロです。オペロへようこそ。';
       case 1:
-        return cleanName ? `わあ、${cleanName}さん、はじめまして！よろしくね。` : 'こんにちは！お名前を教えてくれる？';
+        return cleanName
+          ? `${cleanName}さん、はじめまして。どうぞよろしくお願いいたします。`
+          : 'こんにちは。お名前を教えていただけますか？';
       case 2:
         return cleanRole
-          ? `わあ、${cleanRole}なんだね。すてきだね。`
+          ? `${cleanRole}をご担当されているのですね。素敵です。`
           : cleanName
-            ? `${cleanName}さんは、どんなお仕事をされているの？`
-            : 'どんなお仕事をされているの？';
+            ? `${cleanName}さんは、どのようなお仕事をされていますか？`
+            : 'どのようなお仕事をされていますか？';
       case 3:
         return cleanName
-          ? `わかったよ、${cleanName}さん。${toneJa}でお話しするね。`
-          : `わかったよ。${toneJa}でお話しするね。`;
+          ? `承知しました、${cleanName}さん。${toneJa}でお話しします。`
+          : `承知しました。${toneJa}でお話しします。`;
       case 4:
         return cleanName
-          ? `${cleanName}さん、英語も日本語もフィリピン語も話せるよ。`
-          : '英語も日本語もフィリピン語も話せるよ。';
+          ? `${cleanName}さん、英語・日本語・フィリピン語に対応しています。`
+          : '英語・日本語・フィリピン語に対応しています。';
       case 5:
         return ctx.privacyAccepted
-          ? 'ありがとう。ぜんぶ端末の中で大切に守るね。'
-          : '安心してね。ぜんぶこの端末の中だけで安全に守るよ。';
+          ? 'ありがとうございます。すべて端末内で大切に保護します。'
+          : 'ご安心ください。すべてこの端末内のみで安全に保護します。';
       default:
         return cleanName
-          ? `やったね、${cleanName}さん。いつでも始められるよ。`
-          : 'やったね。準備が整ったよ。いつでも始められるよ。';
+          ? `準備が整いました、${cleanName}さん。いつでも始められます。`
+          : '準備が整いました。いつでも始められます。';
     }
   }
 
