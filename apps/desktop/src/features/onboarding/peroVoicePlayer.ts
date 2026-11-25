@@ -19,6 +19,7 @@ const inflightFetch = new Map<string, Promise<ArrayBuffer | null>>();
 
 let voiceAudioCtx: AudioContext | null = null;
 let activeSourceNode: AudioBufferSourceNode | null = null;
+let activeHtmlAudio: HTMLAudioElement | null = null;
 let activePlayToken = 0;
 
 function getVoiceAudioContext(): AudioContext | null {
@@ -158,6 +159,15 @@ export function stopPeroVoice(): void {
     }
     activeSourceNode = null;
   }
+  if (activeHtmlAudio) {
+    try {
+      activeHtmlAudio.pause();
+      activeHtmlAudio.currentTime = 0;
+    } catch {
+      // Ignore pause errors
+    }
+    activeHtmlAudio = null;
+  }
 }
 
 async function playAudioBytes(rawBytes: ArrayBuffer, token: number): Promise<boolean> {
@@ -194,20 +204,40 @@ export async function speakPeroDynamic(
   stopPeroVoice();
   const token = activePlayToken;
 
+  // Synchronously unlock Web Audio inside the user click gesture (required by macOS WKWebView)
+  const syncCtx = getVoiceAudioContext();
+  if (syncCtx && syncCtx.state === 'suspended') {
+    void syncCtx.resume().catch(() => {});
+  }
+
   // For personalized lines (user's typed name/role), try live Kokoro-82M neural server first
   if (preferDynamicNeural) {
     const neuralBytes = await fetchLiveNeuralSpeech(text, lang);
     if (token !== activePlayToken) return false;
     if (neuralBytes) {
-      return playAudioBytes(neuralBytes, token);
+      const ok = await playAudioBytes(neuralBytes, token);
+      if (ok) return true;
     }
   }
 
-  // Otherwise play the bundled Kokoro-82M neural child MP3 instantaneously (zero robotic voice!)
+  // Play bundled Kokoro-82M neural child MP3 via Web Audio API, falling back to HTMLAudioElement
   const clipBytes = await fetchBundledClip(bundledFallbackPath);
   if (token !== activePlayToken) return false;
   if (clipBytes) {
-    return playAudioBytes(clipBytes, token);
+    const ok = await playAudioBytes(clipBytes, token);
+    if (ok) return true;
   }
-  return false;
+
+  if (token !== activePlayToken || typeof Audio === 'undefined') return false;
+  try {
+    const audio = new Audio(bundledFallbackPath);
+    activeHtmlAudio = audio;
+    audio.onended = () => {
+      if (activeHtmlAudio === audio) activeHtmlAudio = null;
+    };
+    await audio.play();
+    return true;
+  } catch {
+    return false;
+  }
 }
