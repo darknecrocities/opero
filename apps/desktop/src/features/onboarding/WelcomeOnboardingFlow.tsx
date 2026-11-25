@@ -142,7 +142,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         position: 'fixed',
         inset: 0,
         zIndex: 100,
-        background: 'radial-gradient(circle at 50% 24%, #F8FAFC 0%, #FFFFFF 60%)',
+        background: 'radial-gradient(circle at 50% 22%, #FAF9F7 0%, #F2F1EE 56%, #ECEBE7 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -230,7 +230,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                 style={{
                   width: isActive ? '26px' : '9px',
                   height: '9px',
-                  backgroundColor: isActive ? '#0F172A' : isDone ? '#94A3B8' : '#E2E8F0',
+                  backgroundColor: isActive ? '#0F172A' : isDone ? '#78716C' : '#D6D3CD',
                 }}
               />
             );
