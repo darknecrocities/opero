@@ -122,7 +122,7 @@ export const AgentChatView: React.FC = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: '#FFFFFF',
+        background: 'transparent',
         padding: '22px 28px',
         gap: '14px',
         minHeight: 0,

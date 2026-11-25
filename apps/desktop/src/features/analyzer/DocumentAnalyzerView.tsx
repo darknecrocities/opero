@@ -172,7 +172,7 @@ export const DocumentAnalyzerView: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: '18px',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%)',
+        background: 'transparent',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>

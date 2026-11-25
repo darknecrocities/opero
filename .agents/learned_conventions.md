@@ -16,6 +16,7 @@
 - **[UI-007] (2026-11-24)**: Maximize use of official MIT Jiggicons (120 Hz spring Web Animations API SVGs) across all navigation, buttons, Model Router, Quick Prompt chips, and Export actions tinted strictly in OPERO Black (#0F172A) and Sky Blue (#69BCFC).
 - **[UI-008] (2026-11-24)**: Use a Voxt-inspired 3-column Dual-Sidebar Workspace (Left Sessions/Modes + Center Pure White Stage with Impulse Scrubber, Split Tabs, and Docked Quick Prompt + Right Model Router, OCR/Voice, Dual-Core Memory, and Export) with frameless, natural Pero presence (zero boxed mascot cards, zero placeholders).
 - **[UI-009] (2026-11-24)**: OPERO onboarding must be completely cardless (no modal boxes or bordered choice cards), using editorial frameless inputs, staggered 'Opero.' wordmark, and 5 bouncing colored progress balls across all 5 onboarding screens.
+- **[UI-010] (2026-11-25)**: Use onboarding's warm white-and-light-grayish palette (--bg-canvas radial #FAF9F7 -> #F2F1EE -> #ECEBE7, --bg #F2F1EE, --bg-surface #FAF9F7, --bg-subtle #EAE8E3, --border #DDDAD3) across the entire desktop app shell and all views instead of pure #FFFFFF.
 ## System Architecture (`[ARCH-xxx]`)
 
 - **[ARCH-001] (2026-11-22)**: Local-first by default and capture-independent-of-inference: recording sessions (`OPERO Capture`) must function reliably and persist raw evidence even when the local AI runtime (`Ollama` / `llama.cpp`) is stopped, missing, or incompatible.
