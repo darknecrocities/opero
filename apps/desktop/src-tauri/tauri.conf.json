@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:4317 http://localhost:4317"
+      "csp": "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data: http://127.0.0.1:4317 http://localhost:4317; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:4317 http://localhost:4317"
     }
   },
   "bundle": {

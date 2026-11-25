@@ -21,7 +21,7 @@ pub fn sanitize_tts_text(raw: &str) -> String {
 
 pub fn tts_cache_key(text: &str, lang: &str) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"opero-child-tts-v1:");
+    hasher.update(b"opero-child-tts-v2:");
     hasher.update(lang.as_bytes());
     hasher.update(b":");
     hasher.update(text.as_bytes());
@@ -29,7 +29,10 @@ pub fn tts_cache_key(text: &str, lang: &str) -> String {
 }
 
 fn try_external_loopback_tts(text: &str, lang: &str) -> Option<Vec<u8>> {
-    let url = std::env::var("OPERO_TTS_URL").ok()?;
+    let url = std::env::var("OPERO_TTS_URL")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "http://127.0.0.1:4320/speak".to_string());
     let trimmed = url.trim();
     if trimmed.is_empty() || validate_loopback_url(trimmed).is_err() {
         return None;
@@ -44,6 +47,8 @@ fn try_external_loopback_tts(text: &str, lang: &str) -> Option<Vec<u8>> {
     let out = Command::new("curl")
         .args([
             "-sS",
+            "--connect-timeout",
+            "0.25",
             "--max-time",
             "3",
             "-X",
@@ -70,17 +75,18 @@ fn synthesize_macos_child_mp3(cache_dir: &Path, key: &str, text: &str, lang: &st
     let aiff_path = cache_dir.join(format!("{key}.aiff"));
     let mp3_path = cache_dir.join(format!("{key}.mp3"));
 
+    // macOS `say` outputs 22050 Hz mono AIFF; pitch-shift cleanly from 22050 Hz for authentic child timbre.
     let (voice, rate, filter) = if lang.starts_with("ja") {
         (
             "Kyoko",
-            "188",
-            "asetrate=44100*1.24,aresample=44100,atempo=0.88,highpass=f=120,loudnorm=I=-16:TP=-1.5:LRA=11",
+            "182",
+            "asetrate=22050*1.32,aresample=44100,atempo=0.82,highpass=f=140,treble=g=3,volume=1.35",
         )
     } else {
         (
             "Junior",
-            "186",
-            "asetrate=44100*1.10,aresample=44100,atempo=0.95,highpass=f=110,loudnorm=I=-16:TP=-1.5:LRA=11",
+            "180",
+            "asetrate=22050*1.16,aresample=44100,atempo=0.90,highpass=f=120,treble=g=2.5,volume=1.35",
         )
     };
 
