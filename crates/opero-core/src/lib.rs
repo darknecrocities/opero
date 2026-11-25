@@ -15,6 +15,7 @@ pub mod ollama_runtime;
 pub mod permissions;
 pub mod pipeline;
 pub mod profile;
+pub mod tts;
 pub mod updater;
 
 #[cfg(test)]

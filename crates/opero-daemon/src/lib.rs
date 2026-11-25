@@ -385,6 +385,39 @@ async fn install_update(Json(req): Json<InstallUpdateReq>) -> Result<Json<serde_
     Ok(Json(serde_json::json!({ "result": result })))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SpeakReq {
+    text: String,
+    lang: Option<String>,
+}
+
+async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<SpeakReq>) -> Response {
+    let data_dir = st.store.data_dir.clone();
+    let text = req.text;
+    let lang = req.lang.unwrap_or_else(|| "en-US".to_string());
+    let res = tokio::task::spawn_blocking(move || {
+        opero_core::tts::synthesize_child_speech(&data_dir, &text, &lang)
+    })
+    .await;
+    match res {
+        Ok(Ok((bytes, engine))) => (
+            StatusCode::OK,
+            [
+                (axum::http::header::CONTENT_TYPE, HeaderValue::from_static("audio/mpeg")),
+                (
+                    axum::http::header::HeaderName::from_static("x-opero-tts-engine"),
+                    HeaderValue::from_static(engine),
+                ),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Ok(Err(e)) => ApiError(e).into_response(),
+        Err(e) => ApiError(OperoError::Process(format!("TTS task error: {e}"))).into_response(),
+    }
+}
+
 pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
     let state = Arc::new(AppState { store, speech_enabled });
     let allowed_origins = [
@@ -417,6 +450,7 @@ pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
         .route("/api/v1/exports", post(export_manual))
         .route("/api/v1/updates/check", get(check_updates))
         .route("/api/v1/updates/install", post(install_update))
+        .route("/api/v1/speech/speak", post(speak_child_voice))
         .layer(RequestBodyLimitLayer::new(1024 * 100))
         .with_state(state.clone())
         .merge(analyzer_routes::router(state.clone()))

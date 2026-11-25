@@ -25,16 +25,7 @@ export const OnboardingPrivacyStep: React.FC<OnboardingPrivacyStepProps> = ({
         gap: '16px',
       }}
     >
-      <h2
-        style={{
-          margin: 0,
-          fontFamily: 'var(--font-display)',
-          fontSize: '25px',
-          fontWeight: 700,
-          letterSpacing: '-0.03em',
-          color: 'var(--ink)',
-        }}
-      >
+      <h2 className="onboard-playful-heading" style={{ fontSize: '28px' }}>
         {notice.heading}
       </h2>
 
