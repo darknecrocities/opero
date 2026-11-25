@@ -16,7 +16,8 @@ import {
 } from './onboardingSteps';
 import {
   buildDynamicPeroLine,
-  prefetchPeroVoice,
+  bundledClipPathForStep,
+  prefetchPeroClip,
   speakPeroDynamic,
   stopPeroVoice,
   type PeroVoiceLang,
@@ -47,19 +48,15 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   useEffect(() => {
     if (!soundEnabled) return;
-    const timer = setTimeout(() => {
-      if (step === 0) prefetchPeroVoice('Opero!', 'en-US');
-      const ctx = { step, name, occupation, personality, privacyAccepted };
-      prefetchPeroVoice(buildDynamicPeroLine(ctx, 'en-US'), 'en-US');
-      prefetchPeroVoice(buildDynamicPeroLine(ctx, 'ja-JP'), 'ja-JP');
-    }, 260);
-    return () => clearTimeout(timer);
-  }, [step, name, occupation, personality, privacyAccepted, soundEnabled]);
+    if (step === 0) prefetchPeroClip('/audio/pero/welcome-opero.mp3');
+    prefetchPeroClip(bundledClipPathForStep(step, 'en-US'));
+    prefetchPeroClip(bundledClipPathForStep(step, 'ja-JP'));
+  }, [step, soundEnabled]);
 
   useEffect(() => {
     if (step !== 0 || introPlayedRef.current || !soundEnabled) return;
     introPlayedRef.current = true;
-    void speakPeroDynamic('Opero!', 'en-US', soundEnabled);
+    void speakPeroDynamic('Opero!', 'en-US', soundEnabled, '/audio/pero/welcome-opero.mp3', false);
   }, [step, soundEnabled]);
 
   useEffect(() => () => stopPeroVoice(), []);
@@ -116,8 +113,18 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     setSpokenLine({ text: line, lang: voiceLang });
     setBoopTick((t) => t + 1);
     if (step === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
+    const hasPersonalInput =
+      (step === 1 && name.trim().length > 0) ||
+      (step === 2 && occupation.trim().length > 0) ||
+      (step === 6 && name.trim().length > 0);
     playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
-    void speakPeroDynamic(line, voiceLang, soundEnabled);
+    void speakPeroDynamic(
+      line,
+      voiceLang,
+      soundEnabled,
+      bundledClipPathForStep(step, voiceLang),
+      hasPersonalInput,
+    );
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -291,7 +298,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
               <h1
                 aria-label="Opero"
-                onClick={() => void speakPeroDynamic('Opero!', 'en-US', soundEnabled)}
+                onClick={() => void speakPeroDynamic('Opero!', 'en-US', soundEnabled, '/audio/pero/welcome-opero.mp3', false)}
                 className="onboard-playful-wordmark"
               >
                 {WORDMARK_LETTERS.map((ch, idx) => (

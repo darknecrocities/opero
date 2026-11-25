@@ -15,7 +15,7 @@ const DAEMON_PORT = (import.meta.env?.VITE_OPERO_DAEMON_PORT as string | undefin
 const SPEAK_ENDPOINT = `http://127.0.0.1:${DAEMON_PORT}/api/v1/speech/speak`;
 
 const audioBufferCache = new Map<string, ArrayBuffer>();
-const inflightPrefetch = new Map<string, Promise<ArrayBuffer | null>>();
+const inflightFetch = new Map<string, Promise<ArrayBuffer | null>>();
 
 let voiceAudioCtx: AudioContext | null = null;
 let activeSourceNode: AudioBufferSourceNode | null = null;
@@ -31,8 +31,10 @@ function getVoiceAudioContext(): AudioContext | null {
   return voiceAudioCtx;
 }
 
-function cacheKey(text: string, lang: PeroVoiceLang): string {
-  return `${lang}::${text.trim()}`;
+export function bundledClipPathForStep(step: number, lang: PeroVoiceLang): string {
+  const clamped = Math.max(0, Math.min(6, step));
+  const suffix = lang === 'ja-JP' ? 'ja' : 'en';
+  return `/audio/pero/step-${clamped}-${suffix}.mp3`;
 }
 
 export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLang): string {
@@ -87,45 +89,62 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
   }
 }
 
-async function fetchSpeechBytes(text: string, lang: PeroVoiceLang): Promise<ArrayBuffer | null> {
-  const key = cacheKey(text, lang);
-  const cached = audioBufferCache.get(key);
+async function fetchBundledClip(path: string): Promise<ArrayBuffer | null> {
+  const cached = audioBufferCache.get(path);
   if (cached) return cached;
-
-  const existing = inflightPrefetch.get(key);
+  const existing = inflightFetch.get(path);
   if (existing) return existing;
 
   const job = (async (): Promise<ArrayBuffer | null> => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
     try {
-      const res = await fetch(SPEAK_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, lang }),
-        signal: controller.signal,
-      });
-      if (!res.ok || res.status === 204) return null;
+      const res = await fetch(path);
+      if (!res.ok) return null;
       const bytes = await res.arrayBuffer();
       if (bytes.byteLength < 256) return null;
-      if (audioBufferCache.size > 40) audioBufferCache.clear();
-      audioBufferCache.set(key, bytes);
+      audioBufferCache.set(path, bytes);
       return bytes;
     } catch {
       return null;
     } finally {
-      clearTimeout(timer);
-      inflightPrefetch.delete(key);
+      inflightFetch.delete(path);
     }
   })();
 
-  inflightPrefetch.set(key, job);
+  inflightFetch.set(path, job);
   return job;
 }
 
-export function prefetchPeroVoice(text: string, lang: PeroVoiceLang): void {
-  if (!text.trim()) return;
-  void fetchSpeechBytes(text, lang);
+async function fetchLiveNeuralSpeech(text: string, lang: PeroVoiceLang): Promise<ArrayBuffer | null> {
+  const key = `neural::${lang}::${text.trim()}`;
+  const cached = audioBufferCache.get(key);
+  if (cached) return cached;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3500);
+  try {
+    const res = await fetch(SPEAK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang }),
+      signal: controller.signal,
+    });
+    // Only use daemon output when it comes from the live Kokoro-82M neural server (never robotic OS say)
+    const engine = res.headers.get('x-opero-tts-engine');
+    if (!res.ok || res.status === 204 || engine !== 'loopback-tts') return null;
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength < 256) return null;
+    audioBufferCache.set(key, bytes);
+    return bytes;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function prefetchPeroClip(bundledPath: string): void {
+  if (!bundledPath) return;
+  void fetchBundledClip(bundledPath);
 }
 
 export function stopPeroVoice(): void {
@@ -135,37 +154,32 @@ export function stopPeroVoice(): void {
       activeSourceNode.stop();
       activeSourceNode.disconnect();
     } catch {
-      // Node may already have ended
+      // Node already stopped
     }
     activeSourceNode = null;
   }
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      // Ignore speechSynthesis errors in restricted environments
-    }
-  }
 }
 
-function speakWithWebSpeechFallback(text: string, lang: PeroVoiceLang): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+async function playAudioBytes(rawBytes: ArrayBuffer, token: number): Promise<boolean> {
   try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = lang;
-    utter.pitch = 1.65;
-    utter.rate = 1.06;
-    const voices = window.speechSynthesis.getVoices();
-    const prefix = lang.slice(0, 2).toLowerCase();
-    const match =
-      voices.find((v) => v.name.toLowerCase().includes('junior') && prefix === 'en') ??
-      voices.find((v) => v.name.toLowerCase().includes('kyoko') && prefix === 'ja') ??
-      voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
-    if (match) utter.voice = match;
-    window.speechSynthesis.speak(utter);
+    const ctx = getVoiceAudioContext();
+    if (!ctx) return false;
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+    const decoded = await ctx.decodeAudioData(rawBytes.slice(0));
+    if (token !== activePlayToken) return false;
+    const source = ctx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(ctx.destination);
+    source.onended = () => {
+      if (activeSourceNode === source) activeSourceNode = null;
+    };
+    activeSourceNode = source;
+    source.start(0);
+    return true;
   } catch {
-    // Ignore headless speech synthesis errors
+    return false;
   }
 }
 
@@ -173,40 +187,27 @@ export async function speakPeroDynamic(
   text: string,
   lang: PeroVoiceLang,
   enabled: boolean,
+  bundledFallbackPath: string,
+  preferDynamicNeural = false,
 ): Promise<boolean> {
   if (!enabled || !text.trim()) return false;
   stopPeroVoice();
   const token = activePlayToken;
 
-  const rawBytes = await fetchSpeechBytes(text, lang);
-  if (token !== activePlayToken) return false;
-
-  if (rawBytes) {
-    try {
-      const ctx = getVoiceAudioContext();
-      if (ctx) {
-        if (ctx.state === 'suspended') {
-          await ctx.resume();
-        }
-        const decoded = await ctx.decodeAudioData(rawBytes.slice(0));
-        if (token !== activePlayToken) return false;
-        const source = ctx.createBufferSource();
-        source.buffer = decoded;
-        source.connect(ctx.destination);
-        source.onended = () => {
-          if (activeSourceNode === source) activeSourceNode = null;
-        };
-        activeSourceNode = source;
-        source.start(0);
-        return true;
-      }
-    } catch {
-      // Fall through to Web Speech fallback if Web Audio decode fails
+  // For personalized lines (user's typed name/role), try live Kokoro-82M neural server first
+  if (preferDynamicNeural) {
+    const neuralBytes = await fetchLiveNeuralSpeech(text, lang);
+    if (token !== activePlayToken) return false;
+    if (neuralBytes) {
+      return playAudioBytes(neuralBytes, token);
     }
   }
 
-  if (token === activePlayToken) {
-    speakWithWebSpeechFallback(text, lang);
+  // Otherwise play the bundled Kokoro-82M neural child MP3 instantaneously (zero robotic voice!)
+  const clipBytes = await fetchBundledClip(bundledFallbackPath);
+  if (token !== activePlayToken) return false;
+  if (clipBytes) {
+    return playAudioBytes(clipBytes, token);
   }
   return false;
 }
