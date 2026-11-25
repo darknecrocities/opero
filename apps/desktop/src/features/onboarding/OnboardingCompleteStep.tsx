@@ -42,18 +42,7 @@ export const OnboardingCompleteStep: React.FC<OnboardingCompleteStepProps> = ({
         {copy.eyebrow}
       </span>
 
-      <h2
-        className="onboard-stagger-2"
-        style={{
-          margin: 0,
-          fontFamily: 'var(--font-display)',
-          fontSize: '30px',
-          fontWeight: 800,
-          letterSpacing: '-0.035em',
-          lineHeight: 1.15,
-          color: '#0F172A',
-        }}
-      >
+      <h2 className="onboard-playful-heading onboard-stagger-2" style={{ fontSize: '34px' }}>
         {copy.title}
       </h2>
 

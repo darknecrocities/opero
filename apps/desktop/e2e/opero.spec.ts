@@ -13,13 +13,20 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    // 1. Welcome Splash + 4-Step Blue-Ball Onboarding (handle either fresh or already-completed DB)
+    // 1. Welcome Splash + 7-Screen Playful Onboarding (EN -> JA tap voiceover cycle + privacy + confetti)
     const dialog = page.getByRole('dialog', { name: 'OPERO Welcome Onboarding' });
     if (await dialog.isVisible({ timeout: 2500 }).catch(() => false)) {
       await expect(page.getByRole('heading', { name: 'Opero', exact: true })).toBeVisible();
+      await expect(page.getByTestId('pero-click-cue')).toContainText('hey! click me');
+      await page.getByRole('button', { name: /Interact with Pero/i }).click();
+      await expect(page.getByTestId('pero-click-cue')).toContainText("Hi! I'm Pero! Welcome to Opero!");
+      await page.getByRole('button', { name: /Interact with Pero/i }).click();
+      await expect(page.getByTestId('pero-click-cue')).toContainText('やっほー！ペロだよ！');
       await page.getByRole('button', { name: /Get Started/i }).click();
       await expect(page.getByRole('progressbar', { name: 'Onboarding setup progress' })).toBeVisible();
       await page.getByLabel('Your name').fill('Arron');
+      await page.getByRole('button', { name: /Interact with Pero/i }).click();
+      await expect(page.getByTestId('pero-click-cue')).toContainText('Ooh, hi Arron!');
       await page.getByRole('button', { name: /Continue/i }).click();
       await page.getByLabel('Your occupation').fill('Software Intern');
       await page.getByRole('button', { name: /Continue/i }).click();

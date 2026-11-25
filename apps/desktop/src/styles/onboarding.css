@@ -347,6 +347,39 @@
   pointer-events: none;
 }
 
+.onboard-playful-wordmark {
+  margin: 0;
+  font-family: var(--font-playful);
+  font-size: 68px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #0f172a;
+  cursor: pointer;
+  user-select: none;
+}
+
+.onboard-playful-heading {
+  margin: 0;
+  font-family: var(--font-playful);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: #0f172a;
+}
+
+.onboard-click-cue {
+  font-family: var(--font-hand);
+  font-size: 20px;
+  font-weight: 400;
+  color: #8c8881;
+  letter-spacing: 0.01em;
+  min-height: 26px;
+  max-width: 420px;
+  line-height: 1.25;
+}
+
 .onboard-boop-spark {
   position: absolute;
   top: 48%;
