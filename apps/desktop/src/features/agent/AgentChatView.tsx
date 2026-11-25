@@ -35,6 +35,7 @@ export const AgentChatView: React.FC = () => {
   const [startingRuntime, setStartingRuntime] = useState(false);
   const [input, setInput] = useState('');
   const [optimisticPrompt, setOptimisticPrompt] = useState<string | null>(null);
+  const [animatingMsgId, setAnimatingMsgId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -100,6 +101,7 @@ export const AgentChatView: React.FC = () => {
         locale: uiLocale,
         preferredModel: selectedOllamaTag,
       });
+      setAnimatingMsgId(resp.message.id);
       await refreshThreads(resp.threadId);
       if (resp.modelLive) void refreshRuntime();
       playJiggSfx('success', soundEnabled);
@@ -351,7 +353,11 @@ export const AgentChatView: React.FC = () => {
                           {m.content}
                         </div>
                       ) : (
-                        <AgentMessageContent content={m.content} />
+                        <AgentMessageContent
+                          content={m.content}
+                          animateReveal={m.id === animatingMsgId}
+                          onRevealDone={() => setAnimatingMsgId((cur) => (cur === m.id ? null : cur))}
+                        />
                       )}
 
                       {!isUser && m.pendingAction && (

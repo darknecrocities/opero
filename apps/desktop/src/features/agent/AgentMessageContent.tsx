@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function renderInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -9,7 +9,7 @@ function renderInline(text: string): React.ReactNode[] {
 
   while ((match = pattern.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      nodes.push(text.slice(lastIndex, match.index).replace(/\*\*/g, ''));
+      nodes.push(text.slice(lastIndex, match.index).replace(/\*+/g, ''));
     }
     const token = match[0];
     if (token.startsWith('**') && token.endsWith('**')) {
@@ -36,17 +36,57 @@ function renderInline(text: string): React.ReactNode[] {
     lastIndex = pattern.lastIndex;
   }
   if (lastIndex < text.length) {
-    nodes.push(text.slice(lastIndex).replace(/\*\*/g, ''));
+    nodes.push(text.slice(lastIndex).replace(/\*+/g, ''));
   }
   return nodes;
 }
 
 interface AgentMessageContentProps {
   content: string;
+  animateReveal?: boolean;
+  onRevealDone?: () => void;
 }
 
-export const AgentMessageContent: React.FC<AgentMessageContentProps> = ({ content }) => {
-  const lines = content.replace(/\r\n/g, '\n').split('\n');
+export const AgentMessageContent: React.FC<AgentMessageContentProps> = ({
+  content,
+  animateReveal = false,
+  onRevealDone,
+}) => {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const shouldAnimate = animateReveal && !prefersReduced && content.length > 0;
+  const [visibleLen, setVisibleLen] = useState<number>(shouldAnimate ? 0 : content.length);
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      setVisibleLen(content.length);
+      return;
+    }
+    setVisibleLen(0);
+    const step = Math.max(3, Math.ceil(content.length / 75));
+    const timer = window.setInterval(() => {
+      setVisibleLen((prev) => {
+        const next = prev + step;
+        if (next >= content.length) {
+          window.clearInterval(timer);
+          return content.length;
+        }
+        return next;
+      });
+    }, 20);
+    return () => window.clearInterval(timer);
+  }, [content, shouldAnimate]);
+
+  useEffect(() => {
+    if (shouldAnimate && visibleLen >= content.length) {
+      onRevealDone?.();
+    }
+  }, [shouldAnimate, visibleLen, content.length, onRevealDone]);
+
+  const isRevealing = shouldAnimate && visibleLen < content.length;
+  const displayContent = isRevealing ? content.slice(0, visibleLen) : content;
+  const lines = displayContent.replace(/\r\n/g, '\n').split('\n');
   const blocks: React.ReactNode[] = [];
   let i = 0;
 
@@ -191,6 +231,14 @@ export const AgentMessageContent: React.FC<AgentMessageContentProps> = ({ conten
   return (
     <div data-testid="agent-reply-body" style={{ fontSize: '13.5px', lineHeight: 1.65, display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {blocks}
+      {isRevealing && (
+        <span
+          data-testid="agent-typing-cursor"
+          aria-hidden="true"
+          className="pero-typing-dot"
+          style={{ width: '7px', height: '7px', display: 'inline-block', background: 'var(--brand-sky)' }}
+        />
+      )}
     </div>
   );
 };
