@@ -1,4 +1,7 @@
 pub mod agent;
+pub mod agent_action_parser;
+pub mod agent_actions;
+pub mod agent_doc_gen;
 pub mod capture;
 pub mod db;
 pub mod doc_analyzer;

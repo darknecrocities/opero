@@ -4,6 +4,10 @@ use axum::{
     Json, Router,
 };
 use opero_core::agent::{delete_agent_thread, list_agent_threads, run_agent_turn};
+use opero_core::agent_actions::{
+    approve_and_execute_action, cancel_pending_action, get_agent_settings, save_agent_settings,
+    AgentCapabilitiesSettings,
+};
 use opero_core::error::OperoError;
 use opero_core::meeting_audio::probe_audio_capabilities;
 use opero_core::meeting_notes::{
@@ -56,6 +60,37 @@ async fn remove_thread(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     delete_agent_thread(&state.store, &id)?;
     Ok(Json(serde_json::json!({ "deleted": true })))
+}
+
+async fn fetch_agent_settings(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let settings = get_agent_settings(&state.store)?;
+    Ok(Json(serde_json::json!({ "settings": settings })))
+}
+
+async fn update_agent_settings(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<AgentCapabilitiesSettings>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let settings = save_agent_settings(&state.store, req)?;
+    Ok(Json(serde_json::json!({ "settings": settings })))
+}
+
+async fn approve_action(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let action = approve_and_execute_action(&state.store, &id)?;
+    Ok(Json(serde_json::json!({ "action": action })))
+}
+
+async fn cancel_action(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let action = cancel_pending_action(&state.store, &id)?;
+    Ok(Json(serde_json::json!({ "action": action })))
 }
 
 async fn audio_capabilities(State(state): State<Arc<AppState>>) -> Result<Json<serde_json::Value>, ApiError> {
@@ -185,6 +220,9 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/v1/agent/threads", get(list_threads))
         .route("/api/v1/agent/chat", post(chat_turn))
         .route("/api/v1/agent/threads/{id}", delete(remove_thread))
+        .route("/api/v1/agent/settings", get(fetch_agent_settings).put(update_agent_settings))
+        .route("/api/v1/agent/actions/{id}/approve", post(approve_action))
+        .route("/api/v1/agent/actions/{id}/cancel", post(cancel_action))
         .route("/api/v1/meetings/capabilities", get(audio_capabilities))
         .route("/api/v1/meetings", get(list_meetings))
         .route("/api/v1/meetings/start", post(start_meeting))
