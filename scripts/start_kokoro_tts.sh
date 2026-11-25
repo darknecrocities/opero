@@ -40,8 +40,10 @@ def speak(req: SpeakReq):
     is_ja = req.lang.lower().startswith("ja")
     lang_code = "j" if is_ja else "a"
     voice = "jf_alpha" if is_ja else "af_heart"
+    # Gentle, warm, unhurried emotional pacing — zero speed-up or chipmunk pitch shift
+    pace = 0.84 if is_ja else 0.86
     pipe = get_pipeline(lang_code)
-    chunks = [audio for _, _, audio in pipe(req.text, voice=voice, speed=1.06)]
+    chunks = [audio for _, _, audio in pipe(req.text, voice=voice, speed=pace)]
     if not chunks:
         return Response(status_code=500)
     import numpy as np
@@ -50,15 +52,19 @@ def speak(req: SpeakReq):
         sf.write(wf.name, wav, 24000)
         wav_path = wf.name
     mp3_path = wav_path.replace(".wav", ".mp3")
-    # Subtle child formant lift (+14% EN / +18% JA) on 24kHz Kokoro audio
-    mult = "1.18" if is_ja else "1.14"
-    tempo = "0.90" if is_ja else "0.92"
+    warm_filter = (
+        "aresample=44100,"
+        "equalizer=f=240:t=q:w=1.2:g=2.5,"
+        "highshelf=f=6000:g=-2.0,"
+        "acompressor=threshold=-20dB:ratio=2.2:attack=15:release=180,"
+        "loudnorm=I=-16:TP=-1.5:LRA=11"
+    )
     try:
         subprocess.run(
             [
                 "ffmpeg", "-y", "-loglevel", "error", "-i", wav_path,
-                "-af", f"asetrate=24000*{mult},aresample=44100,atempo={tempo},volume=1.25",
-                "-codec:a", "libmp3lame", "-b:a", "96k", mp3_path,
+                "-af", warm_filter,
+                "-codec:a", "libmp3lame", "-b:a", "128k", mp3_path,
             ],
             check=True,
         )
