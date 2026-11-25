@@ -178,6 +178,25 @@ export const operoClient = {
 
   listAnalyzedDocs: () => fetchLocal<{ documents: AnalyzedDocument[] }>('/analyzer/documents'),
 
+  deleteAnalyzedDoc: (docId: string) =>
+    fetchLocal<{ deleted: boolean }>(`/analyzer/documents/${encodeURIComponent(docId)}`, {
+      method: 'DELETE',
+    }),
+
+  reanalyzeDocument: (docId: string, payload: { locale: FirstClassLocale; preferredModel?: string }) =>
+    fetchLocal<{ document: AnalyzedDocument }>(
+      `/analyzer/documents/${encodeURIComponent(docId)}/reanalyze`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      65000,
+    ),
+
+  askAboutDocument: (docId: string, payload: { question: string; locale: FirstClassLocale; preferredModel?: string }) =>
+    fetchLocal<{ answer: string; engineUsed: string }>(
+      `/analyzer/documents/${encodeURIComponent(docId)}/ask`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      65000,
+    ),
+
   getDocumentFileUrl: (docId: string) => `${DAEMON_BASE}/analyzer/documents/${encodeURIComponent(docId)}/file`,
 
   ingestDocument: (payload: {
@@ -190,7 +209,7 @@ export const operoClient = {
     fetchLocal<{ document: AnalyzedDocument }>(
       '/analyzer/ingest',
       { method: 'POST', body: JSON.stringify(payload) },
-      45000,
+      65000,
     ),
 
   explainRegion: (payload: {

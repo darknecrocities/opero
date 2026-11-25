@@ -2,11 +2,14 @@ use axum::{
     extract::{Path, State},
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
-use opero_core::doc_analyzer::{analyze_document_bytes, explain_cropped_region, DocumentAnnotation};
+use opero_core::doc_analyzer::{
+    analyze_document_bytes, explain_cropped_region, summarize_text_with_ollama, DocumentAnnotation,
+};
+use opero_core::doc_analyzer_llm::ask_about_document;
 use opero_core::error::OperoError;
 use opero_core::hardware::{inspect_hardware_profile, pull_curated_ollama_model};
 use opero_core::memory::dual_core::get_memory_stats;
@@ -119,13 +122,16 @@ async fn explain_region(Json(req): Json<ExplainRegionReq>) -> Result<Json<serde_
     if req.excerpt.trim().is_empty() {
         return Err(ApiError(OperoError::Validation("Selected excerpt cannot be empty.".to_string())));
     }
-    let explanation = explain_cropped_region(
-        &req.excerpt,
-        req.context_title.as_deref().unwrap_or("Selected Region"),
-        req.kind.as_deref().unwrap_or("crop"),
-        req.locale.as_deref().unwrap_or("en-US"),
-        req.preferred_model.as_deref(),
-    );
+    let excerpt = req.excerpt;
+    let context_title = req.context_title.unwrap_or_else(|| "Selected Region".to_string());
+    let kind = req.kind.unwrap_or_else(|| "crop".to_string());
+    let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
+    let preferred = req.preferred_model;
+    let explanation = tokio::task::spawn_blocking(move || {
+        explain_cropped_region(&excerpt, &context_title, &kind, &locale, preferred.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Explain region task failed: {e}"))))?;
     Ok(Json(serde_json::json!({ "explanation": explanation })))
 }
 
@@ -142,6 +148,81 @@ async fn save_annotations(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let document = state.store.update_analyzed_annotations(&id, req.annotations)?;
     Ok(Json(serde_json::json!({ "document": document })))
+}
+
+async fn delete_document(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err(ApiError(OperoError::Validation("Invalid document ID.".to_string())));
+    }
+    let deleted = state.store.delete_analyzed_document(&id)?;
+    Ok(Json(serde_json::json!({ "deleted": deleted })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReanalyzeDocReq {
+    locale: Option<String>,
+    preferred_model: Option<String>,
+}
+
+async fn reanalyze_document(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<ReanalyzeDocReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let mut doc = state.store.get_analyzed_document(&id)?;
+    let full_text = doc.blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join("\n");
+    let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
+    let pref = req.preferred_model.clone();
+    let res = tokio::task::spawn_blocking(move || {
+        summarize_text_with_ollama(&full_text, &locale, pref.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Reanalyze task failed: {e}"))))?;
+
+    if let Some((engine, summary, findings)) = res {
+        doc.engine_used = engine;
+        doc.executive_summary = summary;
+        if !findings.is_empty() {
+            doc.key_findings = findings;
+        }
+        state.store.save_analyzed_document(&doc)?;
+    }
+    Ok(Json(serde_json::json!({ "document": doc })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AskDocumentReq {
+    question: String,
+    locale: Option<String>,
+    preferred_model: Option<String>,
+}
+
+async fn ask_document(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<AskDocumentReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if req.question.trim().is_empty() {
+        return Err(ApiError(OperoError::Validation("Question cannot be empty.".to_string())));
+    }
+    let doc = state.store.get_analyzed_document(&id)?;
+    let full_text = doc.blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join("\n");
+    let filename = doc.filename.clone();
+    let question = req.question.trim().to_string();
+    let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
+    let pref = req.preferred_model.clone();
+    let (answer, engine_used) = tokio::task::spawn_blocking(move || {
+        ask_about_document(&filename, &full_text, &question, &locale, pref.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Document Q&A task failed: {e}"))))?;
+
+    Ok(Json(serde_json::json!({ "answer": answer, "engineUsed": engine_used })))
 }
 
 #[derive(Deserialize)]
@@ -219,7 +300,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/v1/models/pull", post(pull_model))
         .route("/api/v1/memory/seed-mmi", post(seed_mmi_memory))
         .route("/api/v1/analyzer/documents", get(list_documents))
+        .route("/api/v1/analyzer/documents/{id}", delete(delete_document))
         .route("/api/v1/analyzer/documents/{id}/file", get(get_document_file))
+        .route("/api/v1/analyzer/documents/{id}/reanalyze", post(reanalyze_document))
+        .route("/api/v1/analyzer/documents/{id}/ask", post(ask_document))
         .route("/api/v1/analyzer/explain-region", post(explain_region))
         .route("/api/v1/analyzer/documents/{id}/annotations", put(save_annotations))
         .route("/api/v1/analyzer/documents/{id}/report", post(compile_report))

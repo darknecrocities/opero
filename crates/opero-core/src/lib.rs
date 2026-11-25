@@ -5,6 +5,7 @@ pub mod agent_doc_gen;
 pub mod capture;
 pub mod db;
 pub mod doc_analyzer;
+pub mod doc_analyzer_llm;
 pub mod doc_analyzer_store;
 pub mod doc_parser;
 pub mod error;

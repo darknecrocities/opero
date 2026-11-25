@@ -64,18 +64,14 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   return (
     <section
       aria-label="Document Annotation Canvas"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        minWidth: 0,
-      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}
     >
+      {/* Clean single-row compact toolbar */}
       <div
         className="glass-regular"
         style={{
           borderRadius: '14px',
-          padding: '8px 12px',
+          padding: '6px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -83,84 +79,63 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
           {tools.map((t) => (
             <button
               key={t.id}
               type="button"
               className={`opero-btn ${activeTool === t.id ? 'primary' : ''}`}
               onClick={() => onSelectTool(t.id)}
-              style={{ minHeight: '32px', padding: '4px 10px', fontSize: '12px' }}
+              style={{ minHeight: '30px', padding: '3px 9px', fontSize: '12px' }}
             >
-              <JiggIcon name={t.icon} size={14} variant="duotone" />
+              <JiggIcon name={t.icon} size={13} variant="duotone" />
               <span>{t.label}</span>
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {canVisualPdf && (
-            <div style={{ display: 'inline-flex', gap: '4px', padding: '2px', borderRadius: '10px', background: 'var(--bg-subtle)' }}>
-              <button
-                type="button"
-                className={`opero-btn ${viewMode === 'preview' ? 'primary' : ''}`}
-                onClick={() => setViewMode('preview')}
-                style={{ minHeight: '26px', padding: '2px 9px', fontSize: '11.5px' }}
-              >
-                Visual Preview
-              </button>
-              <button
-                type="button"
-                className={`opero-btn ${viewMode === 'text' ? 'primary' : ''}`}
-                onClick={() => setViewMode('text')}
-                style={{ minHeight: '26px', padding: '2px 9px', fontSize: '11.5px' }}
-              >
-                Extracted Text
-              </button>
-            </div>
-          )}
-          <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-            {activeTool === 'select'
-              ? 'Click any badge to inspect reasoning'
-              : viewMode === 'preview'
-                ? `Click or drag on the PDF to draw ${activeTool.toUpperCase()} & auto-explain`
-                : `Click any paragraph or table to place ${activeTool.toUpperCase()} & auto-explain`}
-          </span>
-        </div>
+        {canVisualPdf && (
+          <div style={{ display: 'inline-flex', gap: '3px', padding: '2px', borderRadius: '9px', background: 'var(--bg-subtle)' }}>
+            <button
+              type="button"
+              className={`opero-btn ${viewMode === 'preview' ? 'primary' : ''}`}
+              onClick={() => setViewMode('preview')}
+              style={{ minHeight: '26px', padding: '2px 8px', fontSize: '11.5px' }}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              className={`opero-btn ${viewMode === 'text' ? 'primary' : ''}`}
+              onClick={() => setViewMode('text')}
+              style={{ minHeight: '26px', padding: '2px 8px', fontSize: '11.5px' }}
+            >
+              Text
+            </button>
+          </div>
+        )}
       </div>
 
       <div
         style={{
           background: '#FFFFFF',
           border: '1px solid var(--border)',
-          borderRadius: '18px',
-          padding: '18px 20px',
-          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
+          borderRadius: '16px',
+          padding: '16px 18px',
+          boxShadow: '0 6px 20px rgba(15, 23, 42, 0.04)',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
-          maxHeight: '72vh',
+          maxHeight: '76vh',
           overflowY: 'auto',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingBottom: '10px',
-            borderBottom: '1px solid var(--border)',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '15.5px', fontWeight: 700, color: 'var(--ink)' }}>
-              {doc.filename}
-            </div>
-            <div className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-              {doc.fileFormat.toUpperCase()} · {doc.wordCount} words · {doc.detectedLanguages.join(' / ')} · {doc.completenessScore}% {feat.analyzerCompleteSuffix}
-            </div>
+        <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>
+            {doc.filename}
+          </div>
+          <div className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+            {doc.fileFormat.toUpperCase()} · {doc.wordCount} words · {doc.detectedLanguages.join(' / ')} · {doc.completenessScore}% {feat.analyzerCompleteSuffix}
           </div>
         </div>
 
@@ -194,20 +169,16 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                 }}
                 style={{
                   position: 'relative',
-                  padding: primaryAnn ? '12px 14px' : '8px 10px',
-                  borderRadius: '12px',
+                  padding: primaryAnn ? '11px 13px' : '7px 9px',
+                  borderRadius: '11px',
                   cursor: isInteractive ? 'crosshair' : 'default',
                   border: primaryAnn
                     ? `${isSelected ? 2 : 1.5}px ${primaryAnn.kind === 'crop' ? 'dashed' : 'solid'} ${borderCol}`
                     : isInteractive
                       ? '1px dashed var(--brand-sky)'
                       : '1px solid transparent',
-                  background: isSelected
-                    ? 'var(--brand-sky-soft)'
-                    : blk.kind === 'note'
-                      ? '#F4F9FF'
-                      : '#FFFFFF',
-                  transition: 'border-color 160ms ease, background-color 160ms ease',
+                  background: isSelected ? 'var(--brand-sky-soft)' : blk.kind === 'note' ? '#F4F9FF' : '#FFFFFF',
+                  transition: 'border-color 150ms ease, background-color 150ms ease',
                 }}
               >
                 {blkAnns.length > 0 && (

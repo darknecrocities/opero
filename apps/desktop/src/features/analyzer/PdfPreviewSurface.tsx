@@ -54,6 +54,7 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<DragRect | null>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [pageCount, setPageCount] = useState(1);
@@ -81,7 +82,7 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
       })
       .catch(() => {
         if (!cancelled) {
-          setLoadError('Visual PDF preview unavailable for this document. Showing extracted text instead.');
+          setLoadError('Visual PDF preview unavailable for this document.');
           setLoadingPdf(false);
           onFallbackToText();
         }
@@ -141,70 +142,84 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
     };
   };
 
+  // Window-level pointermove/pointerup works reliably in both macOS WKWebView and Chromium
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: PointerEvent) => {
+      const pt = toPct(e.clientX, e.clientY);
+      const next = dragRef.current ? { ...dragRef.current, curX: pt.x, curY: pt.y } : null;
+      dragRef.current = next;
+      setDrag(next);
+    };
+    const onUp = () => {
+      const current = dragRef.current;
+      dragRef.current = null;
+      setDrag(null);
+      if (!current || activeTool === 'select') return;
+
+      const dx = Math.abs(current.curX - current.startX);
+      const dy = Math.abs(current.curY - current.startY);
+      const isClick = dx < 2.2 && dy < 2.2;
+
+      const x = isClick ? Math.max(4, current.startX - 16) : Math.min(current.startX, current.curX);
+      const y = isClick ? Math.max(4, current.startY - 6) : Math.min(current.startY, current.curY);
+      const w = isClick ? 32 : Math.max(8, dx);
+      const h = isClick ? 12 : Math.max(6, dy);
+      const targetX = activeTool === 'arrow' ? (isClick ? Math.min(94, current.startX + 18) : current.curX) : null;
+      const targetY = activeTool === 'arrow' ? (isClick ? Math.min(94, current.startY + 6) : current.curY) : null;
+
+      const ratio = Math.max(0, Math.min(0.85, y / 100));
+      const startIdx = Math.floor(pageText.length * ratio);
+      const excerpt =
+        pageText.slice(startIdx, startIdx + 480).trim() ||
+        `Page ${pageNum} visual region (${Math.round(x)}%, ${Math.round(y)}%)`;
+
+      onPlaceAnnotation({
+        kind: activeTool,
+        x: activeTool === 'arrow' ? current.startX : x,
+        y: activeTool === 'arrow' ? current.startY : y,
+        w,
+        h,
+        targetX,
+        targetY,
+        pageNumber: pageNum,
+        excerpt,
+      });
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [Boolean(drag), activeTool, pageNum, pageText, onPlaceAnnotation]);
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (activeTool === 'select' || busyAnnotate) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
     const pt = toPct(e.clientX, e.clientY);
-    setDrag({ startX: pt.x, startY: pt.y, curX: pt.x, curY: pt.y });
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    const pt = toPct(e.clientX, e.clientY);
-    setDrag((prev) => (prev ? { ...prev, curX: pt.x, curY: pt.y } : null));
-  };
-
-  const handlePointerUp = () => {
-    if (!drag || activeTool === 'select') {
-      setDrag(null);
-      return;
-    }
-    const dx = Math.abs(drag.curX - drag.startX);
-    const dy = Math.abs(drag.curY - drag.startY);
-    const isClick = dx < 2.2 && dy < 2.2;
-
-    const x = isClick ? Math.max(4, drag.startX - 16) : Math.min(drag.startX, drag.curX);
-    const y = isClick ? Math.max(4, drag.startY - 6) : Math.min(drag.startY, drag.curY);
-    const w = isClick ? 32 : Math.max(8, dx);
-    const h = isClick ? 12 : Math.max(6, dy);
-    const targetX = activeTool === 'arrow' ? (isClick ? Math.min(94, drag.startX + 16) : drag.curX) : null;
-    const targetY = activeTool === 'arrow' ? (isClick ? Math.min(94, drag.startY + 6) : drag.curY) : null;
-
-    // Slice page text proportionally to vertical position so Local AI explains the actual region
-    const ratio = Math.max(0, Math.min(0.85, y / 100));
-    const startIdx = Math.floor(pageText.length * ratio);
-    const excerpt = pageText.slice(startIdx, startIdx + 420).trim() || `Page ${pageNum} visual region (${Math.round(x)}%, ${Math.round(y)}%)`;
-
-    setDrag(null);
-    onPlaceAnnotation({
-      kind: activeTool,
-      x: activeTool === 'arrow' ? drag.startX : x,
-      y: activeTool === 'arrow' ? drag.startY : y,
-      w,
-      h,
-      targetX,
-      targetY,
-      pageNumber: pageNum,
-      excerpt,
-    });
+    const next = { startX: pt.x, startY: pt.y, curX: pt.x, curY: pt.y };
+    dragRef.current = next;
+    setDrag(next);
   };
 
   const pageAnns = annotations.filter((a) => a.blockId === `pdf-page-${pageNum}`);
+  const armed = activeTool !== 'select';
 
   if (loadError) {
-    return (
-      <div style={{ padding: '16px', fontSize: '13px', color: 'var(--ink-muted)' }}>
-        {loadError}
-      </div>
-    );
+    return <div style={{ padding: '16px', fontSize: '13px', color: 'var(--ink-muted)' }}>{loadError}</div>;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <div className="mono" style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-          {loadingPdf ? 'Rendering PDF preview...' : `Page ${pageNum} of ${pageCount}`}
-          {busyAnnotate ? ' · Analyzing selected region...' : ''}
+        <div className="mono" style={{ fontSize: '11.5px', color: armed ? 'var(--brand-sky-deep)' : 'var(--ink-muted)', fontWeight: armed ? 600 : 400 }}>
+          {loadingPdf
+            ? 'Rendering PDF preview...'
+            : armed
+              ? `Page ${pageNum} / ${pageCount} · Click or drag to draw ${activeTool.toUpperCase()}`
+              : `Page ${pageNum} of ${pageCount}`}
         </div>
         {pageCount > 1 && (
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -213,7 +228,7 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
               className="opero-btn"
               disabled={pageNum <= 1}
               onClick={() => setPageNum((p) => Math.max(1, p - 1))}
-              style={{ minHeight: '28px', padding: '2px 10px', fontSize: '12px' }}
+              style={{ minHeight: '26px', padding: '2px 9px', fontSize: '11.5px' }}
             >
               Prev
             </button>
@@ -222,7 +237,7 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
               className="opero-btn"
               disabled={pageNum >= pageCount}
               onClick={() => setPageNum((p) => Math.min(pageCount, p + 1))}
-              style={{ minHeight: '28px', padding: '2px 10px', fontSize: '12px' }}
+              style={{ minHeight: '26px', padding: '2px 9px', fontSize: '11.5px' }}
             >
               Next
             </button>
@@ -234,37 +249,29 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
         ref={overlayRef}
         data-testid="pdf-preview-stage"
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
         style={{
           position: 'relative',
           width: '100%',
           background: '#FFFFFF',
           borderRadius: '12px',
           overflow: 'hidden',
-          border: '1px solid var(--border)',
-          cursor: activeTool === 'select' ? 'default' : 'crosshair',
+          border: armed ? '2px solid var(--brand-sky)' : '1px solid var(--border)',
+          cursor: armed ? 'crosshair' : 'default',
           userSelect: 'none',
           touchAction: 'none',
+          transition: 'border-color 140ms ease',
         }}
       >
         <canvas
           ref={canvasRef}
           data-testid="pdf-preview-canvas"
-          style={{ display: 'block', width: '100%', height: 'auto' }}
+          style={{ display: 'block', width: '100%', height: 'auto', pointerEvents: 'none' }}
         />
 
-        {/* Interactive SVG Overlay for Box, Arrow, and Crop annotations */}
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-          }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
         >
           <defs>
             <marker id="opero-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
@@ -279,19 +286,15 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
             const active = ann.id === selectedAnnId;
             const stroke = active ? '#2563EB' : severityStroke(ann.severity);
             if (ann.kind === 'arrow') {
-              const x1 = ann.x;
-              const y1 = ann.y;
-              const x2 = ann.targetX ?? Math.min(94, ann.x + 18);
-              const y2 = ann.targetY ?? Math.min(94, ann.y + 6);
               return (
                 <line
                   key={ann.id}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
+                  x1={ann.x}
+                  y1={ann.y}
+                  x2={ann.targetX ?? Math.min(94, ann.x + 18)}
+                  y2={ann.targetY ?? Math.min(94, ann.y + 6)}
                   stroke={stroke}
-                  strokeWidth={active ? '0.8' : '0.6'}
+                  strokeWidth={active ? '0.85' : '0.65'}
                   markerEnd={active ? 'url(#opero-arrow-head-active)' : 'url(#opero-arrow-head)'}
                 />
               );
@@ -303,16 +306,15 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
                 y={ann.y}
                 width={Math.max(4, ann.w)}
                 height={Math.max(3, ann.h)}
-                fill={active ? 'rgba(105, 188, 252, 0.22)' : 'rgba(105, 188, 252, 0.08)'}
+                fill={active ? 'rgba(105, 188, 252, 0.24)' : 'rgba(105, 188, 252, 0.10)'}
                 stroke={stroke}
-                strokeWidth={active ? '0.65' : '0.45'}
+                strokeWidth={active ? '0.7' : '0.5'}
                 strokeDasharray={ann.kind === 'crop' ? '1.6 1.2' : undefined}
                 rx="0.8"
               />
             );
           })}
 
-          {/* Live Drag Preview */}
           {drag && activeTool === 'arrow' && (
             <line
               x1={drag.startX}
@@ -320,7 +322,7 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
               x2={drag.curX}
               y2={drag.curY}
               stroke="#2563EB"
-              strokeWidth="0.7"
+              strokeWidth="0.75"
               strokeDasharray="1.2 0.8"
               markerEnd="url(#opero-arrow-head-active)"
             />
@@ -331,29 +333,29 @@ export const PdfPreviewSurface: React.FC<PdfPreviewSurfaceProps> = ({
               y={Math.min(drag.startY, drag.curY)}
               width={Math.abs(drag.curX - drag.startX)}
               height={Math.abs(drag.curY - drag.startY)}
-              fill="rgba(105, 188, 252, 0.24)"
+              fill="rgba(105, 188, 252, 0.26)"
               stroke="#2563EB"
-              strokeWidth="0.6"
+              strokeWidth="0.65"
               strokeDasharray={activeTool === 'crop' ? '1.6 1.2' : undefined}
             />
           )}
         </svg>
 
-        {/* Clickable Numbered Annotation Badges */}
         {pageAnns.map((ann) => {
           const active = ann.id === selectedAnnId;
           return (
             <button
               key={`badge-${ann.id}`}
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectAnnotation(ann.id);
               }}
               style={{
                 position: 'absolute',
-                left: `${Math.max(1, Math.min(93, ann.x))}%`,
-                top: `${Math.max(1, Math.min(93, ann.y))}%`,
+                left: `${Math.max(2, Math.min(93, ann.x))}%`,
+                top: `${Math.max(2, Math.min(93, ann.y))}%`,
                 transform: 'translate(-20%, -50%)',
                 padding: '2px 7px',
                 borderRadius: '999px',
