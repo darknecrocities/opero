@@ -105,7 +105,7 @@ async function fetchSpeechBytes(text: string, lang: PeroVoiceLang): Promise<Arra
         body: JSON.stringify({ text, lang }),
         signal: controller.signal,
       });
-      if (!res.ok) return null;
+      if (!res.ok || res.status === 204) return null;
       const bytes = await res.arrayBuffer();
       if (bytes.byteLength < 256) return null;
       if (audioBufferCache.size > 40) audioBufferCache.clear();
