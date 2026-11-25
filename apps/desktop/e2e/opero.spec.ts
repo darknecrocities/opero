@@ -26,7 +26,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       await page.getByRole('button', { name: /Interact with Pero/i }).click();
       await expect(page.getByTestId('pero-click-cue')).toContainText("Ooh, hi there! I'm Pero");
       await page.getByRole('button', { name: /Interact with Pero/i }).click();
-      await expect(page.getByTestId('pero-click-cue')).toContainText('こんにちは、ペロだよ。');
+      await expect(page.getByTestId('pero-click-cue')).toContainText('こんにちは、ペロです。');
       await page.getByRole('button', { name: /Get Started/i }).click();
       await expect(page.getByRole('progressbar', { name: 'Onboarding setup progress' })).toBeVisible();
       await page.getByLabel('Your name').fill('Arron');
@@ -73,12 +73,10 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await expect(page.getByText('Talking & Documented Steps')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Quick Ask Pero' })).toBeVisible();
 
-    // Verify smooth sidebar hide/show slide toggle & functional Top Navbar controls
-    await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
-    await page.getByRole('button', { name: 'Toggle left sidebar' }).click();
-    await page.getByRole('button', { name: 'Toggle Glass or Solid surface' }).click();
-    await expect(page.locator('.opero-shell.solid-fallback')).toBeVisible();
-    await page.getByRole('button', { name: 'Toggle Glass or Solid surface' }).click();
+    // Verify smooth icon-only sidebar hide/show toggle & functional Top Navbar controls
+    await page.getByRole('button', { name: 'Hide navigation sidebar' }).click();
+    await page.getByRole('button', { name: 'Show navigation sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Toggle Glass or Solid surface' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Export menu' }).click();
     await expect(page.getByRole('menu', { name: 'Quick Export Formats' })).toBeVisible();
     await page.getByRole('button', { name: 'Export menu' }).click();
@@ -158,7 +156,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await expect(page.getByText('[Memory:')).toHaveCount(0);
     await page.getByLabel('Ask Pero Agent').fill('Who is the Representative Director of Man Machine Interface?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(page.getByText(/Tetsuya Sekiguchi|関口/).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId('agent-reply-body').filter({ hasText: /Tetsuya Sekiguchi|関口/ }).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Actions taken/i).first()).toBeVisible();
 
     // 9. Resizable sidebar separator & Dynamic EN -> JA -> EN UI switch

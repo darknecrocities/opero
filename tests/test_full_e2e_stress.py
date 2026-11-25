@@ -123,10 +123,15 @@ class TestOperoStressAndSecurity(unittest.TestCase):
         self.assertLess(stats["estimatedRamBytes"], 8 * 1024 * 1024)
 
     def test_03_security_payload_cap_rfc7807_and_irreversible_redaction(self):
-        # 1. Oversized payload (> 100 KB) must return 413
-        giant = {"title": "A" * (110 * 1024), "owner": "X", "department": "Y", "defaultLocale": "en-US"}
-        st, _, _ = api_call("POST", "/projects", giant)
-        self.assertEqual(st, 413)
+        # 1. Oversized payload (> 100 KB) must return 413 (use curl to avoid macOS urllib Errno 54 race on early 413 close)
+        giant = json.dumps({"title": "A" * (110 * 1024), "owner": "X", "department": "Y", "defaultLocale": "en-US"}).encode("utf-8")
+        res = subprocess.run(
+            ["curl", "-sS", "-o", os.devnull, "-w", "%{http_code}", "--max-time", "10", "-H", "Content-Type: application/json", "--data-binary", "@-", f"{BASE}/projects"],
+            input=giant,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(res.stdout.decode("utf-8").strip(), "413")
 
         # 2. Not-found session returns RFC 7807 Problem Details + X-Correlation-ID
         st, headers, err = api_call("POST", "/sessions/nonexistent-id/status", {"status": "completed"})
