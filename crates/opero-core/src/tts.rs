@@ -1,11 +1,15 @@
+use reqwest::blocking::Client;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Once;
+use std::time::Duration;
 
 use crate::error::{OperoError, OperoResult};
 use crate::pipeline::validate_loopback_url;
 
 const MAX_TTS_CHARS: usize = 220;
+static KOKORO_AUTOSTART: Once = Once::new();
 
 pub fn sanitize_tts_text(raw: &str) -> String {
     raw.chars()
@@ -21,11 +25,28 @@ pub fn sanitize_tts_text(raw: &str) -> String {
 
 pub fn tts_cache_key(text: &str, lang: &str) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"opero-child-tts-v2:");
+    hasher.update(b"opero-child-tts-v3-kokoro:");
     hasher.update(lang.as_bytes());
     hasher.update(b":");
     hasher.update(text.as_bytes());
     hex::encode(hasher.finalize())
+}
+
+fn maybe_autostart_kokoro_server() {
+    KOKORO_AUTOSTART.call_once(|| {
+        let candidates = [
+            PathBuf::from("scripts/start_kokoro_tts.sh"),
+            PathBuf::from("/Users/arronkianparejas/opero/scripts/start_kokoro_tts.sh"),
+        ];
+        if let Some(script) = candidates.into_iter().find(|p| p.exists()) {
+            let _ = Command::new("/bin/bash")
+                .arg(script)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
+        }
+    });
 }
 
 fn try_external_loopback_tts(text: &str, lang: &str) -> Option<Vec<u8>> {
@@ -37,37 +58,30 @@ fn try_external_loopback_tts(text: &str, lang: &str) -> Option<Vec<u8>> {
     if trimmed.is_empty() || validate_loopback_url(trimmed).is_err() {
         return None;
     }
+    let client = Client::builder()
+        .connect_timeout(Duration::from_millis(500))
+        .timeout(Duration::from_secs(12))
+        .build()
+        .ok()?;
     let payload = serde_json::json!({
         "text": text,
         "lang": lang,
         "style": "child",
-    })
-    .to_string();
+    });
 
-    let out = Command::new("curl")
-        .args([
-            "-sS",
-            "--connect-timeout",
-            "0.25",
-            "--max-time",
-            "3",
-            "-X",
-            "POST",
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            &payload,
-            trimmed,
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-    if out.status.success() && out.stdout.len() > 256 {
-        Some(out.stdout)
-    } else {
-        None
+    if let Ok(resp) = client.post(trimmed).json(&payload).send() {
+        if resp.status().is_success() {
+            if let Ok(bytes) = resp.bytes() {
+                if bytes.len() > 256 {
+                    return Some(bytes.to_vec());
+                }
+            }
+        }
     }
+
+    // Auto-start local Kokoro-82M neural child-voice server if not running yet
+    maybe_autostart_kokoro_server();
+    None
 }
 
 #[cfg(target_os = "macos")]

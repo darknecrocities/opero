@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate OPERO's 7 bundled polite Japanese (です・ます調) onboarding voiceover MP3s
-using Kokoro-82M (Apache 2.0, voice jf_alpha) with the same warm EQ filter as start_kokoro_tts.sh.
-
-Run via:
-  uv run --with "kokoro>=0.9.4" --with "misaki[ja]" --with "soundfile" \
-    --with "fugashi" --with "unidic-lite" --with "jaconv" --with "mojimoji" \
-    python3 scripts/regenerate_pero_ja_voices.py
+"""Regenerate OPERO's bundled neural child-voice onboarding MP3s (EN af_sky & polite JA jf_nezumi)
+using Kokoro-82M (Apache 2.0) with the exact same child-voice filter as start_kokoro_tts.sh.
 """
 import os
 import subprocess
@@ -32,28 +27,31 @@ POLITE_JA_LINES = [
     (6, "準備が整いました。いつでも始められます。"),
 ]
 
-WARM_FILTER = (
-    "aresample=44100,"
-    "equalizer=f=240:t=q:w=1.2:g=2.5,"
-    "highshelf=f=6000:g=-2.0,"
-    "acompressor=threshold=-20dB:ratio=2.2:attack=15:release=180,"
+CHILD_EN_LINES = [
+    (0, "Ooh, hi there! I'm Pero — welcome to Opero."),
+    (1, "Ooh, hi! What should I call you?"),
+    (2, "Ooh, what kind of work do you do?"),
+    (3, "Got it — I'll speak in a Calm and Concise tone."),
+    (4, "Whenever you're ready — I speak English, Japanese, and Filipino."),
+    (5, "Don't worry — everything stays private right here on your device."),
+    (6, "Yay! Everything is ready whenever you are."),
+]
+
+CHILD_FILTER = (
+    "asetrate=24000*1.11,aresample=44100,atempo=0.90,"
+    "equalizer=f=260:t=q:w=1.2:g=2.0,"
+    "highshelf=f=6500:g=-1.5,"
     "loudnorm=I=-16:TP=-1.5:LRA=11"
 )
 
 
-def main() -> None:
-    default_hf = str(Path.home() / "Library" / "Application Support" / "OPERO" / "hf-cache")
-    cur_hf = os.environ.get("HF_HOME", "")
-    if not cur_hf or not os.access(Path(cur_hf).parent, os.W_OK):
-        os.environ["HF_HOME"] = default_hf
-        os.environ["HUGGINGFACE_HUB_CACHE"] = str(Path(default_hf) / "hub")
-    pipe = KPipeline(lang_code="j", repo_id="hexgrad/Kokoro-82M")
-    for step, text in POLITE_JA_LINES:
-        chunks = [audio for _, _, audio in pipe(text, voice="jf_alpha", speed=0.84)]
+def synth_batch(pipe: KPipeline, lines: list[tuple[int, str]], voice: str, speed: float, suffix: str) -> None:
+    for step, text in lines:
+        chunks = [audio for _, _, audio in pipe(text, voice=voice, speed=speed)]
         if not chunks:
-            raise RuntimeError(f"Kokoro returned empty audio for step {step}")
+            raise RuntimeError(f"Kokoro returned empty audio for step {step} ({suffix})")
         wav = np.concatenate(chunks)
-        out_mp3 = OUT_DIR / f"step-{step}-ja.mp3"
+        out_mp3 = OUT_DIR / f"step-{step}-{suffix}.mp3"
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as wf:
             wav_path = wf.name
         try:
@@ -61,7 +59,7 @@ def main() -> None:
             subprocess.run(
                 [
                     "ffmpeg", "-y", "-loglevel", "error", "-i", wav_path,
-                    "-af", WARM_FILTER,
+                    "-af", CHILD_FILTER,
                     "-codec:a", "libmp3lame", "-b:a", "128k",
                     str(out_mp3),
                 ],
@@ -71,6 +69,18 @@ def main() -> None:
         finally:
             if os.path.exists(wav_path):
                 os.remove(wav_path)
+
+
+def main() -> None:
+    default_hf = str(Path.home() / "Library" / "Application Support" / "OPERO" / "hf-cache")
+    os.environ["HF_HOME"] = default_hf
+    os.environ["HUGGINGFACE_HUB_CACHE"] = str(Path(default_hf) / "hub")
+
+    pipe_ja = KPipeline(lang_code="j", repo_id="hexgrad/Kokoro-82M")
+    synth_batch(pipe_ja, POLITE_JA_LINES, voice="jf_nezumi", speed=0.90, suffix="ja")
+
+    pipe_en = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+    synth_batch(pipe_en, CHILD_EN_LINES, voice="af_sky", speed=0.94, suffix="en")
 
 
 if __name__ == "__main__":

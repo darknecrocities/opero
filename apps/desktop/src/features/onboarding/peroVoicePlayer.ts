@@ -155,9 +155,11 @@ async function fetchLiveNeuralSpeech(text: string, lang: PeroVoiceLang): Promise
       body: JSON.stringify({ text, lang }),
       signal: controller.signal,
     });
-    // Accept any valid local daemon TTS engine (Kokoro loopback, local disk cache, or macOS native voice)
+    // Only play natural neural child voice (Kokoro-82M loopback or cached Kokoro) — never robotic OS say
     const engine = res.headers.get('x-opero-tts-engine');
-    if (!res.ok || res.status === 204 || !engine) return null;
+    if (!res.ok || res.status === 204 || (engine !== 'loopback-tts' && engine !== 'local-cache')) {
+      return null;
+    }
     const bytes = await res.arrayBuffer();
     if (bytes.byteLength < 256) return null;
     audioBufferCache.set(key, bytes);
@@ -243,26 +245,13 @@ export async function speakPeroDynamic(
     void syncCtx.resume().catch(() => {});
   }
 
-  // For personalized lines (user's typed name, role, style, or privacy), synthesize dynamically so their exact input is spoken
+  // For personalized lines (user's typed name, role, style, or privacy), synthesize dynamically with Kokoro-82M neural child voice
   if (preferDynamicNeural) {
     const neuralBytes = await fetchLiveNeuralSpeech(text, lang);
     if (token !== activePlayToken) return false;
     if (neuralBytes) {
       const ok = await playAudioBytes(neuralBytes, token);
       if (ok) return true;
-    }
-    // Cross-platform fallback (e.g. Windows without Kokoro server): browser speechSynthesis speaks exact personalized text
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = lang;
-        utter.rate = 0.96;
-        window.speechSynthesis.speak(utter);
-        return true;
-      } catch {
-        // Fall through to bundled clip
-      }
     }
   }
 

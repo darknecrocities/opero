@@ -1,19 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Optional ElevenLabs-grade Local Neural TTS Server for OPERO (Kokoro-82M, Apache 2.0)
-# Runs strictly on loopback http://127.0.0.1:4320/speak — auto-detected by opero-core/src/tts.rs.
+# Local Neural Child-Voice TTS Server for OPERO (Kokoro-82M, Apache 2.0)
+# Runs strictly on loopback http://127.0.0.1:4320/speak — auto-started by opero-core/src/tts.rs.
 # Usage: bash scripts/start_kokoro_tts.sh
 
 PORT="${OPERO_KOKORO_PORT:-4320}"
-export HF_HOME="${HF_HOME:-$HOME/Library/Application Support/OPERO/hf-cache}"
-echo "Starting OPERO Kokoro-82M (Apache 2.0) local neural child-voice server on http://127.0.0.1:${PORT}/speak ..."
+DEFAULT_HF="$HOME/Library/Application Support/OPERO/hf-cache"
+mkdir -p "$DEFAULT_HF/hub"
+export HF_HOME="$DEFAULT_HF"
+export HUGGINGFACE_HUB_CACHE="$DEFAULT_HF/hub"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+echo "Starting OPERO Kokoro-82M (Apache 2.0) neural child-voice server on http://127.0.0.1:${PORT}/speak ..."
 
 uv run --with "kokoro>=0.9.4" --with "misaki[ja]" --with "soundfile" --with "fugashi" --with "unidic-lite" --with "jaconv" --with "mojimoji" --with "fastapi" --with "uvicorn" python3 - <<'PY'
-import io
 import os
 import subprocess
 import tempfile
+import numpy as np
 import soundfile as sf
 import unidic, unidic_lite
 unidic.DICDIR = unidic_lite.DICDIR
@@ -22,7 +27,7 @@ from pydantic import BaseModel
 from kokoro import KPipeline
 import uvicorn
 
-app = FastAPI(title="OPERO Local Kokoro-82M Child TTS")
+app = FastAPI(title="OPERO Local Kokoro-82M Neural Child TTS")
 pipelines = {}
 
 def get_pipeline(lang_code: str) -> KPipeline:
@@ -35,35 +40,38 @@ class SpeakReq(BaseModel):
     lang: str = "en-US"
     style: str = "child"
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "engine": "kokoro-82m-child"}
+
 @app.post("/speak")
 def speak(req: SpeakReq):
     is_ja = req.lang.lower().startswith("ja")
     lang_code = "j" if is_ja else "a"
-    voice = "jf_alpha" if is_ja else "af_heart"
-    # Gentle, warm, unhurried emotional pacing — zero speed-up or chipmunk pitch shift
-    pace = 0.84 if is_ja else 0.86
+    # Youthful, bright mascot voices: jf_nezumi (JA) & af_sky (EN)
+    voice = "jf_nezumi" if is_ja else "af_sky"
+    pace = 0.90 if is_ja else 0.94
     pipe = get_pipeline(lang_code)
     chunks = [audio for _, _, audio in pipe(req.text, voice=voice, speed=pace)]
     if not chunks:
         return Response(status_code=500)
-    import numpy as np
     wav = np.concatenate(chunks)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as wf:
         sf.write(wf.name, wav, 24000)
         wav_path = wf.name
     mp3_path = wav_path.replace(".wav", ".mp3")
-    warm_filter = (
-        "aresample=44100,"
-        "equalizer=f=240:t=q:w=1.2:g=2.5,"
-        "highshelf=f=6000:g=-2.0,"
-        "acompressor=threshold=-20dB:ratio=2.2:attack=15:release=180,"
+    # Gentle natural child formant lift (+10% pitch, tempo-compensated) + warm EQ — zero robotic artifacts
+    child_filter = (
+        "asetrate=24000*1.11,aresample=44100,atempo=0.90,"
+        "equalizer=f=260:t=q:w=1.2:g=2.0,"
+        "highshelf=f=6500:g=-1.5,"
         "loudnorm=I=-16:TP=-1.5:LRA=11"
     )
     try:
         subprocess.run(
             [
                 "ffmpeg", "-y", "-loglevel", "error", "-i", wav_path,
-                "-af", warm_filter,
+                "-af", child_filter,
                 "-codec:a", "libmp3lame", "-b:a", "128k", mp3_path,
             ],
             check=True,
