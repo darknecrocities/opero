@@ -52,25 +52,25 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
       case 1:
         return cleanName
           ? `${cleanName}さん、はじめまして。どうぞよろしくお願いいたします。`
-          : 'こんにちは。お名前を教えていただけますか？';
+          : 'こんにちは。お名前を教えていただけますでしょうか？';
       case 2:
         return cleanRole
           ? `${cleanRole}をご担当されているのですね。素敵です。`
           : cleanName
-            ? `${cleanName}さんは、どのようなお仕事をされていますか？`
-            : 'どのようなお仕事をされていますか？';
+            ? `${cleanName}さんは、どのようなお仕事を担当されていますか？`
+            : 'どのようなお仕事を担当されていますか？';
       case 3:
         return cleanName
-          ? `承知しました、${cleanName}さん。${toneJa}でお話しします。`
-          : `承知しました。${toneJa}でお話しします。`;
+          ? `承知いたしました、${cleanName}さん。${toneJa}でお話しします。`
+          : `承知いたしました。${toneJa}でお話しします。`;
       case 4:
         return cleanName
-          ? `${cleanName}さん、英語・日本語・フィリピン語に対応しています。`
-          : '英語・日本語・フィリピン語に対応しています。';
+          ? `${cleanName}さん、英語・日本語・フィリピン語の3言語に対応しています。`
+          : '英語・日本語・フィリピン語の3言語に対応しています。';
       case 5:
         return ctx.privacyAccepted
-          ? 'ありがとうございます。すべて端末内で大切に保護します。'
-          : 'ご安心ください。すべてこの端末内のみで安全に保護します。';
+          ? 'ありがとうございます。すべて端末内で大切に保護いたします。'
+          : 'ご安心ください。すべてこの端末内のみで安全に保護いたします。';
       default:
         return cleanName
           ? `準備が整いました、${cleanName}さん。いつでも始められます。`

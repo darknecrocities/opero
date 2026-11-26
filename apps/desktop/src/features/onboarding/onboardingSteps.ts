@@ -107,7 +107,7 @@ export function getCompletionCopy(locale: FirstClassLocale, rawName: string): Co
   const safeName = rawName.trim() || 'MMI Operator';
   if (locale === 'ja-JP') {
     return {
-      eyebrow: 'セットアップ完了',
+      eyebrow: 'セットアップが完了しました',
       title: `準備が整いました、${safeName}さん。`,
       subtitle: 'すべてローカル完結で、いつでもワークフローを記録・整理できます。',
       replayConfetti: 'もう一度お祝いします',

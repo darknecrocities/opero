@@ -104,7 +104,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   const handlePeroTap = () => {
     const nextTap = stepTapCount + 1;
-    const voiceLang: PeroVoiceLang = nextTap % 2 === 1 ? 'en-US' : 'ja-JP';
+    const voiceLang: PeroVoiceLang =
+      locale === 'ja-JP' ? 'ja-JP' : nextTap % 2 === 1 ? 'en-US' : 'ja-JP';
     const line = buildDynamicPeroLine(
       { step, name, occupation, personality, privacyAccepted },
       voiceLang,
@@ -205,7 +206,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         className="onboard-ghost-btn"
         style={{ position: 'fixed', top: '18px', right: '22px', zIndex: 4, fontSize: '12.5px' }}
       >
-        {soundEnabled ? 'Voice: ON' : 'Voice: OFF'}
+        {locale === 'ja-JP' ? (soundEnabled ? '音声: オン' : '音声: オフ') : soundEnabled ? 'Voice: ON' : 'Voice: OFF'}
       </button>
 
       <div
