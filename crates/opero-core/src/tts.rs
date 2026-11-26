@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::Once;
+use std::sync::{Once, OnceLock};
 use std::time::Duration;
 
 use crate::error::{OperoError, OperoResult};
@@ -11,6 +11,8 @@ use crate::win_process::silent_command;
 
 const MAX_TTS_CHARS: usize = 220;
 static KOKORO_AUTOSTART: Once = Once::new();
+static CACHED_EDGE_PYTHON: OnceLock<Option<&'static str>> = OnceLock::new();
+static CACHED_LOOPBACK_TTS_ENABLED: OnceLock<bool> = OnceLock::new();
 
 pub fn sanitize_tts_text(raw: &str) -> String {
     raw.chars()
@@ -50,7 +52,7 @@ pub fn tts_cache_key(text: &str, lang: &str) -> String {
 
 pub fn tts_cache_key_with_tone(text: &str, lang: &str, tone: Option<&str>) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"opero-child-tts-v4-neural:");
+    hasher.update(b"opero-child-tts-v5-prosody:");
     hasher.update(lang.as_bytes());
     hasher.update(b":");
     hasher.update(normalize_tts_tone(tone).as_bytes());
@@ -61,10 +63,10 @@ pub fn tts_cache_key_with_tone(text: &str, lang: &str, tone: Option<&str>) -> St
 
 fn prosody_for_tone(tone: &str) -> (&'static str, &'static str) {
     match tone {
-        "friendly_guide" => ("+4%", "+3Hz"),
-        "technical_direct" => ("+6%", "-2Hz"),
-        "formal_sop" => ("-6%", "-2Hz"),
-        _ => ("-4%", "-1Hz"),
+        "friendly_guide" => ("+6%", "+6Hz"),
+        "technical_direct" => ("+10%", "-4Hz"),
+        "formal_sop" => ("-10%", "-5Hz"),
+        _ => ("-6%", "-2Hz"),
     }
 }
 
@@ -106,11 +108,20 @@ fn maybe_autostart_kokoro_server() {
 }
 
 fn try_external_loopback_tts(text: &str, lang: &str, tone: &str) -> Option<Vec<u8>> {
-    let url = std::env::var("OPERO_TTS_URL")
+    let explicit_url = std::env::var("OPERO_TTS_URL")
         .ok()
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| "http://127.0.0.1:4320/speak".to_string());
-    let trimmed = url.trim().to_string();
+        .filter(|s| !s.trim().is_empty());
+    // Skip dead 350ms localhost:4320 probe on Windows unless OPERO_TTS_URL is explicitly configured
+    if explicit_url.is_none() && !cfg!(target_os = "macos") {
+        return None;
+    }
+    if explicit_url.is_none() && CACHED_LOOPBACK_TTS_ENABLED.get() == Some(&false) {
+        return None;
+    }
+    let trimmed = explicit_url
+        .unwrap_or_else(|| "http://127.0.0.1:4320/speak".to_string())
+        .trim()
+        .to_string();
     if trimmed.is_empty() || validate_loopback_url(&trimmed).is_err() {
         return None;
     }
@@ -123,7 +134,7 @@ fn try_external_loopback_tts(text: &str, lang: &str, tone: &str) -> Option<Vec<u
 
     let bytes = std::thread::spawn(move || -> Option<Vec<u8>> {
         let client = Client::builder()
-            .connect_timeout(Duration::from_millis(350))
+            .connect_timeout(Duration::from_millis(250))
             .timeout(Duration::from_secs(10))
             .build()
             .ok()?;
@@ -139,31 +150,35 @@ fn try_external_loopback_tts(text: &str, lang: &str, tone: &str) -> Option<Vec<u
     .flatten();
 
     if bytes.is_some() {
+        let _ = CACHED_LOOPBACK_TTS_ENABLED.set(true);
         return bytes;
     }
+    let _ = CACHED_LOOPBACK_TTS_ENABLED.set(false);
     maybe_autostart_kokoro_server();
     None
 }
 
 fn find_python_for_edge_tts() -> Option<&'static str> {
-    let candidates: &[&str] = if cfg!(target_os = "windows") {
-        &["py", "python", "python3"]
-    } else {
-        &["python3", "python"]
-    };
-    for bin in candidates {
-        let ok = silent_command(bin)
-            .args(["-c", "import edge_tts"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if ok {
-            return Some(bin);
+    *CACHED_EDGE_PYTHON.get_or_init(|| {
+        let candidates: &[&str] = if cfg!(target_os = "windows") {
+            &["py", "python", "python3"]
+        } else {
+            &["python3", "python"]
+        };
+        for bin in candidates {
+            let ok = silent_command(bin)
+                .args(["-c", "import edge_tts"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+            if ok {
+                return Some(*bin);
+            }
         }
-    }
-    None
+        None
+    })
 }
 
 fn try_edge_neural_mp3(
@@ -188,6 +203,18 @@ fn try_edge_neural_mp3(
         .status()
         .ok()?;
     if !status.success() || !raw_mp3.exists() {
+        let _ = std::fs::remove_file(&raw_mp3);
+        return None;
+    }
+
+    // en-US-AnaNeural already outputs native child-voice MP3 directly — skip redundant ffmpeg pass for fast latency
+    if lang == "en-US" {
+        if let Ok(raw_bytes) = std::fs::read(&raw_mp3) {
+            let _ = std::fs::rename(&raw_mp3, &final_mp3);
+            if raw_bytes.len() > 256 {
+                return Some(raw_bytes);
+            }
+        }
         let _ = std::fs::remove_file(&raw_mp3);
         return None;
     }

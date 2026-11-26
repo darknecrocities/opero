@@ -20,6 +20,7 @@ const inflightFetch = new Map<string, Promise<ArrayBuffer | null>>();
 let voiceAudioCtx: AudioContext | null = null;
 let activeSourceNode: AudioBufferSourceNode | null = null;
 let activeHtmlAudio: HTMLAudioElement | null = null;
+let activeSpeechAbort: AbortController | null = null;
 let activePlayToken = 0;
 
 function getVoiceAudioContext(): AudioContext | null {
@@ -32,8 +33,13 @@ function getVoiceAudioContext(): AudioContext | null {
   return voiceAudioCtx;
 }
 
-export function bundledClipPathForStep(step: number, lang: PeroVoiceLang): string {
-  const suffix = lang === 'ja-JP' ? 'ja' : 'en';
+export function bundledClipPathForStep(
+  step: number,
+  lang: PeroVoiceLang,
+  personality: OperoPersonality = 'calm_concise',
+): string {
+  const suffix = lang === 'ja-JP' ? 'ja' : lang === 'fil-PH' ? 'fil' : 'en';
+  if (step === 3) return `/audio/pero/step-3-${personality}-${suffix}.mp3`;
   if (step === 5) return `/audio/pero/step-model-${suffix}.mp3`;
   if (step === 6) return `/audio/pero/step-5-${suffix}.mp3`;
   if (step >= 7) return `/audio/pero/step-6-${suffix}.mp3`;
@@ -241,37 +247,59 @@ async function fetchLiveNeuralSpeech(
   text: string,
   lang: PeroVoiceLang,
   tone: OperoPersonality = 'calm_concise',
+  signal?: AbortSignal,
 ): Promise<ArrayBuffer | null> {
   const key = `neural::${lang}::${tone}::${text.trim()}`;
   const cached = audioBufferCache.get(key);
   if (cached) return cached;
+  const existing = inflightFetch.get(key);
+  if (existing) return existing;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const res = await fetch(SPEAK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang, tone }),
-      signal: controller.signal,
-    });
-    const engine = res.headers.get('x-opero-tts-engine');
-    if (
-      !res.ok ||
-      res.status === 204 ||
-      (engine !== 'loopback-tts' && engine !== 'local-cache' && engine !== 'edge-neural')
-    ) {
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener('abort', onExternalAbort, { once: true });
+  const timer = setTimeout(() => controller.abort(), 7000);
+
+  const job = (async (): Promise<ArrayBuffer | null> => {
+    try {
+      const res = await fetch(SPEAK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang, tone }),
+        signal: controller.signal,
+      });
+      const engine = res.headers.get('x-opero-tts-engine');
+      if (
+        !res.ok ||
+        res.status === 204 ||
+        (engine !== 'loopback-tts' && engine !== 'local-cache' && engine !== 'edge-neural')
+      ) {
+        return null;
+      }
+      const bytes = await res.arrayBuffer();
+      if (bytes.byteLength < 256) return null;
+      audioBufferCache.set(key, bytes);
+      return bytes;
+    } catch {
       return null;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onExternalAbort);
+      inflightFetch.delete(key);
     }
-    const bytes = await res.arrayBuffer();
-    if (bytes.byteLength < 256) return null;
-    audioBufferCache.set(key, bytes);
-    return bytes;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  })();
+
+  inflightFetch.set(key, job);
+  return job;
+}
+
+export function prefetchLiveNeuralSpeech(
+  text: string,
+  lang: PeroVoiceLang,
+  tone: OperoPersonality = 'calm_concise',
+): void {
+  if (!text.trim()) return;
+  void fetchLiveNeuralSpeech(text, lang, tone);
 }
 
 export function prefetchPeroClip(bundledPath: string): void {
@@ -281,6 +309,10 @@ export function prefetchPeroClip(bundledPath: string): void {
 
 export function stopPeroVoice(): void {
   activePlayToken += 1;
+  if (activeSpeechAbort) {
+    activeSpeechAbort.abort();
+    activeSpeechAbort = null;
+  }
   if (activeSourceNode) {
     try {
       activeSourceNode.stop();
@@ -349,11 +381,23 @@ export async function speakPeroDynamic(
   }
 
   if (preferDynamicNeural) {
-    const neuralBytes = await fetchLiveNeuralSpeech(text, lang, tone);
-    if (token !== activePlayToken) return false;
-    if (neuralBytes) {
-      const ok = await playAudioBytes(neuralBytes, token);
+    const neuralKey = `neural::${lang}::${tone}::${text.trim()}`;
+    const alreadyCached = audioBufferCache.get(neuralKey);
+    if (alreadyCached) {
+      const ok = await playAudioBytes(alreadyCached, token);
       if (ok) return true;
+    } else {
+      const neuralPromise = fetchLiveNeuralSpeech(text, lang, tone);
+      // Instant for disk-cached (<20ms) or already-warmed neural audio; otherwise immediately play exact per-tone/per-language bundled clip while neural finishes caching in background
+      const fastBudget = new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), 350);
+      });
+      const neuralBytes = await Promise.race([neuralPromise, fastBudget]);
+      if (token !== activePlayToken) return false;
+      if (neuralBytes) {
+        const ok = await playAudioBytes(neuralBytes, token);
+        if (ok) return true;
+      }
     }
   }
 

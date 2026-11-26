@@ -53,9 +53,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   useEffect(() => {
     if (!soundEnabled) return;
     if (step === 0) prefetchPeroClip('/audio/pero/welcome-opero.mp3');
-    prefetchPeroClip(bundledClipPathForStep(step, 'en-US'));
-    prefetchPeroClip(bundledClipPathForStep(step, 'ja-JP'));
-  }, [step, soundEnabled]);
+    prefetchPeroClip(bundledClipPathForStep(step, locale, personality));
+  }, [step, locale, personality, soundEnabled]);
 
   useEffect(() => {
     if (step !== 0 || introPlayedRef.current || !soundEnabled) return;
@@ -69,15 +68,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   useEffect(() => () => stopPeroVoice(), []);
   useOnboardingAutoVoice({
-    step,
-    name,
-    occupation,
-    personality,
-    locale,
-    privacyAccepted,
-    selectedModelName: readyModelName,
-    soundEnabled,
-    onSpoken: setSpokenLine,
+    step, name, occupation, personality, locale, privacyAccepted,
+    selectedModelName: readyModelName, soundEnabled, onSpoken: setSpokenLine,
   });
 
   const activeMotion: PeroMotionId = useMemo(() => {
@@ -141,7 +133,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     const hasPersonalInput =
       name.trim().length > 0 || occupation.trim().length > 0 || readyModelName.length > 0 || voiceLang === 'fil-PH' || step >= 3;
     playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
-    void speakPeroDynamic(line, voiceLang, soundEnabled, bundledClipPathForStep(step, voiceLang), hasPersonalInput, personality);
+    void speakPeroDynamic(line, voiceLang, soundEnabled, bundledClipPathForStep(step, voiceLang, personality), hasPersonalInput, personality);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -160,6 +152,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   const handleLocalePick = (nextLocale: FirstClassLocale) => {
     playJiggSfx('click', soundEnabled);
+    setSpokenLine(null);
+    setStepTapCount(0);
     setLocale(nextLocale);
     setUiLocale(nextLocale);
     setBoopTick((t) => t + 1);
@@ -371,6 +365,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                     className={`onboard-choice ${active ? 'active' : ''}`}
                     onClick={() => {
                       playJiggSfx('click', soundEnabled);
+                      setSpokenLine(null);
+                      setStepTapCount(0);
                       setPersonality(opt.id);
                       setBoopTick((t) => t + 1);
                     }}
