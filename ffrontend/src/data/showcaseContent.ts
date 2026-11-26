@@ -109,8 +109,8 @@ export const SHORTCUT_KEYS: readonly ShortcutKeyItem[] = [
 ] as const;
 
 export const EXPORT_FORMATS: readonly ExportFormatCard[] = [
-  { ext: '.pdf · Release 1', title: 'Print-Ready PDF', note: 'Redacted, paginated, ready for reviews.' },
-  { ext: '.docx · Release 1', title: 'Word Document', note: 'Editable handoff for office teams.' },
+  { ext: '.pdf', title: 'Print-Ready PDF', note: 'Redacted, paginated, ready for reviews.' },
+  { ext: '.docx', title: 'Word Document', note: 'Editable handoff for office teams.' },
   { ext: '.md · Coming soon', title: 'Clean Markdown', note: 'Planned for a later release.' },
   { ext: '.html · Coming soon', title: 'Standalone HTML', note: 'Planned for a later release.' },
 ] as const;
@@ -127,32 +127,31 @@ export const LOCAL_AI_MODES: readonly LocalAiMode[] = [
   { name: 'llama.cpp Direct', spec: 'GGUF Local', note: 'Run quantized models directly without external cloud APIs.' },
 ] as const;
 
-export const RELEASE_LABEL = 'Release 1';
 export const DOWNLOADS_ENABLED = false;
 
 export const DOWNLOAD_ARTIFACTS: readonly DownloadArtifact[] = [
   {
     platform: 'windows',
     name: 'Windows',
-    architecture: 'Release 1 · 64-bit Installer (x64)',
-    version: RELEASE_LABEL,
-    releaseDate: 'Coming Soon',
+    architecture: '64-bit Installer (x64)',
+    version: 'Coming soon',
+    releaseDate: 'Coming soon',
     fileName: 'OPERO-Setup-x64.exe',
     sizeLabel: 'Coming soon',
     downloadUrl: '#',
-    sha256: 'Published upon Release 1',
+    sha256: 'Coming soon',
     requirement: 'Windows 10 (1903+) or Windows 11 (64-bit)',
   },
   {
     platform: 'macos',
     name: 'macOS',
-    architecture: 'Coming later · Apple Silicon',
-    version: 'Planned',
+    architecture: 'Apple Silicon',
+    version: 'Coming later',
     releaseDate: 'Coming later',
     fileName: 'OPERO-macOS.dmg',
     sizeLabel: 'Coming later',
     downloadUrl: '#',
-    sha256: 'Planned for a later release',
-    requirement: 'Planned after Windows Release 1',
+    sha256: 'Coming later',
+    requirement: 'Planned for a later release',
   },
 ] as const;

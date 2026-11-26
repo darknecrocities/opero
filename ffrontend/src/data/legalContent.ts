@@ -1,4 +1,4 @@
-export type LegalDocId = 'terms' | 'privacy' | 'security' | 'license' | 'releases';
+export type LegalDocId = 'terms' | 'privacy' | 'security' | 'license';
 
 export interface LegalSection {
   heading: string;
@@ -99,22 +99,6 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
       {
         heading: 'Third-Party Open-Source Boundaries',
         body: 'OPERO builds upon open technologies including Tauri 2, Rust, React, TypeScript, SQLite, Vite, Tailwind CSS, Framer Motion, Lucide Icons, and optional local runtimes (Ollama, llama.cpp, PaddleOCR).',
-      },
-    ],
-  },
-  {
-    id: 'releases',
-    tabLabel: 'Release 1 Roadmap',
-    title: 'OPERO Desktop — Release 1 Scope',
-    updated: 'Coming Soon',
-    sections: [
-      {
-        heading: 'Release 1 (Windows — Coming Soon)',
-        body: 'Windows 10 / 11 (64-bit) desktop application with explicit capture, local OCR, OPERO Studio with 7 non-destructive annotations, English & Japanese authoring, Windows system tray quick controls, and offline PDF & Word (.docx) export.',
-      },
-      {
-        heading: 'Planned for Later Releases',
-        body: 'macOS support, Filipino (fil-PH) language support, and HTML / Markdown export formats are planned for upcoming releases after Windows Release 1.',
       },
     ],
   },

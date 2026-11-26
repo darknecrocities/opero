@@ -5,7 +5,6 @@ import { OperoLogo } from '../../assets/mascot';
 import {
   DOWNLOAD_ARTIFACTS,
   DOWNLOADS_ENABLED,
-  RELEASE_LABEL,
 } from '../../data/showcaseContent';
 import type { PanoramaAnchorId } from '../../types/showcase';
 import { OroMascot } from '../mascot/OroMascot';
@@ -50,7 +49,7 @@ export const VerticalDownloadFooter: React.FC<VerticalDownloadFooterProps> = ({
         Make documentation effortless.
       </h2>
       <p className="m-0 text-[15px] text-[#68778B]">
-        {RELEASE_LABEL} for Windows is coming soon. macOS support is planned for a later release.
+        OPERO for Windows is coming soon. macOS support is planned for a later release.
       </p>
     </motion.div>
 

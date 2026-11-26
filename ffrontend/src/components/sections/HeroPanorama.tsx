@@ -4,7 +4,6 @@ import {
   DOWNLOAD_ARTIFACTS,
   DOWNLOADS_ENABLED,
   HERO_WHISPERS,
-  RELEASE_LABEL,
 } from '../../data/showcaseContent';
 import type { PanoramaAnchorId } from '../../types/showcase';
 import { OroMascot } from '../mascot/OroMascot';
@@ -100,7 +99,7 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
           onClick={() => onNavigate('features')}
           className="inline-flex items-center gap-1.5 mt-1 text-xs text-[#68778B] hover:text-[#172334] bg-transparent border-0 p-1 cursor-pointer"
         >
-          <span className="mono-tabular">{RELEASE_LABEL} · Coming soon · Scroll to explore →</span>
+          <span className="mono-tabular">Coming soon · Scroll to explore →</span>
         </button>
       </motion.div>
     </section>

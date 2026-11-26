@@ -23,15 +23,16 @@ describe('OPERO Release 1 Showcase (ffrontend)', () => {
     expect(screen.getByRole('heading', { name: /^System Tray$/i })).toBeInTheDocument();
   });
 
-  it('renders the official Tech Stack Brand Belt and Release 1 Export Deliverables', () => {
+  it('renders the official Tech Stack Brand Belt and Export Deliverables', () => {
     render(<App />);
     for (const tech of TECH_STACK_ITEMS) {
       expect(screen.getAllByText(tech.name).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText(/\.pdf · Release 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/\.docx · Release 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/^\.pdf$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^\.docx$/i)).toBeInTheDocument();
     expect(screen.getByText(/\.md · Coming soon/i)).toBeInTheDocument();
     expect(screen.getByText(/\.html · Coming soon/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Release 1 Roadmap/i)).toBeNull();
   });
 
   it('uses consistent Pero mascot naming without a phone mockup', () => {

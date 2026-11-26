@@ -5,7 +5,6 @@ import type { LegalDocId } from '../../data/legalContent';
 import {
   DOWNLOAD_ARTIFACTS,
   PANORAMA_ANCHORS,
-  RELEASE_LABEL,
 } from '../../data/showcaseContent';
 import type { PanoramaAnchorId } from '../../types/showcase';
 import { LegalModal } from '../ui/LegalModal';
@@ -74,15 +73,6 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onNavigate }) => {
                   </span>
                 </li>
               ))}
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveLegalDoc('releases')}
-                  className="text-sm text-[#172334]/85 hover:text-[#247BFA] bg-transparent border-0 p-0 cursor-pointer transition-colors"
-                >
-                  {RELEASE_LABEL} Roadmap
-                </button>
-              </li>
             </ul>
           </div>
 

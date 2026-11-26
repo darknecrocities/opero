@@ -28,7 +28,7 @@ export const PlayfulPlaygroundSection: React.FC = () => {
                 English &amp; Japanese. Filipino soon.
               </h3>
               <p className="m-0 mt-1 text-sm text-[#68778B]">
-                Release 1 supports English and Japanese; Filipino is coming soon.
+                Supports English and Japanese; Filipino is coming soon.
               </p>
             </div>
 
