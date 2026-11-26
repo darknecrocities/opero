@@ -66,9 +66,9 @@ describe('OPERO Release 1 Showcase (ffrontend)', () => {
     for (const btn of macBtns) expect(btn).toBeDisabled();
   });
 
-  it('renders clean footer with zero MMI references and opens interactive Terms & Privacy modal', () => {
+  it('renders clean footer with zero company or personal name references and opens Terms & Privacy modal', () => {
     const { container } = render(<App />);
-    expect(container.textContent).not.toMatch(/\bMMI\b|Man Machine Interface|マンマシン/i);
+    expect(container.textContent).not.toMatch(/\bMMI\b|Man Machine Interface|マンマシン|Arron|Kian|Parejas/i);
 
     const termsBtn = screen.getByRole('button', { name: /^Terms & Conditions$/i });
     fireEvent.click(termsBtn);

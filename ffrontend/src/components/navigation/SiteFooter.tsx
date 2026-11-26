@@ -119,7 +119,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onNavigate }) => {
 
         <div className="pt-6 border-t border-[#E1E8F0] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#68778B]">
           <div className="text-center sm:text-left">
-            © 2026 OPERO · Arron Kian Parejas · MIT License
+            © 2026 OPERO · MIT License
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">

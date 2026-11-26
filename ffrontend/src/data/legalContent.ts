@@ -22,7 +22,7 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
     sections: [
       {
         heading: '1. Project Scope',
-        body: 'OPERO is a local-first desktop workflow documentation application developed by Arron Kian Parejas. Use of the desktop software and showcase website is governed by these terms and the accompanying MIT License.',
+        body: 'OPERO is a local-first desktop workflow documentation application. Use of the desktop software and showcase website is governed by these terms and the accompanying MIT License.',
       },
       {
         heading: '2. Explicit Capture & Operator Responsibility',
@@ -86,11 +86,11 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
     id: 'license',
     tabLabel: 'MIT License',
     title: 'MIT License & Third-Party Notices',
-    updated: 'Copyright © 2026 Arron Kian Parejas',
+    updated: 'Copyright © 2026 OPERO',
     sections: [
       {
         heading: 'Copyright',
-        body: 'OPERO — Local-First Desktop Workflow Documentation. Copyright (c) 2026 Arron Kian Parejas.',
+        body: 'OPERO — Local-First Desktop Workflow Documentation. Copyright (c) 2026 OPERO.',
       },
       {
         heading: 'MIT License Grant',
