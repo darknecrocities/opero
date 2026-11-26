@@ -158,7 +158,7 @@ export const MeetingNotesView: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        background: '#FFFFFF',
+        background: 'transparent',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>

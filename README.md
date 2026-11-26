@@ -24,7 +24,7 @@ An employee explicitly starts a recording session, performs a normal desktop pro
 
 | Layer | Directory / Crate | Responsibilities |
 | :--- | :--- | :--- |
-| **Desktop UI** | `apps/desktop` | React 19 + TypeScript + Vite Voxt-inspired Dual-Sidebar Workspace, 3-Pane OPERO Studio, 7 non-destructive annotations, White (`#FFFFFF`) / Light Blue (`#69BCFC`) / Black (`#0F172A`) Cupertino Liquid Glass theme. |
+| **Desktop UI** | `apps/desktop` | React 19 + TypeScript + Vite Voxt-inspired Dual-Sidebar Workspace, 3-Pane OPERO Studio, 7 non-destructive annotations, unified Warm White & Light Grayish (`#FAF9F7` → `#F2F1EE` → `#ECEBE7`) / Light Blue (`#69BCFC`) / Black (`#0F172A`) Cupertino Liquid Glass theme. |
 | **Native Shell** | `apps/desktop/src-tauri` | Tauri 2 native desktop binary embedding `opero-daemon` in-process on `127.0.0.1:4317`, `Info.plist`, `Entitlements.plist`, and `.dmg` / `.exe` (NSIS) bundlers. |
 | **Rust Core** | `crates/opero-core` | SQLite WAL migrations, macOS (`CoreGraphics` / `ApplicationServices` TCC FFI) & Windows (`GraphicsCaptureAccess` / UIPI) native permissions, capture + 64-bit dHash dedup, 9-stage OCR/AI pipeline, and lightweight **Dual-Core Vector RAG** (`Core 1 Episodic` + `Core 2 Semantic`, `384-dim int8` + `FTS5` RRF `< 8 MB` RAM). |
 | **Export Engine** | `crates/opero-export` | Irreversible pixel redaction (`#0F172A` burn-in) + deterministic offline `PDF`, `DOCX` (OOXML ZIP), accessible `HTML`, and `Markdown` writers. |

@@ -18,11 +18,9 @@ export const TopWindowBar: React.FC = () => {
     navMode,
     leftOpen,
     rightOpen,
-    solidFallback,
     soundEnabled,
     toggleLeft,
     toggleRight,
-    toggleSolidFallback,
     toggleSettingsView,
     runExport,
   } = useOperoStore();
@@ -44,25 +42,26 @@ export const TopWindowBar: React.FC = () => {
 
   return (
     <header className="opero-topbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button
-          type="button"
-          className={`opero-btn ${!leftOpen ? 'primary' : ''}`}
-          onClick={() => {
-            playJiggSfx('click', soundEnabled);
-            toggleLeft();
-          }}
-          aria-label="Toggle left sidebar"
-          aria-pressed={leftOpen}
-          title="Toggle Sidebar (⌘B)"
-          style={{ minHeight: '32px', padding: '4px 10px' }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <line x1="9" y1="4" x2="9" y2="20" />
-          </svg>
-          <span>{leftOpen ? feat.hideNav : feat.showNav}</span>
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '36px' }}>
+        {!leftOpen && (
+          <button
+            type="button"
+            className="opero-btn"
+            onClick={() => {
+              playJiggSfx('click', soundEnabled);
+              toggleLeft();
+            }}
+            aria-label="Show navigation sidebar"
+            aria-pressed={leftOpen}
+            title="Show Sidebar (⌘B)"
+            style={{ minHeight: '32px', width: '32px', padding: 0 }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <line x1="9" y1="4" x2="9" y2="20" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -73,20 +72,6 @@ export const TopWindowBar: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button
-          type="button"
-          className={`opero-btn ${solidFallback ? 'primary' : ''}`}
-          aria-label="Toggle Glass or Solid surface"
-          aria-pressed={solidFallback}
-          onClick={() => {
-            playJiggSfx('click', soundEnabled);
-            toggleSolidFallback();
-          }}
-          style={{ minHeight: '32px', padding: '4px 10px' }}
-        >
-          <JiggIcon name="eye" size={15} variant="duotone" />
-          <span>{solidFallback ? feat.solidMode : feat.glassMode}</span>
-        </button>
 
         <div ref={menuRef} style={{ position: 'relative' }}>
           <button
@@ -121,7 +106,7 @@ export const TopWindowBar: React.FC = () => {
                 flexDirection: 'column',
                 gap: '4px',
                 zIndex: 60,
-                background: '#FFFFFF',
+                background: 'var(--bg-surface)',
               }}
             >
               {EXPORT_ITEMS.map((item) => (

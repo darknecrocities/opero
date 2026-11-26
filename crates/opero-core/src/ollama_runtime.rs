@@ -121,7 +121,7 @@ pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus
 }
 
 pub fn is_allowed_model_tag(tag: &str) -> bool {
-    matches!(tag, "qwen3:1.7b" | "qwen3:4b" | "gemma3:4b" | "qwen3:8b")
+    crate::hardware::ALLOWED_OLLAMA_MODELS.contains(&tag.trim())
 }
 
 pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_missing: bool) -> OllamaRuntimeStatus {
@@ -173,22 +173,54 @@ pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_m
     status
 }
 
-pub fn call_ollama_chat(model: &str, messages: &[OllamaChatMessage]) -> Option<String> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaChatResult {
+    pub content: String,
+    pub thinking: Option<String>,
+}
+
+pub fn split_think_tags(raw: &str) -> (String, Option<String>) {
+    if let (Some(start), Some(end)) = (raw.find("<think>"), raw.find("</think>")) {
+        if end > start + 7 {
+            let thought = raw[start + 7..end].trim().to_string();
+            let before = raw[..start].trim();
+            let after = raw[end + 8..].trim();
+            let clean = [before, after]
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n\n");
+            return (clean, if thought.is_empty() { None } else { Some(thought) });
+        }
+    }
+    (raw.trim().to_string(), None)
+}
+
+pub fn call_ollama_chat_with_thinking(
+    model: &str,
+    messages: &[OllamaChatMessage],
+    enable_thinking: bool,
+) -> Option<OllamaChatResult> {
     let payload = serde_json::json!({
         "model": model,
         "messages": messages,
         "stream": false,
-        "think": false
+        "think": enable_thinking,
+        "options": {
+            "temperature": 0.35,
+            "top_p": 0.9
+        }
     })
     .to_string();
 
+    let max_time = if enable_thinking { "40" } else { "25" };
     let out = Command::new("curl")
         .args([
             "-fsS",
             "--connect-timeout",
             "1",
             "--max-time",
-            "25",
+            max_time,
             "-H",
             "Content-Type: application/json",
             "-d",
@@ -201,14 +233,33 @@ pub fn call_ollama_chat(model: &str, messages: &[OllamaChatMessage]) -> Option<S
         return None;
     }
     let val: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
-    let text = val
+    let raw_content = val
         .get("message")
         .and_then(|m| m.get("content"))
         .and_then(|c| c.as_str())
         .or_else(|| val.get("response").and_then(|r| r.as_str()))?
         .trim()
         .to_string();
-    if text.is_empty() { None } else { Some(text) }
+    let api_thinking = val
+        .get("message")
+        .and_then(|m| m.get("thinking"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let (clean_content, tag_thinking) = split_think_tags(&raw_content);
+    let thinking = api_thinking.or(tag_thinking);
+    if clean_content.is_empty() {
+        return None;
+    }
+    Some(OllamaChatResult {
+        content: clean_content,
+        thinking,
+    })
+}
+
+pub fn call_ollama_chat(model: &str, messages: &[OllamaChatMessage]) -> Option<String> {
+    call_ollama_chat_with_thinking(model, messages, false).map(|r| r.content)
 }
 
 #[cfg(test)]

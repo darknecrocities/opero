@@ -64,7 +64,7 @@ export const RightUtilityRail: React.FC = () => {
             padding: '7px 8px',
             fontSize: '12.5px',
             fontWeight: 600,
-            background: '#FFFFFF',
+            background: 'var(--bg-surface)',
             color: 'var(--ink)',
           }}
         >

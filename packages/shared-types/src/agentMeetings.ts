@@ -1,5 +1,45 @@
 import type { FirstClassLocale } from './entities';
 
+export type AgentActionType =
+  | 'calendar_google'
+  | 'calendar_local'
+  | 'reminder_local'
+  | 'email_draft'
+  | 'create_note'
+  | 'generate_document'
+  | 'desktop_notification'
+  | 'clipboard_copy'
+  | 'open_url';
+
+export type PendingActionStatus = 'pending' | 'executed' | 'cancelled' | 'failed';
+
+export interface PendingAgentAction {
+  id: string;
+  threadId: string;
+  messageId: string;
+  actionType: AgentActionType;
+  title: string;
+  summary: string;
+  targetApp: string;
+  payload: Record<string, string>;
+  status: PendingActionStatus;
+  resultMessage?: string | null;
+  createdAt: string;
+  executedAt?: string | null;
+}
+
+export interface AgentCapabilitiesSettings {
+  enabled: boolean;
+  requireConfirmation: boolean;
+  showChainOfThought: boolean;
+  calendarEnabled: boolean;
+  remindersEnabled: boolean;
+  emailDraftEnabled: boolean;
+  notesEnabled: boolean;
+  notificationsEnabled: boolean;
+  clipboardOpenEnabled: boolean;
+}
+
 export interface AgentToolCallRecord {
   tool: string;
   input: string;
@@ -12,6 +52,7 @@ export interface AgentMessage {
   threadId: string;
   role: 'user' | 'assistant';
   content: string;
+  thinking?: string | null;
   toolCalls: AgentToolCallRecord[];
   citations: string[];
   actionLink?: {
@@ -19,6 +60,7 @@ export interface AgentMessage {
     id: string;
     label: string;
   } | null;
+  pendingAction?: PendingAgentAction | null;
   createdAt: string;
 }
 

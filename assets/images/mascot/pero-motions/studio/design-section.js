@@ -1,6 +1,6 @@
 /**
  * OPERO Primary Theme & Design System Interactive Showcase (Minimal Icon-Led Layout).
- * White Primary (#FFFFFF) + Light Blue Secondary (#69BCFC) + Black Accents (#0F172A).
+ * Warm White & Light Grayish Canvas (#FAF9F7 -> #F2F1EE -> #ECEBE7) + Light Blue Secondary (#69BCFC) + Black Accents (#0F172A).
  */
 (function (global) {
   'use strict';
@@ -8,17 +8,17 @@
   const ico = (name, size) => (global.PeroIcons ? global.PeroIcons.icon(name, { size: size || 14 }) : '');
 
   const THEME_TOKENS = [
-    { name: 'Primary Canvas', cssVar: '--bg', value: '#FFFFFF', role: 'Document canvas', textDark: true },
-    { name: 'Subtle Sky', cssVar: '--bg-subtle', value: '#F4F9FF', role: 'Sidebars & headers', textDark: true },
-    { name: 'Pero Sky', cssVar: '--brand-sky', value: '#69BCFC', role: 'Brand & glass rims', textDark: true },
-    { name: 'Soft Sky Wash', cssVar: '--brand-sky-soft', value: '#EBF6FF', role: 'Active selection', textDark: true },
-    { name: 'Sky Hairline', cssVar: '--border-strong', value: '#B9E0FE', role: 'Accent borders', textDark: true },
-    { name: 'Liquid Glass', cssVar: '--bg-glass', value: 'rgba(255,255,255,0.74)', role: 'Floating HUDs', textDark: true },
+    { name: 'Warm Canvas Base', cssVar: '--bg', value: '#F2F1EE', role: 'App & onboarding base', textDark: true },
+    { name: 'Warm Paper Surface', cssVar: '--bg-surface', value: '#FAF9F7', role: 'Cards, buttons & sheets', textDark: true },
+    { name: 'Warm Gray Rail', cssVar: '--bg-subtle', value: '#EAE8E3', role: 'Sidebars & headers', textDark: true },
+    { name: 'Warm Hover Wash', cssVar: '--bg-hover', value: '#E5E3DD', role: 'Interactive hover', textDark: true },
+    { name: 'Pero Sky', cssVar: '--brand-sky', value: '#69BCFC', role: 'Brand & mascot accents', textDark: true },
+    { name: 'Liquid Glass', cssVar: '--bg-glass', value: 'rgba(250,249,247,0.78)', role: 'Floating HUDs', textDark: true },
     { name: 'Black Accent', cssVar: '--accent', value: '#0F172A', role: 'Primary CTAs & ink', textDark: false },
     { name: 'Muted Slate', cssVar: '--ink-muted', value: '#526071', role: 'Metadata & captions', textDark: false },
-    { name: 'Hairline', cssVar: '--border', value: '#E2EAF2', role: '1px dividers', textDark: true },
+    { name: 'Warm Hairline', cssVar: '--border', value: '#DDDAD3', role: '1px dividers', textDark: true },
+    { name: 'Strong Hairline', cssVar: '--border-strong', value: '#C7C3BC', role: 'Active & input borders', textDark: true },
     { name: 'Verified', cssVar: '--success', value: '#16865B', role: 'Approved step', textDark: false },
-    { name: 'Needs Review', cssVar: '--warning', value: '#B7791F', role: 'Review flag', textDark: false },
     { name: 'Recording', cssVar: '--danger', value: '#C43D4B', role: 'Active capture', textDark: false },
   ];
 
@@ -61,8 +61,8 @@
     root.innerHTML = `
       <header class="editorial-header" style="padding:16px 0 18px;margin-bottom:22px;">
         <div class="editorial-kicker">${ico('palette', 17)} Design System</div>
-        <h2>White Primary, Light Blue &amp; Black Accents</h2>
-        <p>Pure White (#FFFFFF) canvas · Light Blue (#69BCFC) surfaces · Black (#0F172A) actions · Liquid Glass floating HUDs.</p>
+        <h2>Warm White &amp; Light Grayish Canvas, Sky Blue &amp; Black Accents</h2>
+        <p>Unified onboarding &amp; app radial canvas (#FAF9F7 → #F2F1EE → #ECEBE7) · Warm rails (#EAE8E3) · Pero Sky (#69BCFC) · Black (#0F172A) actions.</p>
       </header>
 
       <div class="section-grid-2">
@@ -111,10 +111,10 @@
             <table class="doc-table">
               <thead><tr><th>Material</th><th>Token</th><th>Scope</th></tr></thead>
               <tbody>
-                <tr><td><strong>Ultra Thin</strong></td><td class="mono">0.62 · 16px</td><td>Loupe &amp; tags</td></tr>
-                <tr><td><strong>Thin Glass</strong></td><td class="mono">0.68 · 20px</td><td>Tool palettes</td></tr>
-                <tr><td><strong>Regular Glass</strong></td><td class="mono">0.74 · 24px</td><td>Topbar &amp; HUD</td></tr>
-                <tr><td><strong>Solid Canvas</strong></td><td class="mono">#FFFFFF · 0px</td><td>Manual pages</td></tr>
+                <tr><td><strong>Ultra Thin</strong></td><td class="mono">0.64 · 16px</td><td>Loupe &amp; tags</td></tr>
+                <tr><td><strong>Thin Glass</strong></td><td class="mono">0.70 · 20px</td><td>Tool palettes</td></tr>
+                <tr><td><strong>Regular Glass</strong></td><td class="mono">0.78 · 24px</td><td>Topbar &amp; HUD</td></tr>
+                <tr><td><strong>Warm Paper Sheet</strong></td><td class="mono">#FAF9F7 · 0px</td><td>Manual pages</td></tr>
               </tbody>
             </table>
           </div>
@@ -200,7 +200,7 @@
           <div class="sp-canvas">
             <div class="row-wrap" style="justify-content:space-between;">
               <div>
-                <span class="mono">SOLID CANVAS (#FFFFFF)</span>
+                <span class="mono">WARM PAPER CANVAS (#FAF9F7)</span>
                 <h4 style="margin:3px 0 0;font-family:var(--font-display);font-size:15px;">Step 04: Click "新規登録" and Save</h4>
               </div>
               <span id="dsStepStatusPill" class="state-tag paused">Needs Review</span>

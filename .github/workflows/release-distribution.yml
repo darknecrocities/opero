@@ -79,7 +79,9 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           cd release-assets
-          sha256sum * > SHA256SUMS.txt
+          find . -mindepth 2 -type f \( -name '*.dmg' -o -name '*.exe' \) -exec mv -t . {} +
+          find . -mindepth 1 -type d -empty -delete
+          sha256sum *.dmg *.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
           VERSION="${TAG_NAME#v}"
           DMG_FILE="$(ls *.dmg 2>/dev/null | head -n 1 || true)"

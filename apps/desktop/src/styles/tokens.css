@@ -1,16 +1,19 @@
 :root {
-  --bg: #FFFFFF;
-  --bg-subtle: #F4F9FF;
+  --bg: #F2F1EE;
+  --bg-canvas: radial-gradient(circle at 50% 22%, #FAF9F7 0%, #F2F1EE 56%, #ECEBE7 100%);
+  --bg-surface: #FAF9F7;
+  --bg-subtle: #EAE8E3;
+  --bg-hover: #E5E3DD;
   --brand-sky: #69BCFC;
   --brand-sky-soft: #EBF6FF;
-  --border-strong: #B9E0FE;
-  --bg-glass: rgba(255, 255, 255, 0.74);
-  --bg-glass-thin: rgba(255, 255, 255, 0.68);
-  --bg-glass-ultra: rgba(255, 255, 255, 0.62);
+  --border-strong: #C7C3BC;
+  --bg-glass: rgba(250, 249, 247, 0.78);
+  --bg-glass-thin: rgba(250, 249, 247, 0.7);
+  --bg-glass-ultra: rgba(242, 241, 238, 0.64);
   --accent: #0F172A;
   --ink: #0F172A;
   --ink-muted: #526071;
-  --border: #E2EAF2;
+  --border: #DDDAD3;
   --success: #16865B;
   --success-soft: #ECFDF5;
   --warning: #B7791F;
@@ -65,18 +68,18 @@ body,
 }
 
 .glass-regular {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(26px) saturate(190%);
-  -webkit-backdrop-filter: blur(26px) saturate(190%);
-  border: 1px solid var(--border-strong);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 10px 28px rgba(15, 23, 42, 0.06);
+  background: rgba(250, 249, 247, 0.8);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 10px 28px rgba(15, 23, 42, 0.05);
 }
 
 .glass-thin {
   background: var(--bg-glass-thin);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
 }
 
 .glass-ultra {
@@ -87,25 +90,25 @@ body,
 }
 
 .solid-fallback {
-  --bg-subtle: #F8FAFC;
-  --border: #CBD5E1;
-  --border-strong: #94A3B8;
+  --bg-subtle: #EAE8E3;
+  --border: #D6D3CD;
+  --border-strong: #B8B4AC;
 }
 
 .solid-fallback .opero-topbar {
-  background: #FFFFFF;
+  background: var(--bg-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-bottom: 1.5px solid #CBD5E1;
+  border-bottom: 1.5px solid var(--border);
 }
 
 .solid-fallback .glass-regular,
 .solid-fallback .glass-thin,
 .solid-fallback .glass-ultra {
-  background: #FFFFFF;
+  background: var(--bg-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: 1.5px solid #CBD5E1;
+  border: 1.5px solid var(--border);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
@@ -113,7 +116,7 @@ body,
   .glass-regular,
   .glass-thin,
   .glass-ultra {
-    background: #FFFFFF;
+    background: var(--bg-surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
-import { JiggIcon } from '@opero/jiggicons';
+import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OperoLogo } from '@opero/mascot';
 import type { OperatorRole } from '@opero/shared-types';
 import { useOperoStore, type WorkspaceNavMode } from '../store/useOperoStore';
@@ -13,6 +13,9 @@ export const LeftSidebar: React.FC = () => {
     sessions,
     activeSessionId,
     role,
+    leftOpen,
+    soundEnabled,
+    toggleLeft,
     setNavMode,
     setActiveSessionId,
     setRole,
@@ -34,11 +37,31 @@ export const LeftSidebar: React.FC = () => {
 
   return (
     <aside className="opero-left-rail" aria-label="Primary Workspace Navigation">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 4px 10px' }}>
-        <OperoLogo variant="squircle" size={34} title="OPERO App Icon" />
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.03em' }}>
-          OPERO
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '4px 4px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <OperoLogo variant="squircle" size={34} title="OPERO App Icon" />
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.03em' }}>
+            OPERO
+          </div>
         </div>
+        <button
+          type="button"
+          className="opero-btn"
+          onClick={() => {
+            playJiggSfx('click', soundEnabled);
+            toggleLeft();
+          }}
+          aria-label="Hide navigation sidebar"
+          aria-pressed={leftOpen}
+          tabIndex={leftOpen ? 0 : -1}
+          title="Hide Sidebar (⌘B)"
+          style={{ minHeight: '30px', width: '30px', padding: 0, flexShrink: 0 }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <line x1="9" y1="4" x2="9" y2="20" />
+          </svg>
+        </button>
       </div>
 
       <nav aria-label="Workspace Views" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>

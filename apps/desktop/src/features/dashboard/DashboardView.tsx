@@ -45,48 +45,12 @@ export const DashboardView: React.FC = () => {
     subtitle: string;
     shortcut: string;
   }[] = [
-    {
-      mode: 'capture',
-      icon: 'capture',
-      title: dict.navLiveCapture,
-      subtitle: uiLocale === 'ja-JP' ? '画面操作を記録' : 'Record workflow steps',
-      shortcut: '⌥Space',
-    },
-    {
-      mode: 'meetings',
-      icon: 'voice',
-      title: feat.navMeetings,
-      subtitle: uiLocale === 'ja-JP' ? '会議音声・翻訳・議事録' : 'OS audio & bilingual notes',
-      shortcut: '⌘4',
-    },
-    {
-      mode: 'agent',
-      icon: 'router',
-      title: feat.navAgent,
-      subtitle: uiLocale === 'ja-JP' ? 'ローカルAIと対話' : 'Chat with local AI & RAG',
-      shortcut: '⌘5',
-    },
-    {
-      mode: 'analyzer',
-      icon: 'docs',
-      title: dict.navAnalyzer,
-      subtitle: uiLocale === 'ja-JP' ? 'PDF・Word注釈解析' : 'Annotate PDF & Word',
-      shortcut: '⌘3',
-    },
-    {
-      mode: 'templates',
-      icon: 'outputs',
-      title: dict.navTemplates,
-      subtitle: uiLocale === 'ja-JP' ? 'MMI標準テンプレート7種' : '7 MMI SOP templates',
-      shortcut: '⌘2',
-    },
-    {
-      mode: 'studio',
-      icon: 'studio',
-      title: dict.navStudio,
-      subtitle: uiLocale === 'ja-JP' ? '手順書編集・出力' : 'Edit & export manuals',
-      shortcut: '⌘1',
-    },
+    { mode: 'capture', icon: 'capture', title: dict.navLiveCapture, subtitle: uiLocale === 'ja-JP' ? '画面操作を記録します' : 'Record workflow steps', shortcut: '⌥Space' },
+    { mode: 'meetings', icon: 'voice', title: feat.navMeetings, subtitle: uiLocale === 'ja-JP' ? '会議音声を録音・翻訳します' : 'OS audio & bilingual notes', shortcut: '⌘4' },
+    { mode: 'agent', icon: 'router', title: feat.navAgent, subtitle: uiLocale === 'ja-JP' ? 'ローカルAIと対話します' : 'Chat with local AI & RAG', shortcut: '⌘5' },
+    { mode: 'analyzer', icon: 'docs', title: dict.navAnalyzer, subtitle: uiLocale === 'ja-JP' ? 'PDF・Wordを解析します' : 'Annotate PDF & Word', shortcut: '⌘3' },
+    { mode: 'templates', icon: 'outputs', title: dict.navTemplates, subtitle: uiLocale === 'ja-JP' ? 'MMI標準テンプレート7種です' : '7 MMI SOP templates', shortcut: '⌘2' },
+    { mode: 'studio', icon: 'studio', title: dict.navStudio, subtitle: uiLocale === 'ja-JP' ? '手順書を編集・出力します' : 'Edit & export manuals', shortcut: '⌘1' },
   ];
 
   const handleQuickAsk = (prompt: string) => {
@@ -102,33 +66,37 @@ export const DashboardView: React.FC = () => {
       style={{
         height: '100%',
         overflowY: 'auto',
-        padding: '22px 26px',
+        padding: '28px 34px 36px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '18px',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%)',
+        gap: '26px',
+        background: 'transparent',
+        maxWidth: '1060px',
+        width: '100%',
+        margin: '0 auto',
       }}
     >
+      {/* Frameless Editorial Greeting Hero (No outer card box) */}
       <section
-        className="glass-regular"
         style={{
-          borderRadius: '20px',
-          padding: '20px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '20px',
+          gap: '24px',
           flexWrap: 'wrap',
+          paddingBottom: '22px',
+          borderBottom: '1px solid var(--border)',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '520px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '540px' }}>
           <h1
             style={{
               margin: 0,
               fontFamily: 'var(--font-display)',
-              fontSize: '26px',
+              fontSize: '30px',
               fontWeight: 800,
               letterSpacing: '-0.03em',
+              lineHeight: 1.15,
               color: 'var(--ink)',
             }}
           >
@@ -139,242 +107,229 @@ export const DashboardView: React.FC = () => {
               {greeting.secondaryJa}
             </div>
           )}
-          <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+          <p style={{ margin: '2px 0 0', fontSize: '13.5px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
             {userProfile.occupation ? `${userProfile.occupation} · ` : ''}
             {dict.dashboardSubtitle}
           </p>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="opero-btn primary"
               onClick={() => void startRecordingFlow(`Workflow Session ${analytics.totalSessions + 1}`)}
+              style={{ borderRadius: '999px', padding: '7px 16px' }}
             >
               <JiggIcon name="capture" size={15} variant="duotone" />
               <span>{dict.startCapture}</span>
             </button>
-            <button type="button" className="opero-btn" onClick={() => setNavMode('meetings')}>
+            <button
+              type="button"
+              className="opero-btn"
+              onClick={() => setNavMode('meetings')}
+              style={{ borderRadius: '999px', padding: '7px 15px' }}
+            >
               <JiggIcon name="voice" size={15} variant="duotone" />
               <span>{feat.meetingsRecordBtn}</span>
             </button>
-            <button type="button" className="opero-btn" onClick={() => setNavMode('agent')}>
+            <button
+              type="button"
+              className="opero-btn"
+              onClick={() => setNavMode('agent')}
+              style={{ borderRadius: '999px', padding: '7px 15px' }}
+            >
               <JiggIcon name="router" size={15} variant="duotone" />
               <span>{feat.navAgent}</span>
             </button>
           </div>
         </div>
 
-        <div className="pero-float" style={{ flexShrink: 0 }}>
+        <div className="pero-float" style={{ flexShrink: 0, paddingRight: '6px' }}>
           <PeroStateMascot
             state={peroState}
-            size={168}
+            size={152}
             capColor={peroCapColor}
             jacketColor={peroJacketColor}
           />
         </div>
       </section>
 
-      <section
-        aria-label="Quick Launch Shortcuts"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-          gap: '12px',
-        }}
-      >
-        {quickTiles.map((tile, idx) => (
-          <button
-            key={tile.mode}
-            type="button"
-            className="opero-quick-tile"
-            onClick={() => {
-              playJiggSfx('nav', soundEnabled);
-              setNavMode(tile.mode);
-            }}
-            style={{
-              animationDelay: `${idx * 45}ms`,
-              background: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: '14px',
-              padding: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              textAlign: 'start',
-              cursor: 'pointer',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      {/* Balanced 3x2 Warm-Surface Quick Launch */}
+      <section aria-label="Quick Launch Shortcuts" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="mono" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          Workspace
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: '10px',
+          }}
+        >
+          {quickTiles.map((tile, idx) => (
+            <button
+              key={tile.mode}
+              type="button"
+              className="opero-quick-tile"
+              onClick={() => {
+                playJiggSfx('nav', soundEnabled);
+                setNavMode(tile.mode);
+              }}
+              style={{
+                animationDelay: `${idx * 40}ms`,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: '13px 15px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                textAlign: 'start',
+                cursor: 'pointer',
+              }}
+            >
               <span
                 style={{
                   width: '34px',
                   height: '34px',
                   borderRadius: '10px',
-                  background: '#F2F8FF',
+                  background: 'var(--bg-subtle)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
-                <JiggIcon name={tile.icon} size={18} variant="duotone" />
+                <JiggIcon name={tile.icon} size={17} variant="duotone" />
               </span>
-              <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>
-                {tile.shortcut}
-              </span>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)' }}>
-                {tile.title}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tile.title}
+                  </span>
+                  <span className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)', flexShrink: 0 }}>
+                    {tile.shortcut}
+                  </span>
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {tile.subtitle}
+                </div>
               </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                {tile.subtitle}
-              </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          ))}
+        </div>
       </section>
 
+      {/* Single Cohesive Warm-Paper Activity Ledger (No jarring dark/light split) */}
       <section
         aria-label="Activity Analytics"
         style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '18px 22px',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '14px',
+          gap: '24px',
         }}
       >
-        <article className="analytics-card-black opero-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14.5px', fontWeight: 700, color: 'var(--ink)' }}>
                 {dict.analyticsBlackTitle}
               </div>
-              <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px' }}>
+              <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
                 {dict.analyticsBlackSub}
               </div>
             </div>
-            <span style={{ color: '#69BCFC' }}>
-              <JiggIcon name="capture" size={18} variant="duotone" />
-            </span>
+            <JiggIcon name="capture" size={16} variant="duotone" />
           </div>
 
-          <div style={{ display: 'flex', gap: '24px', marginTop: '14px', alignItems: 'baseline' }}>
+          <div style={{ display: 'flex', gap: '28px', alignItems: 'baseline' }}>
             <div>
-              <div className="mono" style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+              <div className="mono" style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>
                 {analytics.totalSessions + recentMeetings.length}
               </div>
-              <div style={{ fontSize: '11.5px', color: '#94A3B8' }}>{dict.analyticsSessionsLabel}</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{dict.analyticsSessionsLabel}</div>
             </div>
             <div>
-              <div className="mono" style={{ fontSize: '28px', fontWeight: 700, color: '#69BCFC', letterSpacing: '-0.03em' }}>
+              <div className="mono" style={{ fontSize: '26px', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
                 {analytics.completedSessions + recentMeetings.length}
               </div>
-              <div style={{ fontSize: '11.5px', color: '#94A3B8' }}>{dict.analyticsCompletedLabel}</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{dict.analyticsCompletedLabel}</div>
             </div>
           </div>
 
           <div
             aria-label="7-day session activity"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '8px',
-              alignItems: 'end',
-              height: '46px',
-              marginTop: '14px',
-            }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', alignItems: 'end', height: '40px', marginTop: '4px' }}
           >
             {analytics.dailyActivity.slice(0, 7).map((val, idx) => (
               <div key={DAY_LABELS[idx]} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                 <div
                   style={{
                     width: '100%',
-                    height: `${Math.max(6, Math.round((val / maxBar) * 30))}px`,
-                    borderRadius: '5px',
-                    background: idx === 6 ? '#69BCFC' : 'rgba(105, 188, 252, 0.35)',
+                    height: `${Math.max(5, Math.round((val / maxBar) * 24))}px`,
+                    borderRadius: '4px',
+                    background: idx === 6 ? '#0F172A' : val > 0 ? '#69BCFC' : 'var(--bg-subtle)',
                     transition: 'height 260ms ease',
                   }}
                 />
-                <span className="mono" style={{ fontSize: '10px', color: '#94A3B8' }}>
-                  {DAY_LABELS[idx]}
-                </span>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>{DAY_LABELS[idx]}</span>
               </div>
             ))}
           </div>
-        </article>
+        </div>
 
-        <article className="analytics-card-white opero-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px', borderLeft: '1px solid var(--border)', paddingLeft: '22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14.5px', fontWeight: 700, color: 'var(--ink)' }}>
                 {dict.analyticsWhiteTitle}
               </div>
               <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
                 {dict.analyticsWhiteSub}
               </div>
             </div>
-            <JiggIcon name="voice" size={18} variant="duotone" />
+            <JiggIcon name="voice" size={16} variant="duotone" />
           </div>
 
-          <div style={{ display: 'flex', gap: '24px', marginTop: '14px', alignItems: 'baseline' }}>
+          <div style={{ display: 'flex', gap: '28px', alignItems: 'baseline' }}>
             <div>
-              <div className="mono" style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.03em' }}>
+              <div className="mono" style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>
                 {analytics.talkingMinutes.toFixed(1)}
               </div>
               <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{dict.analyticsTalkingLabel}</div>
             </div>
             <div>
-              <div className="mono" style={{ fontSize: '28px', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.03em' }}>
+              <div className="mono" style={{ fontSize: '26px', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
                 {analytics.totalCapturedEvents}
               </div>
               <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{dict.analyticsStepsLabel}</div>
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: '14px',
-              paddingTop: '12px',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              color: 'var(--ink-muted)',
-            }}
-          >
+          <div style={{ paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--ink-muted)' }}>
             <span>Manuals: <strong className="mono" style={{ color: 'var(--ink)' }}>{analytics.totalManuals}</strong></span>
             <span>Verified steps: <strong className="mono" style={{ color: 'var(--ink)' }}>{analytics.verifiedSteps}</strong></span>
           </div>
-        </article>
+        </div>
       </section>
 
+      {/* Frameless Inline Quick Ask Pero + Hairline Recent Activity */}
       <section
         aria-label="Quick Ask Pero and Recent Activity"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '14px',
+          gap: '26px',
+          paddingTop: '4px',
         }}
       >
-        <div
-          className="opero-card"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            padding: '16px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <PeroAvatar size={34} />
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700 }}>
-                {uiLocale === 'ja-JP' ? 'Peroにすぐ質問' : 'Quick Ask Pero'}
-              </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                {uiLocale === 'ja-JP' ? 'ローカルAI・MMI知識・議事録検索' : 'Local AI chat, MMI knowledge & meeting search'}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+            <PeroAvatar size={28} />
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>
+              {uiLocale === 'ja-JP' ? 'Peroにすぐ質問' : 'Quick Ask Pero'}
             </div>
           </div>
 
@@ -390,18 +345,18 @@ export const DashboardView: React.FC = () => {
               aria-label="Quick Ask Pero"
               value={askInput}
               onChange={(e) => setAskInput(e.target.value)}
-              placeholder={uiLocale === 'ja-JP' ? 'メッセージを入力...' : 'Ask Pero anything...'}
+              placeholder={uiLocale === 'ja-JP' ? '予定作成やPDF・Excel生成などを入力してください...' : 'Ask Pero to schedule, generate PDF/Excel, or search...'}
               style={{
                 flex: 1,
                 border: '1px solid var(--border)',
-                borderRadius: '10px',
-                padding: '8px 12px',
+                borderRadius: '11px',
+                padding: '9px 13px',
                 fontSize: '13px',
-                background: '#FFFFFF',
+                background: 'var(--bg-surface)',
                 color: 'var(--ink)',
               }}
             />
-            <button type="submit" className="opero-btn primary" disabled={!askInput.trim()} style={{ minHeight: '34px', padding: '4px 12px' }}>
+            <button type="submit" className="opero-btn primary" disabled={!askInput.trim()} style={{ minHeight: '36px', padding: '4px 14px' }}>
               <span>{feat.agentSendBtn}</span>
             </button>
           </form>
@@ -413,7 +368,7 @@ export const DashboardView: React.FC = () => {
                 type="button"
                 className="opero-btn"
                 onClick={() => handleQuickAsk(chip)}
-                style={{ minHeight: '28px', padding: '3px 10px', fontSize: '11.5px' }}
+                style={{ minHeight: '28px', padding: '3px 10px', fontSize: '11.5px', borderRadius: '999px' }}
               >
                 <span>{chip}</span>
               </button>
@@ -421,55 +376,42 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        <div
-          className="opero-card"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            padding: '16px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}
-        >
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>
             {uiLocale === 'ja-JP' ? '最近のワークスペース' : 'Recent Workspace Activity'}
           </div>
 
           {recentMeetings.length === 0 && recentDocs.length === 0 && sessions.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', color: 'var(--ink-muted)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px', color: 'var(--ink-muted)', paddingTop: '2px' }}>
               <div>
                 {uiLocale === 'ja-JP'
                   ? 'まだ記録がありません。会議録音やドキュメント解析を始めてみましょう。'
                   : 'No recent items yet. Start a meeting recording or analyze a document.'}
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button type="button" className="opero-btn" onClick={() => setNavMode('analyzer')} style={{ minHeight: '30px', fontSize: '12px' }}>
+                <button type="button" className="opero-btn" onClick={() => setNavMode('analyzer')} style={{ minHeight: '30px', fontSize: '12px', borderRadius: '999px' }}>
                   <span>{feat.analyzerUploadBtn}</span>
                 </button>
-                <button type="button" className="opero-btn" onClick={() => setNavMode('meetings')} style={{ minHeight: '30px', fontSize: '12px' }}>
+                <button type="button" className="opero-btn" onClick={() => setNavMode('meetings')} style={{ minHeight: '30px', fontSize: '12px', borderRadius: '999px' }}>
                   <span>{feat.meetingsRecordBtn}</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border)' }}>
               {recentMeetings.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   className="nav-item"
                   onClick={() => setNavMode('meetings')}
-                  style={{ padding: '7px 10px', border: '1px solid var(--border)' }}
+                  style={{ padding: '9px 6px', borderRadius: 0, borderBottom: '1px solid var(--border)' }}
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
                     <JiggIcon name="voice" size={14} variant="duotone" />
                     <span>{m.title}</span>
                   </span>
-                  <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>
-                    {m.targetLocale}
-                  </span>
+                  <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>{m.targetLocale}</span>
                 </button>
               ))}
               {recentDocs.map((d) => (
@@ -478,15 +420,13 @@ export const DashboardView: React.FC = () => {
                   type="button"
                   className="nav-item"
                   onClick={() => setNavMode('analyzer')}
-                  style={{ padding: '7px 10px', border: '1px solid var(--border)' }}
+                  style={{ padding: '9px 6px', borderRadius: 0, borderBottom: '1px solid var(--border)' }}
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
                     <JiggIcon name="docs" size={14} variant="duotone" />
                     <span>{d.filename}</span>
                   </span>
-                  <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>
-                    {d.completenessScore}%
-                  </span>
+                  <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>{d.completenessScore}%</span>
                 </button>
               ))}
             </div>

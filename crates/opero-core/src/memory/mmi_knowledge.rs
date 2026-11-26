@@ -21,7 +21,7 @@ const MMI_PUBLIC_KNOWLEDGE: &[MmiKnowledgeSeed] = &[
         source_id: "mmi-corp-profile-ja",
         locale: "ja-JP",
         title: "株式会社マン・マシンインターフェース 会社概要",
-        content: "社名：株式会社マン・マシンインターフェース（MAN MACHINE INTERFACE, INC.、https://www.mmi-sc.co.jp/）。設立：1985年（昭和60年）12月7日。資本金：1,000万円。従業員数：69名（2026年5月時点）。主な加盟団体：サイバーシルクロード八王子、八王子IT協同組合、東京同友会。",
+        content: "社名は株式会社マン・マシンインターフェース（MAN MACHINE INTERFACE, INC.、https://www.mmi-sc.co.jp/）です。1985年（昭和60年）12月7日に設立され、資本金は1,000万円、従業員数は69名（2026年5月時点）です。主な加盟団体はサイバーシルクロード八王子、八王子IT協同組合、東京同友会です。",
     },
     MmiKnowledgeSeed {
         source_id: "mmi-directors-en",
@@ -33,7 +33,7 @@ const MMI_PUBLIC_KNOWLEDGE: &[MmiKnowledgeSeed] = &[
         source_id: "mmi-directors-ja",
         locale: "ja-JP",
         title: "株式会社マン・マシンインターフェース 代表取締役・役員構成",
-        content: "株式会社マン・マシンインターフェース（mmi-sc.co.jp）の役員一覧：代表取締役 関口 哲也（Tetsuya Sekiguchi）、常務取締役 山中 浩（Hiroshi Yamanaka）、執行役員 新井 竜彦、執行役員 石橋 邦彦、執行役員 佐竹 俊哉、執行役員 佐藤 由明。",
+        content: "株式会社マン・マシンインターフェース（mmi-sc.co.jp）の役員一覧です。代表取締役は関口 哲也（Tetsuya Sekiguchi）、常務取締役は山中 浩（Hiroshi Yamanaka）、執行役員は新井 竜彦、石橋 邦彦、佐竹 俊哉、佐藤 由明です。",
     },
     MmiKnowledgeSeed {
         source_id: "mmi-directors-fil",
@@ -51,7 +51,7 @@ const MMI_PUBLIC_KNOWLEDGE: &[MmiKnowledgeSeed] = &[
         source_id: "mmi-offices-ja",
         locale: "ja-JP",
         title: "株式会社マン・マシンインターフェース 所在地（本社・麹町オフィス）",
-        content: "本社／ソフトウェアセンター：〒192-0081 東京都八王子市横山町6番9号 丸多屋ビル3F。麹町オフィス：〒102-0083 東京都千代田区麹町2-10-2 プレミアムオフィス麹町3F。出典：https://www.mmi-sc.co.jp/。",
+        content: "本社・ソフトウェアセンターは〒192-0081 東京都八王子市横山町6番9号 丸多屋ビル3Fです。麹町オフィスは〒102-0083 東京都千代田区麹町2-10-2 プレミアムオフィス麹町3Fです（出典：https://www.mmi-sc.co.jp/）。",
     },
     MmiKnowledgeSeed {
         source_id: "mmi-business-embedded-en",
@@ -69,7 +69,7 @@ const MMI_PUBLIC_KNOWLEDGE: &[MmiKnowledgeSeed] = &[
         source_id: "mmi-business-ja",
         locale: "ja-JP",
         title: "株式会社マン・マシンインターフェース 事業内容",
-        content: "主な事業内容はソフトウェア受託開発およびインフラ構築。1) 組込みソフトウェア開発事業（家電製品・スマートフォン・内視鏡など電子医療機器・車載システム）。2) SIソリューション事業（ITコンサルティング、金融系システム・ATM構築運用保守、勤怠管理等の業務アプリ、AWS等のクラウド・インフラ構築、PMO支援）。",
+        content: "主な事業内容はソフトウェア受託開発およびインフラ構築です。1) 組込みソフトウェア開発事業（家電製品・スマートフォン・内視鏡などの電子医療機器・車載システム）と、2) SIソリューション事業（ITコンサルティング、金融系システム・ATM構築運用保守、勤怠管理等の業務アプリ、AWS等のクラウド・インフラ構築、PMO支援）を展開しています。",
     },
 ];
 

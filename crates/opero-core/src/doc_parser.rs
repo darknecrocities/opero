@@ -116,7 +116,22 @@ fn strip_xml_tags(input: &str) -> String {
 }
 
 fn extract_pdf_text(bytes: &[u8]) -> OperoResult<String> {
-    // 1. Try local python3 + pypdf when present (handles compressed FlateDecode streams cleanly)
+    // 1. Primary: pure-Rust native PDF extraction (FlateDecode + CJK/ToUnicode, zero Python required)
+    let bytes_owned = bytes.to_vec();
+    if let Ok(Ok(native_txt)) = std::panic::catch_unwind(move || pdf_extract::extract_text_from_mem(&bytes_owned)) {
+        let trimmed = native_txt.trim();
+        let bad_ratio = if trimmed.is_empty() {
+            100
+        } else {
+            let bad = trimmed.chars().filter(|&c| c == '\u{FFFD}' || (c.is_control() && !c.is_whitespace())).count();
+            (bad * 100) / trimmed.chars().count().max(1)
+        };
+        if !trimmed.is_empty() && bad_ratio < 5 {
+            return Ok(normalize_fragmented_pdf_text(trimmed));
+        }
+    }
+
+    // 2. Secondary fallback: local python3 + pypdf when available
     let tmp = std::env::temp_dir().join(format!("opero-pdf-{}.pdf", uuid::Uuid::new_v4().simple()));
     if std::fs::write(&tmp, bytes).is_ok() {
         let py = Command::new("python3")
@@ -131,55 +146,88 @@ fn extract_pdf_text(bytes: &[u8]) -> OperoResult<String> {
             if out.status.success() {
                 let txt = String::from_utf8_lossy(&out.stdout).trim().to_string();
                 if !txt.is_empty() {
-                    return Ok(txt);
+                    return Ok(normalize_fragmented_pdf_text(&txt));
                 }
             }
         }
     }
 
-    // 2. Pure-Rust fallback extracting uncompressed PDF literal strings inside (...) Tj / TJ operators
-    let lossy = String::from_utf8_lossy(bytes);
-    let mut extracted = Vec::new();
-    let mut buf = String::new();
-    let mut depth = 0usize;
-    let mut escaped = false;
-    for ch in lossy.chars() {
-        if escaped {
-            buf.push(ch);
-            escaped = false;
-            continue;
-        }
-        if ch == '\\' && depth > 0 {
-            escaped = true;
-            continue;
-        }
-        if ch == '(' {
-            if depth > 0 {
-                buf.push(ch);
-            }
-            depth += 1;
-        } else if ch == ')' && depth > 0 {
-            depth -= 1;
-            if depth == 0 {
-                let s = buf.trim();
-                if s.len() >= 2 && s.chars().any(|c| c.is_alphanumeric()) {
-                    extracted.push(s.to_string());
-                }
-                buf.clear();
-            } else {
-                buf.push(ch);
-            }
-        } else if depth > 0 {
-            buf.push(ch);
-        }
+    Err(OperoError::Validation(
+        "PDF appears to be image-only or encrypted; no readable text could be extracted.".to_string(),
+    ))
+}
+
+fn is_cjk_char(c: char) -> bool {
+    ('\u{3040}'..='\u{30FF}').contains(&c) || ('\u{4E00}'..='\u{9FFF}').contains(&c)
+}
+
+/// Coalesces PDF text extracted with 1-word-per-line fragmentation (e.g. design/HTML-printed PDFs)
+/// into readable paragraphs while preserving headings, bullets, and tables.
+fn normalize_fragmented_pdf_text(raw: &str) -> String {
+    let lines: Vec<&str> = raw.lines().collect();
+    let non_empty: Vec<&str> = lines.iter().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+    if non_empty.len() < 30 {
+        return raw.to_string();
+    }
+    let short_count = non_empty
+        .iter()
+        .filter(|l| l.chars().count() <= 24 && l.split_whitespace().count() <= 3)
+        .count();
+    if (short_count * 100) / non_empty.len() < 55 {
+        return raw.to_string();
     }
 
-    if extracted.is_empty() {
-        return Err(OperoError::Validation(
-            "PDF contains no extractable text (scanned/image-only PDF).".to_string(),
-        ));
+    let mut paragraphs: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut blank_run = 0usize;
+
+    for raw_line in lines {
+        let trimmed = raw_line.trim();
+        if trimmed.is_empty() {
+            blank_run += 1;
+            if blank_run >= 2 && !current.is_empty() {
+                paragraphs.push(std::mem::take(&mut current));
+            }
+            continue;
+        }
+        blank_run = 0;
+
+        let starts_new = trimmed.starts_with('#')
+            || trimmed.starts_with('|')
+            || trimmed.starts_with("• ")
+            || trimmed.starts_with("- ")
+            || trimmed.starts_with("・")
+            || (trimmed.chars().next().is_some_and(|c| c.is_ascii_digit()) && trimmed.contains(". "));
+
+        if starts_new && !current.is_empty() {
+            paragraphs.push(std::mem::take(&mut current));
+        }
+
+        if current.is_empty() {
+            current.push_str(trimmed);
+        } else {
+            let prev_cjk = current.chars().last().is_some_and(is_cjk_char);
+            let next_cjk = trimmed.chars().next().is_some_and(is_cjk_char);
+            if !(prev_cjk && next_cjk) {
+                current.push(' ');
+            }
+            current.push_str(trimmed);
+        }
+
+        let ends_sentence = trimmed.ends_with('.')
+            || trimmed.ends_with('。')
+            || trimmed.ends_with('!')
+            || trimmed.ends_with('?')
+            || trimmed.ends_with('！')
+            || trimmed.ends_with('？');
+        if (ends_sentence && current.chars().count() >= 140) || current.chars().count() >= 480 {
+            paragraphs.push(std::mem::take(&mut current));
+        }
     }
-    Ok(extracted.join("\n"))
+    if !current.is_empty() {
+        paragraphs.push(current);
+    }
+    paragraphs.join("\n\n")
 }
 
 fn extract_legacy_doc_text(bytes: &[u8]) -> OperoResult<String> {
@@ -320,7 +368,12 @@ pub fn detect_languages(text: &str) -> Vec<String> {
         .chars()
         .any(|c| ('\u{3040}'..='\u{30FF}').contains(&c) || ('\u{4E00}'..='\u{9FFF}').contains(&c));
     let lower = text.to_lowercase();
-    let has_fil = ["ang ", "mga ", "hakbang", "trabaho", "ulat"].iter().any(|k| lower.contains(k));
+    let words: Vec<&str> = lower.split(|c: char| !c.is_alphabetic()).filter(|w| !w.is_empty()).collect();
+    let has_fil = ["ang", "mga", "hakbang", "trabaho", "ulat", "ng", "para"]
+        .iter()
+        .filter(|&&kw| words.iter().any(|&w| w == kw))
+        .count()
+        >= 2;
 
     if has_ascii_words {
         langs.push("en-US".to_string());
@@ -335,4 +388,20 @@ pub fn detect_languages(text: &str) -> Vec<String> {
         langs.push("en-US".to_string());
     }
     langs
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_fragmented_pdf_text_coalesces_word_lines() {
+        let mut frag = String::new();
+        for i in 0..40 {
+            frag.push_str(&format!("word{i}\n\n"));
+        }
+        let normalized = normalize_fragmented_pdf_text(&frag);
+        let blocks = structure_text_into_blocks(&normalized);
+        assert!(blocks.len() <= 6, "Expected coalesced paragraphs, got {} blocks", blocks.len());
+    }
 }

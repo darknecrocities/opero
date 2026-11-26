@@ -59,6 +59,16 @@ impl OperoStore {
         Ok(doc)
     }
 
+    pub fn delete_analyzed_document(&self, id: &str) -> OperoResult<bool> {
+        let conn = self.conn()?;
+        let removed = conn.execute("DELETE FROM analyzed_documents WHERE id = ?1", params![id])?;
+        let docs_dir = self.data_dir.join("documents");
+        for ext in ["pdf", "docx", "doc", "md", "txt"] {
+            let _ = std::fs::remove_file(docs_dir.join(format!("{id}.{ext}")));
+        }
+        Ok(removed > 0)
+    }
+
     pub fn compile_analyzed_report_manual(&self, project_id: &str, doc_id: &str, locale: &str) -> OperoResult<Manual> {
         let doc = self.get_analyzed_document(doc_id)?;
         let manual_id = format!("man_{}", Uuid::new_v4().simple());
