@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
-use std::process::Command;
 
 use crate::error::{OperoError, OperoResult};
 
@@ -134,7 +133,7 @@ fn extract_pdf_text(bytes: &[u8]) -> OperoResult<String> {
     // 2. Secondary fallback: local python3 + pypdf when available
     let tmp = std::env::temp_dir().join(format!("opero-pdf-{}.pdf", uuid::Uuid::new_v4().simple()));
     if std::fs::write(&tmp, bytes).is_ok() {
-        let py = Command::new("python3")
+        let py = crate::win_process::silent_command("python3")
             .args([
                 "-c",
                 "import sys, pypdf; r=pypdf.PdfReader(sys.argv[1]); print('\\n'.join((p.extract_text() or '') for p in r.pages))",
@@ -238,7 +237,7 @@ fn extract_legacy_doc_text(bytes: &[u8]) -> OperoResult<String> {
     }
     let tmp = std::env::temp_dir().join(format!("opero-doc-{}.doc", uuid::Uuid::new_v4().simple()));
     std::fs::write(&tmp, bytes)?;
-    let res = Command::new("textutil")
+    let res = crate::win_process::silent_command("textutil")
         .args(["-convert", "txt", "-stdout", tmp.to_string_lossy().as_ref()])
         .output();
     let _ = std::fs::remove_file(&tmp);

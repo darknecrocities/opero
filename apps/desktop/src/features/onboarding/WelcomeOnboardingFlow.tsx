@@ -63,24 +63,39 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     void speakPeroDynamic('Opero!', 'en-US', soundEnabled, '/audio/pero/welcome-opero.mp3', false);
   }, [step, soundEnabled]);
 
+  const selectedModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
+  const isModelReady = Boolean(selectedModel && isModelDownloadedOnPc(selectedModel, hardwareProfile));
+  const readyModelName = isModelReady ? (selectedModel?.displayName ?? selectedModel?.modelName ?? '') : '';
+
   useEffect(() => () => stopPeroVoice(), []);
-  useOnboardingAutoVoice({ step, name, occupation, personality, locale, privacyAccepted, soundEnabled, onSpoken: setSpokenLine });
+  useOnboardingAutoVoice({
+    step,
+    name,
+    occupation,
+    personality,
+    locale,
+    privacyAccepted,
+    selectedModelName: readyModelName,
+    soundEnabled,
+    onSpoken: setSpokenLine,
+  });
 
   const activeMotion: PeroMotionId = useMemo(() => {
     if (step === 1 && name.trim().length > 0) return 'thumbs-up';
     if (step === 3) return TONE_TO_PERO_MOTION[personality] ?? 'thinking-processing';
+    if (step === 5 && isModelReady) return 'thumbs-up';
     if (step === 6 && privacyAccepted) return 'thumbs-up';
     if (step === 7) return boopTick % 2 === 1 ? 'verified-celebrate' : 'jump-cheer';
     return spec.defaultMotion;
-  }, [step, name, personality, privacyAccepted, boopTick, spec.defaultMotion]);
+  }, [step, name, personality, isModelReady, privacyAccepted, boopTick, spec.defaultMotion]);
 
   const cueText = useMemo(() => {
-    const activeLang: PeroVoiceLang = spokenLine?.lang ?? (locale === 'ja-JP' ? 'ja-JP' : 'en-US');
-    return buildDynamicPeroLine({ step, name, occupation, personality, privacyAccepted }, activeLang);
-  }, [spokenLine, locale, step, name, occupation, personality, privacyAccepted]);
-
-  const selectedModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
-  const isModelReady = Boolean(selectedModel && isModelDownloadedOnPc(selectedModel, hardwareProfile));
+    const activeLang: PeroVoiceLang = spokenLine?.lang ?? locale;
+    return buildDynamicPeroLine(
+      { step, name, occupation, personality, privacyAccepted, modelName: readyModelName },
+      activeLang,
+    );
+  }, [spokenLine, locale, step, name, occupation, personality, privacyAccepted, readyModelName]);
 
   const canAdvanceFromStep = (current: number): boolean => {
     if (current === 1 && !name.trim()) return false;
@@ -114,15 +129,19 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   const handlePeroTap = () => {
     const nextTap = stepTapCount + 1;
     const voiceLang: PeroVoiceLang =
-      locale === 'ja-JP' ? 'ja-JP' : nextTap % 2 === 1 ? 'en-US' : 'ja-JP';
-    const line = buildDynamicPeroLine({ step, name, occupation, personality, privacyAccepted }, voiceLang);
+      locale === 'ja-JP' ? 'ja-JP' : nextTap % 2 === 1 ? locale : 'ja-JP';
+    const line = buildDynamicPeroLine(
+      { step, name, occupation, personality, privacyAccepted, modelName: readyModelName },
+      voiceLang,
+    );
     setStepTapCount(nextTap);
     setSpokenLine({ text: line, lang: voiceLang });
     setBoopTick((t) => t + 1);
     if (step === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
-    const hasPersonalInput = name.trim().length > 0 || occupation.trim().length > 0 || step >= 3;
+    const hasPersonalInput =
+      name.trim().length > 0 || occupation.trim().length > 0 || readyModelName.length > 0 || voiceLang === 'fil-PH' || step >= 3;
     playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
-    void speakPeroDynamic(line, voiceLang, soundEnabled, bundledClipPathForStep(step, voiceLang), hasPersonalInput);
+    void speakPeroDynamic(line, voiceLang, soundEnabled, bundledClipPathForStep(step, voiceLang), hasPersonalInput, personality);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {

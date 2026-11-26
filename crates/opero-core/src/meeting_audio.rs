@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::{Mutex, OnceLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ fn recorders() -> &'static Mutex<HashMap<String, Child>> {
 }
 
 fn which_binary(name: &str) -> Option<PathBuf> {
-    let output = Command::new(if cfg!(target_os = "windows") { "where" } else { "which" })
+    let output = crate::win_process::silent_command(if cfg!(target_os = "windows") { "where" } else { "which" })
         .arg(name)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -101,7 +101,7 @@ pub fn start_os_audio_capture(
     let _ = write_minimal_wav_header(&wav_path);
 
     if let Some(tap_bin) = resolve_native_tap_binary(data_dir) {
-        if let Ok(child) = Command::new(tap_bin)
+        if let Ok(child) = crate::win_process::silent_command(tap_bin)
             .args(["record", &wav_path.to_string_lossy(), audio_source])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -140,7 +140,7 @@ pub fn transcribe_local_wav(
     }
 
     if let Some(tap_bin) = resolve_native_tap_binary(data_dir) {
-        if let Ok(out) = Command::new(tap_bin)
+        if let Ok(out) = crate::win_process::silent_command(tap_bin)
             .args(["transcribe", &wav_path.to_string_lossy(), source_locale])
             .output()
         {
@@ -160,7 +160,7 @@ pub fn transcribe_local_wav(
             "fil-PH" => "tl",
             _ => "en",
         };
-        if let Ok(out) = Command::new(whisper)
+        if let Ok(out) = crate::win_process::silent_command(whisper)
             .args(["-f", &wav_path.to_string_lossy(), "-l", lang, "--no-timestamps"])
             .output()
         {

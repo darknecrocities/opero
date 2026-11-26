@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
+use std::sync::OnceLock;
 
 use crate::error::{OperoError, OperoResult};
+use crate::win_process::silent_command;
 
 const OLLAMA_LOOPBACK: &str = "http://127.0.0.1:11434";
+static CACHED_RAW_HARDWARE: OnceLock<(String, usize, u64, u64, String, bool, bool)> = OnceLock::new();
 
 pub const ALLOWED_OLLAMA_MODELS: &[&str] = &[
     "qwen2.5:1.5b",
@@ -147,37 +149,24 @@ fn scan_disk_ollama_manifests() -> Vec<String> {
 }
 
 fn detect_installed_ollama_models() -> (bool, Vec<String>) {
-    let mut cmd = Command::new("curl");
-    cmd.args(["-fsS", "--max-time", "1", &format!("{OLLAMA_LOOPBACK}/api/tags")]);
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
+    if let Some(models) = crate::ollama_runtime::list_live_ollama_models() {
+        return (true, models);
     }
-    let out = cmd.output();
-    let Ok(out) = out else { return (false, scan_disk_ollama_manifests()); };
-    if !out.status.success() { return (false, scan_disk_ollama_manifests()); }
-    let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) else { return (true, Vec::new()); };
-    let models = val
-        .get("models")
-        .and_then(|m| m.as_array())
-        .map(|arr| arr.iter().filter_map(|item| item.get("name").and_then(|n| n.as_str()).map(str::to_string)).collect())
-        .unwrap_or_default();
-    (true, models)
+    (false, scan_disk_ollama_manifests())
 }
 
 #[cfg(target_os = "macos")]
 fn detect_hardware_raw() -> (String, usize, u64, u64, String, bool, bool) {
-    let cpu = Command::new("sysctl").args(["-n", "machdep.cpu.brand_string"]).output().ok()
+    let cpu = silent_command("sysctl").args(["-n", "machdep.cpu.brand_string"]).output().ok()
         .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty()).unwrap_or_else(|| "Apple Silicon".into());
-    let cores = Command::new("sysctl").args(["-n", "hw.ncpu"]).output().ok()
+    let cores = silent_command("sysctl").args(["-n", "hw.ncpu"]).output().ok()
         .and_then(|o| String::from_utf8(o.stdout).ok()).and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(8);
-    let ram_bytes = Command::new("sysctl").args(["-n", "hw.memsize"]).output().ok()
+    let ram_bytes = silent_command("sysctl").args(["-n", "hw.memsize"]).output().ok()
         .and_then(|o| String::from_utf8(o.stdout).ok()).and_then(|s| s.trim().parse::<u64>().ok())
         .unwrap_or(16 * 1024 * 1024 * 1024);
     let ram_gb = (ram_bytes / (1024 * 1024 * 1024)).max(4);
-    let free_disk_gb = Command::new("df").args(["-k", "/"]).output().ok()
+    let free_disk_gb = silent_command("df").args(["-k", "/"]).output().ok()
         .and_then(|o| String::from_utf8(o.stdout).ok())
         .and_then(|txt| txt.lines().nth(1).and_then(|l| l.split_whitespace().nth(3)).and_then(|kb| kb.parse::<u64>().ok()).map(|kb| kb / (1024 * 1024)))
         .unwrap_or(32);
@@ -190,7 +179,7 @@ fn detect_hardware_raw() -> (String, usize, u64, u64, String, bool, bool) {
 fn detect_hardware_raw() -> (String, usize, u64, u64, String, bool, bool) {
     let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
     let ps = "try { $c=(Get-CimInstance Win32_Processor | Select -First 1).Name; $m=[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB); $d=[math]::Round((Get-CimInstance Win32_LogicalDisk -Filter \"DeviceID='C:'\").FreeSpace/1GB); $g=(Get-CimInstance Win32_VideoController | Select -ExpandProperty Name) -join '; '; Write-Output \"$c|$m|$d|$g\" } catch {}";
-    if let Ok(out) = Command::new("powershell").args(["-NoProfile", "-Command", ps]).output() {
+    if let Ok(out) = silent_command("powershell").args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", ps]).output() {
         let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
         let parts: Vec<&str> = line.split('|').collect();
         if parts.len() == 4 {
@@ -218,7 +207,8 @@ pub fn inspect_hardware_profile() -> HardwareProfile {
 }
 
 pub fn inspect_hardware_profile_with_data_dir(data_dir: Option<&std::path::Path>) -> HardwareProfile {
-    let (cpu_name, cpu_cores, total_ram_gb, free_disk_gb, gpu_name, has_dedicated_gpu, is_apple_silicon) = detect_hardware_raw();
+    let (cpu_name, cpu_cores, total_ram_gb, free_disk_gb, gpu_name, has_dedicated_gpu, is_apple_silicon) =
+        CACHED_RAW_HARDWARE.get_or_init(detect_hardware_raw).clone();
     let (recommended_tier, recommended_model_id, max_model_ram_gb, recommendation_reason) =
         recommend_for_hardware(total_ram_gb, cpu_cores, has_dedicated_gpu, is_apple_silicon);
     let ollama_binary_available = crate::ollama_runtime::find_ollama_binary_with_data_dir(data_dir).is_some();
@@ -266,7 +256,7 @@ pub fn pull_curated_ollama_model(tag: &str) -> OperoResult<HardwareProfile> {
             }
         }
     }
-    let out = Command::new(&bin)
+    let out = silent_command(&bin)
         .args(["pull", clean])
         .env("OLLAMA_HOST", "127.0.0.1:11434")
         .output()
@@ -276,6 +266,48 @@ pub fn pull_curated_ollama_model(tag: &str) -> OperoResult<HardwareProfile> {
         return Err(OperoError::Validation(format!("Could not download {clean}: {}", stderr.trim())));
     }
     Ok(inspect_hardware_profile())
+}
+
+pub fn delete_curated_ollama_model(tag: &str, data_dir: Option<&std::path::Path>) -> OperoResult<HardwareProfile> {
+    let clean = tag.trim().to_string();
+    validate_pull_model_tag(&clean)?;
+    if let Some(dir) = data_dir {
+        if crate::ollama_runtime::list_live_ollama_models().is_none() {
+            if let Some(bin) = crate::ollama_runtime::find_ollama_binary_with_data_dir(Some(dir)) {
+                crate::ollama_runtime::spawn_ollama_serve(&bin, dir);
+                for _ in 0..20 {
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                    if crate::ollama_runtime::list_live_ollama_models().is_some() {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    let clean_owned = clean.clone();
+    let del_res = std::thread::spawn(move || -> OperoResult<()> {
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(3))
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .map_err(|e| OperoError::Process(format!("HTTP client error: {e}")))?;
+        let resp = client
+            .delete(format!("{OLLAMA_LOOPBACK}/api/delete"))
+            .json(&serde_json::json!({ "name": clean_owned }))
+            .send()
+            .map_err(|e| OperoError::Process(format!("Failed to contact Ollama for model deletion: {e}")))?;
+        if !resp.status().is_success() && resp.status().as_u16() != 404 {
+            return Err(OperoError::Validation(format!(
+                "Could not delete model {clean_owned} (HTTP {})",
+                resp.status()
+            )));
+        }
+        Ok(())
+    })
+    .join()
+    .map_err(|_| OperoError::Process("Delete thread panicked".into()))?;
+    del_res?;
+    Ok(inspect_hardware_profile_with_data_dir(data_dir))
 }
 
 #[cfg(test)]

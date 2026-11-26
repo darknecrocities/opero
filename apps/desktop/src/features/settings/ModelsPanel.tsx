@@ -11,6 +11,22 @@ export const ModelsPanel: React.FC = () => {
   const { pullJob, isPulling, pullingTag, error: pullError, startDownload } = useModelPull();
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingTag, setDeletingTag] = useState<string | null>(null);
+
+  const handleDelete = async (tag: string, label: string) => {
+    setDeletingTag(tag);
+    setNotice(null);
+    playJiggSfx('click', soundEnabled);
+    try {
+      const { hardware } = await operoClient.deleteModel(tag);
+      setHardwareProfile(hardware);
+      setNotice(`Removed ${label} from this PC.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : `Could not remove ${label}.`);
+    } finally {
+      setDeletingTag(null);
+    }
+  };
 
   const recommendedModel = DEFAULT_MODELS.find((m) => m.id === hardwareProfile?.recommendedModelId);
   const recommendedInstalled = recommendedModel
@@ -189,18 +205,32 @@ export const ModelsPanel: React.FC = () => {
                     </span>
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    className={`opero-btn ${active ? 'primary' : ''}`}
-                    disabled={!selectable}
-                    onClick={() => {
-                      if (!selectable) return;
-                      playJiggSfx('click', soundEnabled);
-                      setActiveModelId(m.id);
-                    }}
-                  >
-                    <span>{active ? 'Selected' : 'Use Model'}</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={`opero-btn ${active ? 'primary' : ''}`}
+                      disabled={!selectable}
+                      onClick={() => {
+                        if (!selectable) return;
+                        playJiggSfx('click', soundEnabled);
+                        setActiveModelId(m.id);
+                      }}
+                    >
+                      <span>{active ? 'Selected' : 'Use Model'}</span>
+                    </button>
+                    {m.ollamaTag && downloaded && (
+                      <button
+                        type="button"
+                        className="opero-btn"
+                        aria-label={`Remove ${m.displayName ?? m.modelName}`}
+                        disabled={isPulling || deletingTag !== null}
+                        onClick={() => void handleDelete(m.ollamaTag!, m.displayName ?? m.modelName)}
+                        style={{ minHeight: '32px', padding: '4px 10px', fontSize: '11.5px', color: 'var(--danger)' }}
+                      >
+                        {deletingTag === m.ollamaTag ? 'Removing...' : 'Remove'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

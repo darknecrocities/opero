@@ -122,9 +122,6 @@ fn install_ollama_automatically(
     data_dir: &Path,
     on_progress: &mut dyn FnMut(&str, u64, u64, Option<u64>),
 ) -> OperoResult<PathBuf> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-
     let installer = data_dir.join("downloads").join("OllamaSetup.exe");
     on_progress("Downloading Ollama for Windows...", 0, 0, None);
     download_file_with_progress(
@@ -136,9 +133,8 @@ fn install_ollama_automatically(
     )?;
 
     on_progress("Installing Ollama runtime on Windows...", 0, 0, None);
-    let status = std::process::Command::new(&installer)
+    let status = crate::win_process::silent_command(&installer)
         .args(["/VERYSILENT", "/NORESTART", "/CURRENTUSER"])
-        .creation_flags(CREATE_NO_WINDOW)
         .status()
         .map_err(|e| OperoError::Process(format!("Failed to launch Ollama installer: {e}")))?;
     let _ = std::fs::remove_file(&installer);

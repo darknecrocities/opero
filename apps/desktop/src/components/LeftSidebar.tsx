@@ -3,6 +3,7 @@ import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OperoLogo } from '@opero/mascot';
 import type { OperatorRole } from '@opero/shared-types';
+import { formatShortcut } from '../services/platformShortcuts';
 import { useOperoStore, type WorkspaceNavMode } from '../store/useOperoStore';
 
 export const LeftSidebar: React.FC = () => {
@@ -10,6 +11,7 @@ export const LeftSidebar: React.FC = () => {
     navMode,
     uiLocale,
     userProfile,
+    hardwareProfile,
     sessions,
     activeSessionId,
     role,
@@ -23,16 +25,17 @@ export const LeftSidebar: React.FC = () => {
   } = useOperoStore();
   const dict = getUiDictionary(uiLocale);
   const feat = getFeatureStrings(uiLocale);
+  const os = hardwareProfile?.osName;
 
   const navItems: { mode: WorkspaceNavMode; icon: string; shortcut: string; label: string }[] = [
-    { mode: 'dashboard', icon: 'home', shortcut: '⌘0', label: dict.navDashboard },
-    { mode: 'capture', icon: 'capture', shortcut: '⌥Space', label: dict.navLiveCapture },
-    { mode: 'studio', icon: 'studio', shortcut: '⌘1', label: dict.navStudio },
-    { mode: 'templates', icon: 'outputs', shortcut: '⌘2', label: dict.navTemplates },
-    { mode: 'analyzer', icon: 'docs', shortcut: '⌘3', label: dict.navAnalyzer },
-    { mode: 'meetings', icon: 'voice', shortcut: '⌘4', label: feat.navMeetings },
-    { mode: 'agent', icon: 'router', shortcut: '⌘5', label: feat.navAgent },
-    { mode: 'settings', icon: 'settings', shortcut: '⌘,', label: dict.navSettings },
+    { mode: 'dashboard', icon: 'home', shortcut: formatShortcut({ mod: true, key: '0' }, os), label: dict.navDashboard },
+    { mode: 'capture', icon: 'capture', shortcut: formatShortcut({ alt: true, key: 'Space' }, os), label: dict.navLiveCapture },
+    { mode: 'studio', icon: 'studio', shortcut: formatShortcut({ mod: true, key: '1' }, os), label: dict.navStudio },
+    { mode: 'templates', icon: 'outputs', shortcut: formatShortcut({ mod: true, key: '2' }, os), label: dict.navTemplates },
+    { mode: 'analyzer', icon: 'docs', shortcut: formatShortcut({ mod: true, key: '3' }, os), label: dict.navAnalyzer },
+    { mode: 'meetings', icon: 'voice', shortcut: formatShortcut({ mod: true, key: '4' }, os), label: feat.navMeetings },
+    { mode: 'agent', icon: 'router', shortcut: formatShortcut({ mod: true, key: '5' }, os), label: feat.navAgent },
+    { mode: 'settings', icon: 'settings', shortcut: formatShortcut({ mod: true, key: ',' }, os), label: dict.navSettings },
   ];
 
   return (
@@ -54,7 +57,7 @@ export const LeftSidebar: React.FC = () => {
           aria-label="Hide navigation sidebar"
           aria-pressed={leftOpen}
           tabIndex={leftOpen ? 0 : -1}
-          title="Hide Sidebar (⌘B)"
+          title={`Hide Sidebar (${formatShortcut({ mod: true, key: 'B' }, os)})`}
           style={{ minHeight: '30px', width: '30px', padding: 0, flexShrink: 0 }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

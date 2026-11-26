@@ -12,7 +12,8 @@ use opero_core::doc_analyzer::{
 use opero_core::doc_analyzer_llm::ask_about_document;
 use opero_core::error::OperoError;
 use opero_core::hardware::{
-    inspect_hardware_profile_with_data_dir, pull_curated_ollama_model, validate_pull_model_tag,
+    delete_curated_ollama_model, inspect_hardware_profile_with_data_dir, pull_curated_ollama_model,
+    validate_pull_model_tag,
 };
 use opero_core::memory::dual_core::get_memory_stats;
 use opero_core::memory::mmi_knowledge::seed_mmi_public_knowledge;
@@ -294,6 +295,18 @@ async fn start_pull_model_async(
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
     let clean = req.model_tag.trim().to_string();
     validate_pull_model_tag(&clean)?;
+    if let Ok(map) = state.pull_jobs.lock() {
+        if let Some(existing) = map.values().find(|j| {
+            j.model_tag.eq_ignore_ascii_case(&clean)
+                && j.phase != "completed"
+                && j.phase != "failed"
+        }) {
+            return Ok((
+                StatusCode::ACCEPTED,
+                Json(serde_json::json!({ "jobId": existing.job_id, "status": existing })),
+            ));
+        }
+    }
     let job_id = uuid::Uuid::new_v4().to_string();
     let initial = ModelPullJobStatus {
         job_id: job_id.clone(),
@@ -321,6 +334,31 @@ async fn start_pull_model_async(
         });
     });
     Ok((StatusCode::ACCEPTED, Json(serde_json::json!({ "jobId": job_id, "status": initial }))))
+}
+
+async fn get_active_pull_job(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let map = state
+        .pull_jobs
+        .lock()
+        .map_err(|_| ApiError(OperoError::Process("Job tracker lock poisoned".into())))?;
+    let active = map
+        .values()
+        .find(|j| j.phase != "completed" && j.phase != "failed")
+        .cloned();
+    Ok(Json(serde_json::json!({ "status": active })))
+}
+
+async fn delete_model(
+    State(state): State<Arc<AppState>>,
+    Path(tag): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let data_dir = state.store.data_dir.clone();
+    let hardware = tokio::task::spawn_blocking(move || delete_curated_ollama_model(&tag, Some(&data_dir)))
+        .await
+        .map_err(|e| ApiError(OperoError::Process(format!("Model delete task failed: {e}"))))??;
+    Ok(Json(serde_json::json!({ "hardware": hardware })))
 }
 
 async fn get_pull_model_status(
@@ -355,7 +393,9 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/v1/system/hardware", get(get_hardware))
         .route("/api/v1/models/pull", post(pull_model))
         .route("/api/v1/models/pull-async", post(start_pull_model_async))
+        .route("/api/v1/models/pull-active", get(get_active_pull_job))
         .route("/api/v1/models/pull-status/{job_id}", get(get_pull_model_status))
+        .route("/api/v1/models/{tag}", delete(delete_model))
         .route("/api/v1/memory/seed-mmi", post(seed_mmi_memory))
         .route("/api/v1/analyzer/documents", get(list_documents))
         .route("/api/v1/analyzer/documents/{id}", delete(delete_document))

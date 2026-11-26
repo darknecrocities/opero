@@ -403,14 +403,16 @@ async fn install_update(Json(req): Json<InstallUpdateReq>) -> Result<Json<serde_
 struct SpeakReq {
     text: String,
     lang: Option<String>,
+    tone: Option<String>,
 }
 
 async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<SpeakReq>) -> Response {
     let data_dir = st.store.data_dir.clone();
     let text = req.text;
     let lang = req.lang.unwrap_or_else(|| "en-US".to_string());
+    let tone = req.tone;
     let res = tokio::task::spawn_blocking(move || {
-        opero_core::tts::synthesize_child_speech(&data_dir, &text, &lang)
+        opero_core::tts::synthesize_child_speech_with_tone(&data_dir, &text, &lang, tone.as_deref())
     })
     .await;
     match res {

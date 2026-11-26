@@ -14,13 +14,14 @@ interface AutoVoiceParams {
   personality: OperoPersonality;
   locale: FirstClassLocale;
   privacyAccepted: boolean;
+  selectedModelName?: string;
   soundEnabled: boolean;
   onSpoken: (line: { text: string; lang: PeroVoiceLang }) => void;
 }
 
 /**
- * Automatically speaks Pero's personalized voiceover when the user finishes typing
- * their name or occupation (debounced 750ms) or changes style/language/privacy/completes setup.
+ * Automatically speaks Pero's dynamic personalized neural voiceover when entering a step,
+ * finishing name/role input (debounced 700ms), switching tone/language/model, or completing setup.
  */
 export function useOnboardingAutoVoice({
   step,
@@ -29,6 +30,7 @@ export function useOnboardingAutoVoice({
   personality,
   locale,
   privacyAccepted,
+  selectedModelName,
   soundEnabled,
   onSpoken,
 }: AutoVoiceParams): void {
@@ -36,37 +38,42 @@ export function useOnboardingAutoVoice({
 
   useEffect(() => {
     if (!soundEnabled) return;
-    const voiceLang: PeroVoiceLang = locale === 'ja-JP' ? 'ja-JP' : 'en-US';
+    const voiceLang: PeroVoiceLang = locale;
     const cleanName = name.trim();
     const cleanRole = occupation.trim();
+    const cleanModel = selectedModelName?.trim() ?? '';
 
-    // Only auto-speak on text steps once the user has typed >= 2 characters
     if (step === 0) return;
-    if (step === 1 && cleanName.length < 2) return;
-    if (step === 2 && cleanRole.length < 2) return;
 
     const line = buildDynamicPeroLine(
-      { step, name: cleanName, occupation: cleanRole, personality, privacyAccepted },
+      { step, name: cleanName, occupation: cleanRole, personality, privacyAccepted, modelName: cleanModel },
       voiceLang,
     );
-    const key = `${step}::${voiceLang}::${line}`;
+    const key = `${step}::${voiceLang}::${personality}::${line}`;
     if (lastSpokenRef.current === key) return;
 
-    const delayMs = step === 1 || step === 2 ? 750 : 220;
+    const delayMs =
+      (step === 1 && cleanName.length > 0) || (step === 2 && cleanRole.length > 0) ? 700 : 220;
+
     const timer = window.setTimeout(() => {
       lastSpokenRef.current = key;
       onSpoken({ text: line, lang: voiceLang });
-      const hasPersonal =
-        cleanName.length > 0 || cleanRole.length > 0 || step >= 3;
+      const preferDynamic =
+        cleanName.length > 0 ||
+        cleanRole.length > 0 ||
+        cleanModel.length > 0 ||
+        voiceLang === 'fil-PH' ||
+        step >= 3;
       void speakPeroDynamic(
         line,
         voiceLang,
         soundEnabled,
         bundledClipPathForStep(step, voiceLang),
-        hasPersonal,
+        preferDynamic,
+        personality,
       );
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [step, name, occupation, personality, locale, privacyAccepted, soundEnabled]);
+  }, [step, name, occupation, personality, locale, privacyAccepted, selectedModelName, soundEnabled]);
 }

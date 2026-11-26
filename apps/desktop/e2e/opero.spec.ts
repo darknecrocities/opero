@@ -174,7 +174,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     // Create & export a manual from an MMI template
     await page.getByRole('button', { name: 'Create Manual' }).first().click();
     await expect(page.getByRole('button', { name: 'Number', exact: true })).toBeVisible({ timeout: 6000 });
-    await page.getByRole('button', { name: /PDF ⌘E/i }).click();
+    await page.getByRole('button', { name: /PDF (⌘E|Ctrl\+E)/i }).click();
     await expect(page.getByRole('status').filter({ hasText: /Exported PDF/i }).first()).toBeVisible({
       timeout: 6000,
     });

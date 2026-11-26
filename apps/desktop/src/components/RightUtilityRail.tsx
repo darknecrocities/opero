@@ -4,6 +4,7 @@ import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { ExportFormat, FirstClassLocale } from '@opero/shared-types';
 import { useModelPull } from '../hooks/useModelPull';
 import { isModelDownloadedOnPc, isModelSelectableInApp } from '../services/modelAvailability';
+import { formatShortcut } from '../services/platformShortcuts';
 import { DEFAULT_MODELS, useOperoStore } from '../store/useOperoStore';
 import { ModelDownloadProgressBar } from './ModelDownloadProgressBar';
 
@@ -43,11 +44,12 @@ export const RightUtilityRail: React.FC = () => {
   const activeModel =
     selectableModels.find((m) => m.id === activeModelId) ?? selectableModels[0] ?? DEFAULT_MODELS[DEFAULT_MODELS.length - 1];
 
+  const os = hardwareProfile?.osName;
   const exportRows: { fmt: ExportFormat; icon: string; label: string; keyHint: string }[] = [
-    { fmt: 'pdf', icon: 'export-pdf', label: 'PDF', keyHint: '⌘E' },
-    { fmt: 'docx', icon: 'export-docx', label: 'Word (.docx)', keyHint: '⌘⇧D' },
-    { fmt: 'markdown', icon: 'export-md', label: 'Markdown', keyHint: '⌘⇧M' },
-    { fmt: 'html', icon: 'export-html', label: 'HTML', keyHint: '⌘⇧H' },
+    { fmt: 'pdf', icon: 'export-pdf', label: 'PDF', keyHint: formatShortcut({ mod: true, key: 'E' }, os) },
+    { fmt: 'docx', icon: 'export-docx', label: 'Word (.docx)', keyHint: formatShortcut({ mod: true, shift: true, key: 'D' }, os) },
+    { fmt: 'markdown', icon: 'export-md', label: 'Markdown', keyHint: formatShortcut({ mod: true, shift: true, key: 'M' }, os) },
+    { fmt: 'html', icon: 'export-html', label: 'HTML', keyHint: formatShortcut({ mod: true, shift: true, key: 'H' }, os) },
   ];
 
   return (

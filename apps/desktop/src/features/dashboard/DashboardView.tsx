@@ -4,6 +4,7 @@ import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { PeroStateMascot } from '@opero/mascot';
 import type { AnalyzedDocument, MeetingNoteRecord } from '@opero/shared-types';
 import { PeroAvatar } from '../../components/PeroAvatar';
+import { formatShortcut } from '../../services/platformShortcuts';
 import { operoClient } from '../../services/operoClient';
 import { useOperoStore, type WorkspaceNavMode } from '../../store/useOperoStore';
 
@@ -38,6 +39,7 @@ export const DashboardView: React.FC = () => {
     void operoClient.listAnalyzedDocs().then((r) => setRecentDocs(r.documents.slice(0, 3))).catch(() => {});
   }, []);
 
+  const os = useOperoStore((s) => s.hardwareProfile?.osName);
   const quickTiles: {
     mode: WorkspaceNavMode;
     icon: string;
@@ -45,12 +47,12 @@ export const DashboardView: React.FC = () => {
     subtitle: string;
     shortcut: string;
   }[] = [
-    { mode: 'capture', icon: 'capture', title: dict.navLiveCapture, subtitle: uiLocale === 'ja-JP' ? '画面操作を記録します' : 'Record workflow steps', shortcut: '⌥Space' },
-    { mode: 'meetings', icon: 'voice', title: feat.navMeetings, subtitle: uiLocale === 'ja-JP' ? '会議音声を録音・翻訳します' : 'OS audio & bilingual notes', shortcut: '⌘4' },
-    { mode: 'agent', icon: 'router', title: feat.navAgent, subtitle: uiLocale === 'ja-JP' ? 'ローカルAIと対話します' : 'Chat with local AI & RAG', shortcut: '⌘5' },
-    { mode: 'analyzer', icon: 'docs', title: dict.navAnalyzer, subtitle: uiLocale === 'ja-JP' ? 'PDF・Wordを解析します' : 'Annotate PDF & Word', shortcut: '⌘3' },
-    { mode: 'templates', icon: 'outputs', title: dict.navTemplates, subtitle: uiLocale === 'ja-JP' ? 'MMI標準テンプレート7種です' : '7 MMI SOP templates', shortcut: '⌘2' },
-    { mode: 'studio', icon: 'studio', title: dict.navStudio, subtitle: uiLocale === 'ja-JP' ? '手順書を編集・出力します' : 'Edit & export manuals', shortcut: '⌘1' },
+    { mode: 'capture', icon: 'capture', title: dict.navLiveCapture, subtitle: uiLocale === 'ja-JP' ? '画面操作を記録します' : 'Record workflow steps', shortcut: formatShortcut({ alt: true, key: 'Space' }, os) },
+    { mode: 'meetings', icon: 'voice', title: feat.navMeetings, subtitle: uiLocale === 'ja-JP' ? '会議音声を録音・翻訳します' : 'OS audio & bilingual notes', shortcut: formatShortcut({ mod: true, key: '4' }, os) },
+    { mode: 'agent', icon: 'router', title: feat.navAgent, subtitle: uiLocale === 'ja-JP' ? 'ローカルAIと対話します' : 'Chat with local AI & RAG', shortcut: formatShortcut({ mod: true, key: '5' }, os) },
+    { mode: 'analyzer', icon: 'docs', title: dict.navAnalyzer, subtitle: uiLocale === 'ja-JP' ? 'PDF・Wordを解析します' : 'Annotate PDF & Word', shortcut: formatShortcut({ mod: true, key: '3' }, os) },
+    { mode: 'templates', icon: 'outputs', title: dict.navTemplates, subtitle: uiLocale === 'ja-JP' ? 'MMI標準テンプレート7種です' : '7 MMI SOP templates', shortcut: formatShortcut({ mod: true, key: '2' }, os) },
+    { mode: 'studio', icon: 'studio', title: dict.navStudio, subtitle: uiLocale === 'ja-JP' ? '手順書を編集・出力します' : 'Edit & export manuals', shortcut: formatShortcut({ mod: true, key: '1' }, os) },
   ];
 
   const handleQuickAsk = (prompt: string) => {

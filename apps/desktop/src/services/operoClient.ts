@@ -261,7 +261,17 @@ export const operoClient = {
     fetchLocal<{ status: ModelPullJobStatus }>(
       `/models/pull-status/${encodeURIComponent(jobId)}`,
       undefined,
-      8000,
+      15000,
+    ),
+
+  getActiveModelPull: () =>
+    fetchLocal<{ status: ModelPullJobStatus | null }>('/models/pull-active', undefined, 8000),
+
+  deleteModel: (modelTag: string) =>
+    fetchLocal<{ hardware: HardwareProfile }>(
+      `/models/${encodeURIComponent(modelTag)}`,
+      { method: 'DELETE' },
+      30000,
     ),
 
   getModelRuntimeStatus: () =>
@@ -285,7 +295,7 @@ export const operoClient = {
     fetchLocal<AgentChatResponse>(
       '/agent/chat',
       { method: 'POST', body: JSON.stringify(payload) },
-      45000,
+      80000,
     ),
 
   deleteAgentThread: (threadId: string) =>
