@@ -19,7 +19,7 @@
 *.db
 *.db-shm
 *.db-wal
-data/
+/data/
 recordings/
 captures/
 exports/
