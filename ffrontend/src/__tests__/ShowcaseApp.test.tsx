@@ -66,14 +66,14 @@ describe('OPERO Release 1 Showcase (ffrontend)', () => {
     for (const btn of macBtns) expect(btn).toBeDisabled();
   });
 
-  it('renders MMI footer attribution and opens interactive Terms & Privacy modal', () => {
-    render(<App />);
-    expect(screen.getByText(/Developed for Man Machine Interface Inc\. \(MMI\)/i)).toBeInTheDocument();
+  it('renders clean footer with zero MMI references and opens interactive Terms & Privacy modal', () => {
+    const { container } = render(<App />);
+    expect(container.textContent).not.toMatch(/\bMMI\b|Man Machine Interface|マンマシン/i);
 
     const termsBtn = screen.getByRole('button', { name: /^Terms & Conditions$/i });
     fireEvent.click(termsBtn);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(/Project Scope & Attribution/i)).toBeInTheDocument();
+    expect(screen.getByText(/Project Scope/i)).toBeInTheDocument();
 
     const privacyTab = screen.getByRole('tab', { name: /^Privacy Policy$/i });
     fireEvent.click(privacyTab);

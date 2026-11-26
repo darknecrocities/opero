@@ -41,12 +41,6 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onNavigate }) => {
             <p className="m-0 text-sm text-[#68778B] leading-[1.6] max-w-[30ch]">
               Your workflow. Automatically documented. Local-first desktop documentation for Windows.
             </p>
-            <p className="m-0 pt-1 text-xs font-medium text-[#172334] leading-[1.55]">
-              Developed for Man Machine Interface Inc. (MMI)
-              <span className="block text-[#68778B] font-normal">
-                株式会社マンマシンインターフェース
-              </span>
-            </p>
           </div>
 
           <div className="lg:col-span-2 flex flex-col gap-2.5">
@@ -125,7 +119,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onNavigate }) => {
 
         <div className="pt-6 border-t border-[#E1E8F0] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#68778B]">
           <div className="text-center sm:text-left">
-            © 2026 Arron Kian Parejas · Project for Man Machine Interface Inc. (MMI) · MIT License
+            © 2026 OPERO · Arron Kian Parejas · MIT License
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">

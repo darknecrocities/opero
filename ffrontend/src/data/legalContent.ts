@@ -21,8 +21,8 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
     updated: 'Effective November 2026',
     sections: [
       {
-        heading: '1. Project Scope & Attribution',
-        body: 'OPERO is a local-first desktop workflow documentation application developed by Arron Kian Parejas for Man Machine Interface Inc. (MMI / 株式会社マンマシンインターフェース). Use of the desktop software and showcase website is governed by these terms and the accompanying MIT License.',
+        heading: '1. Project Scope',
+        body: 'OPERO is a local-first desktop workflow documentation application developed by Arron Kian Parejas. Use of the desktop software and showcase website is governed by these terms and the accompanying MIT License.',
       },
       {
         heading: '2. Explicit Capture & Operator Responsibility',
@@ -89,8 +89,8 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = [
     updated: 'Copyright © 2026 Arron Kian Parejas',
     sections: [
       {
-        heading: 'Project Attribution',
-        body: 'OPERO — Developed for the Man Machine Interface Inc. (MMI / 株式会社マンマシンインターフェース) Internship Program. Copyright (c) 2026 Arron Kian Parejas.',
+        heading: 'Copyright',
+        body: 'OPERO — Local-First Desktop Workflow Documentation. Copyright (c) 2026 Arron Kian Parejas.',
       },
       {
         heading: 'MIT License Grant',
