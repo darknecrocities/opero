@@ -31,6 +31,7 @@ pub struct HardwareProfile {
     pub os_name: String,
     pub recommended_tier: String,
     pub recommended_model_id: String,
+    pub ollama_binary_available: bool,
     pub ollama_running: bool,
     pub installed_models: Vec<String>,
 }
@@ -116,12 +117,46 @@ pub fn validate_pull_model_tag(tag: &str) -> OperoResult<()> {
     Ok(())
 }
 
+fn scan_disk_ollama_manifests() -> Vec<String> {
+    let base = std::env::var("OLLAMA_MODELS")
+        .map(std::path::PathBuf::from)
+        .ok()
+        .or_else(|| {
+            std::env::var("USERPROFILE")
+                .or_else(|_| std::env::var("HOME"))
+                .ok()
+                .map(|h| std::path::PathBuf::from(h).join(".ollama").join("models"))
+        });
+    let Some(models_root) = base else { return Vec::new(); };
+    let library_dir = models_root.join("manifests").join("registry.ollama.ai").join("library");
+    let Ok(entries) = std::fs::read_dir(&library_dir) else { return Vec::new(); };
+    let mut found = Vec::new();
+    for entry in entries.flatten() {
+        let model_name = entry.file_name().to_string_lossy().to_string();
+        if let Ok(tags) = std::fs::read_dir(entry.path()) {
+            for tag_entry in tags.flatten() {
+                if tag_entry.path().is_file() {
+                    let tag = tag_entry.file_name().to_string_lossy().to_string();
+                    found.push(format!("{model_name}:{tag}"));
+                }
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
 fn detect_installed_ollama_models() -> (bool, Vec<String>) {
-    let out = Command::new("curl")
-        .args(["-fsS", "--max-time", "1", &format!("{OLLAMA_LOOPBACK}/api/tags")])
-        .output();
-    let Ok(out) = out else { return (false, Vec::new()); };
-    if !out.status.success() { return (false, Vec::new()); }
+    let mut cmd = Command::new("curl");
+    cmd.args(["-fsS", "--max-time", "1", &format!("{OLLAMA_LOOPBACK}/api/tags")]);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    let out = cmd.output();
+    let Ok(out) = out else { return (false, scan_disk_ollama_manifests()); };
+    if !out.status.success() { return (false, scan_disk_ollama_manifests()); }
     let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) else { return (true, Vec::new()); };
     let models = val
         .get("models")
@@ -179,9 +214,14 @@ fn detect_hardware_raw() -> (String, usize, u64, u64, String, bool, bool) {
 }
 
 pub fn inspect_hardware_profile() -> HardwareProfile {
+    inspect_hardware_profile_with_data_dir(None)
+}
+
+pub fn inspect_hardware_profile_with_data_dir(data_dir: Option<&std::path::Path>) -> HardwareProfile {
     let (cpu_name, cpu_cores, total_ram_gb, free_disk_gb, gpu_name, has_dedicated_gpu, is_apple_silicon) = detect_hardware_raw();
     let (recommended_tier, recommended_model_id, max_model_ram_gb, recommendation_reason) =
         recommend_for_hardware(total_ram_gb, cpu_cores, has_dedicated_gpu, is_apple_silicon);
+    let ollama_binary_available = crate::ollama_runtime::find_ollama_binary_with_data_dir(data_dir).is_some();
     let (ollama_running, installed_models) = detect_installed_ollama_models();
     let compute_mode = if has_dedicated_gpu {
         "dedicated-gpu"
@@ -205,6 +245,7 @@ pub fn inspect_hardware_profile() -> HardwareProfile {
         os_name: os_name.into(),
         recommended_tier: recommended_tier.into(),
         recommended_model_id: recommended_model_id.into(),
+        ollama_binary_available,
         ollama_running,
         installed_models,
     }
@@ -213,7 +254,22 @@ pub fn inspect_hardware_profile() -> HardwareProfile {
 pub fn pull_curated_ollama_model(tag: &str) -> OperoResult<HardwareProfile> {
     let clean = tag.trim();
     validate_pull_model_tag(clean)?;
-    let out = Command::new("ollama").args(["pull", clean]).output()
+    let bin = crate::ollama_runtime::find_ollama_binary()
+        .ok_or_else(|| OperoError::Validation("Ollama CLI not available on this computer.".into()))?;
+    if !detect_installed_ollama_models().0 {
+        let tmp = std::env::temp_dir().join("opero-ollama");
+        crate::ollama_runtime::spawn_ollama_serve(&bin, &tmp);
+        for _ in 0..24 {
+            std::thread::sleep(std::time::Duration::from_millis(250));
+            if detect_installed_ollama_models().0 {
+                break;
+            }
+        }
+    }
+    let out = Command::new(&bin)
+        .args(["pull", clean])
+        .env("OLLAMA_HOST", "127.0.0.1:11434")
+        .output()
         .map_err(|e| OperoError::Validation(format!("Ollama CLI not available on this computer: {e}")))?;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);

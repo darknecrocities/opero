@@ -23,6 +23,51 @@ pub struct OllamaChatMessage {
 }
 
 pub fn find_ollama_binary() -> Option<PathBuf> {
+    find_ollama_binary_with_data_dir(None)
+}
+
+pub fn find_ollama_binary_with_data_dir(data_dir: Option<&Path>) -> Option<PathBuf> {
+    if let Some(dir) = data_dir {
+        let app_local_mac = dir
+            .join("ollama-app")
+            .join("Ollama.app")
+            .join("Contents")
+            .join("Resources")
+            .join("ollama");
+        if app_local_mac.exists() {
+            return Some(app_local_mac);
+        }
+        let app_local_win = dir.join("ollama-bin").join("ollama.exe");
+        if app_local_win.exists() {
+            return Some(app_local_win);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(local_app) = std::env::var("LOCALAPPDATA") {
+            let p = PathBuf::from(local_app).join("Programs").join("Ollama").join("ollama.exe");
+            if p.exists() {
+                return Some(p);
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            let user_app = PathBuf::from(home)
+                .join("Applications")
+                .join("Ollama.app")
+                .join("Contents")
+                .join("Resources")
+                .join("ollama");
+            if user_app.exists() {
+                return Some(user_app);
+            }
+        }
+    }
+
     let candidates = [
         "/usr/local/bin/ollama",
         "/opt/homebrew/bin/ollama",
@@ -34,12 +79,14 @@ pub fn find_ollama_binary() -> Option<PathBuf> {
             return Some(p);
         }
     }
-    let out = Command::new(if cfg!(target_os = "windows") { "where" } else { "which" })
-        .arg("ollama")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
+    let mut cmd = Command::new(if cfg!(target_os = "windows") { "where" } else { "which" });
+    cmd.arg("ollama").stdout(Stdio::piped()).stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    let out = cmd.output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -47,22 +94,51 @@ pub fn find_ollama_binary() -> Option<PathBuf> {
     if line.is_empty() { None } else { Some(PathBuf::from(line)) }
 }
 
-pub fn list_live_ollama_models() -> Option<Vec<String>> {
-    let out = Command::new("curl")
-        .args(["-fsS", "--connect-timeout", "1", "--max-time", "2", &format!("{OLLAMA_LOOPBACK}/api/tags")])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+pub fn spawn_ollama_serve(bin: &Path, data_dir: &Path) {
+    let mut cmd = Command::new(bin);
+    cmd.arg("serve")
+        .env("OLLAMA_HOST", "127.0.0.1:11434")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let has_user_home = std::env::var("HOME").is_ok() || std::env::var("USERPROFILE").is_ok();
+    if !has_user_home {
+        let ollama_home = data_dir.join("ollama-home");
+        let models_dir = data_dir.join("ollama-models");
+        let _ = std::fs::create_dir_all(&ollama_home);
+        let _ = std::fs::create_dir_all(&models_dir);
+        cmd.env("HOME", &ollama_home).env("OLLAMA_MODELS", &models_dir);
     }
-    let val: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
-    let models = val
-        .get("models")?
-        .as_array()?
-        .iter()
-        .filter_map(|m| m.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
-        .collect();
-    Some(models)
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    let _ = cmd.spawn();
+}
+
+pub fn list_live_ollama_models() -> Option<Vec<String>> {
+    std::thread::spawn(|| {
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_millis(800))
+            .timeout(Duration::from_secs(2))
+            .build()
+            .ok()?;
+        let resp = client.get(format!("{OLLAMA_LOOPBACK}/api/tags")).send().ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let val: serde_json::Value = resp.json().ok()?;
+        let models = val
+            .get("models")?
+            .as_array()?
+            .iter()
+            .filter_map(|m| m.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+            .collect();
+        Some(models)
+    })
+    .join()
+    .ok()
+    .flatten()
 }
 
 pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus {
@@ -131,21 +207,10 @@ pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_m
 
     let mut status = check_ollama_status(Some(target_tag));
     if !status.running {
-        if let Some(bin) = find_ollama_binary() {
-            let ollama_home = data_dir.join("ollama-home");
-            let models_dir = data_dir.join("ollama-models");
-            let _ = std::fs::create_dir_all(&ollama_home);
-            let _ = std::fs::create_dir_all(&models_dir);
-            let _ = Command::new(&bin)
-                .arg("serve")
-                .env("HOME", &ollama_home)
-                .env("OLLAMA_MODELS", &models_dir)
-                .env("OLLAMA_HOST", "127.0.0.1:11434")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn();
+        if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
+            spawn_ollama_serve(&bin, data_dir);
 
-            for _ in 0..16 {
+            for _ in 0..24 {
                 std::thread::sleep(Duration::from_millis(250));
                 status = check_ollama_status(Some(target_tag));
                 if status.running {
@@ -156,16 +221,18 @@ pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_m
     }
 
     if status.running && !status.active_model_ready && pull_if_missing {
-        if let Some(bin) = find_ollama_binary() {
-            let ollama_home = data_dir.join("ollama-home");
-            let _ = std::fs::create_dir_all(&ollama_home);
-            let _ = Command::new(&bin)
-                .args(["pull", target_tag])
-                .env("HOME", &ollama_home)
+        if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
+            let mut cmd = Command::new(&bin);
+            cmd.args(["pull", target_tag])
                 .env("OLLAMA_HOST", "127.0.0.1:11434")
                 .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
+                .stderr(Stdio::null());
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000);
+            }
+            let _ = cmd.status();
             status = check_ollama_status(Some(target_tag));
         }
     }
@@ -196,43 +263,65 @@ pub fn split_think_tags(raw: &str) -> (String, Option<String>) {
     (raw.trim().to_string(), None)
 }
 
+fn model_supports_thinking(model: &str) -> bool {
+    let lower = model.to_lowercase();
+    lower.contains("qwen3") || lower.contains("deepseek-r1")
+}
+
 pub fn call_ollama_chat_with_thinking(
     model: &str,
     messages: &[OllamaChatMessage],
     enable_thinking: bool,
 ) -> Option<OllamaChatResult> {
-    let payload = serde_json::json!({
-        "model": model,
-        "messages": messages,
-        "stream": false,
-        "think": enable_thinking,
-        "options": {
-            "temperature": 0.35,
-            "top_p": 0.9
-        }
-    })
-    .to_string();
+    let model_owned = model.to_string();
+    let msgs_owned = messages.to_vec();
+    let val: serde_json::Value = std::thread::spawn(move || {
+        let use_think = enable_thinking && model_supports_thinking(&model_owned);
+        let timeout_secs = if use_think { 45 } else { 30 };
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_secs(2))
+            .timeout(Duration::from_secs(timeout_secs))
+            .build()
+            .ok()?;
 
-    let max_time = if enable_thinking { "40" } else { "25" };
-    let out = Command::new("curl")
-        .args([
-            "-fsS",
-            "--connect-timeout",
-            "1",
-            "--max-time",
-            max_time,
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            &payload,
-            &format!("{OLLAMA_LOOPBACK}/api/chat"),
-        ])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let val: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+        let mut payload = serde_json::json!({
+            "model": model_owned,
+            "messages": msgs_owned,
+            "stream": false,
+            "options": {
+                "temperature": 0.35,
+                "top_p": 0.9
+            }
+        });
+        if use_think {
+            payload["think"] = serde_json::Value::Bool(true);
+        }
+
+        let mut resp = client
+            .post(format!("{OLLAMA_LOOPBACK}/api/chat"))
+            .json(&payload)
+            .send()
+            .ok()?;
+
+        if !resp.status().is_success() && use_think {
+            if let Some(obj) = payload.as_object_mut() {
+                obj.remove("think");
+            }
+            resp = client
+                .post(format!("{OLLAMA_LOOPBACK}/api/chat"))
+                .json(&payload)
+                .send()
+                .ok()?;
+        }
+
+        if !resp.status().is_success() {
+            return None;
+        }
+        resp.json().ok()
+    })
+    .join()
+    .ok()
+    .flatten()?;
     let raw_content = val
         .get("message")
         .and_then(|m| m.get("content"))

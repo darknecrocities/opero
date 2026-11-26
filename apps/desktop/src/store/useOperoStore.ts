@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { RecordingSession, UserProfile } from '@opero/shared-types';
 import { playJiggSfx } from '@opero/jiggicons';
+import { resolveValidActiveModelId } from '../services/modelAvailability';
 import { operoClient } from '../services/operoClient';
 import {
   DEFAULT_ANALYTICS,
@@ -120,7 +121,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   setRole: (role) => set({ role }),
   setSpeechEnabled: (speechEnabled) => set({ speechEnabled }),
   setActiveModelId: (activeModelId) => set({ activeModelId }),
-  setHardwareProfile: (hardwareProfile) => set({ hardwareProfile }),
+  setHardwareProfile: (hardwareProfile) =>
+    set((s) => ({ hardwareProfile, activeModelId: resolveValidActiveModelId(s.activeModelId, hardwareProfile) })),
   setPeroOutfit: (peroCapColor, peroJacketColor) => {
     const p = { ...get().userProfile, peroCapColor, peroJacketColor };
     saveCachedProfile(p);
@@ -178,6 +180,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         peroJacketColor: profRes.profile.peroJacketColor,
         analytics: anRes.analytics,
         hardwareProfile: hwRes.hardware,
+        activeModelId: resolveValidActiveModelId(get().activeModelId, hwRes.hardware),
         projects,
         sessions: sRes.sessions,
         activeSessionId: sRes.sessions[0]?.id ?? null,

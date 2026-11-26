@@ -1,9 +1,9 @@
 import type { PeroMotionId } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 
-export type OnboardingStepIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type OnboardingStepIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-export const TOTAL_SCREENS = 7;
+export const TOTAL_SCREENS = 8;
 
 export interface OnboardingStepSpec {
   readonly index: OnboardingStepIndex;
@@ -65,6 +65,16 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
   },
   {
     index: 5,
+    defaultMotion: 'model-loading',
+    mascotSize: 148,
+    whisper: {
+      'en-US': 'Pick the local AI model for your PC!',
+      'ja-JP': 'お使いのPCに最適なモデルをお選びください',
+      'fil-PH': 'Piliin ang AI model na babagay sa PC mo!',
+    },
+  },
+  {
+    index: 6,
     defaultMotion: 'privacy-shield',
     mascotSize: 184,
     whisper: {
@@ -74,7 +84,7 @@ export const ONBOARDING_STEP_SPECS: readonly OnboardingStepSpec[] = [
     },
   },
   {
-    index: 6,
+    index: 7,
     defaultMotion: 'jump-cheer',
     mascotSize: 288,
     whisper: {

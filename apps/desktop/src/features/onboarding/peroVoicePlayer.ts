@@ -33,8 +33,11 @@ function getVoiceAudioContext(): AudioContext | null {
 }
 
 export function bundledClipPathForStep(step: number, lang: PeroVoiceLang): string {
-  const clamped = Math.max(0, Math.min(6, step));
   const suffix = lang === 'ja-JP' ? 'ja' : 'en';
+  if (step === 5) return `/audio/pero/step-model-${suffix}.mp3`;
+  if (step === 6) return `/audio/pero/step-5-${suffix}.mp3`;
+  if (step >= 7) return `/audio/pero/step-6-${suffix}.mp3`;
+  const clamped = Math.max(0, Math.min(4, step));
   return `/audio/pero/step-${clamped}-${suffix}.mp3`;
 }
 
@@ -68,6 +71,10 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
           ? `${cleanName}さん、英語・日本語・フィリピン語の3言語に対応しています。`
           : '英語・日本語・フィリピン語の3言語に対応しています。';
       case 5:
+        return cleanName
+          ? `${cleanName}さんのPC環境に合わせて、最適なローカルAIモデルをお選びください。`
+          : 'お使いのPC環境に合わせて、最適なローカルAIモデルをお選びください。';
+      case 6:
         return ctx.privacyAccepted
           ? cleanName
             ? `ありがとうございます、${cleanName}さん。すべて端末内で大切に保護いたします。`
@@ -101,6 +108,10 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
         ? `Whenever you're ready, ${cleanName} — I speak English, Japanese, and Filipino.`
         : "Whenever you're ready — I speak English, Japanese, and Filipino.";
     case 5:
+      return cleanName
+        ? `Pick the local AI model that matches your PC speed, ${cleanName}.`
+        : 'Pick the local AI model that matches your PC speed.';
+    case 6:
       if (ctx.privacyAccepted) {
         return cleanName
           ? `Thank you, ${cleanName} — everything stays safe right here on your device.`

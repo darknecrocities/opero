@@ -11,13 +11,15 @@ use axum::{
 use opero_core::db::OperoStore;
 use opero_core::error::OperoError;
 use opero_core::memory::dual_core::{delete_memory_chunk, get_memory_stats, query_dual_core_memory, upsert_memory_chunk};
+use opero_core::model_pull::ModelPullJobStatus;
 use opero_core::permissions::{inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt, PermissionSurface};
 use opero_core::updater::{check_for_official_update, download_and_replace_update};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use uuid::Uuid;
@@ -25,6 +27,7 @@ use uuid::Uuid;
 pub(crate) struct AppState {
     pub(crate) store: OperoStore,
     pub(crate) speech_enabled: bool,
+    pub(crate) pull_jobs: Arc<Mutex<HashMap<String, ModelPullJobStatus>>>,
 }
 
 pub(crate) struct ApiError(pub(crate) OperoError);
@@ -430,7 +433,11 @@ async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<Spea
 }
 
 pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
-    let state = Arc::new(AppState { store, speech_enabled });
+    let state = Arc::new(AppState {
+        store,
+        speech_enabled,
+        pull_jobs: Arc::new(Mutex::new(HashMap::new())),
+    });
     let allowed_origins = [
         HeaderValue::from_static("http://localhost:5173"),
         HeaderValue::from_static("http://127.0.0.1:5173"),

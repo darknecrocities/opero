@@ -62,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeAnchor, onNavigate }) => {
 
         <div className="hidden lg:flex items-center">
           <Button
+            type="button"
             variant="secondary"
             onClick={() => handleSelect('download')}
             className="rounded-full min-h-[40px] px-5"

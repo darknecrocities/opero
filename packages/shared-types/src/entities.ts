@@ -232,8 +232,30 @@ export interface HardwareProfile {
   osName: string;
   recommendedTier: 'offline' | 'compact' | 'balanced' | 'deep' | string;
   recommendedModelId: string;
+  ollamaBinaryAvailable?: boolean;
   ollamaRunning: boolean;
   installedModels: string[];
+}
+
+export interface ModelPullJobStatus {
+  jobId: string;
+  modelTag: string;
+  phase:
+    | 'checking_runtime'
+    | 'installing_ollama'
+    | 'starting_ollama'
+    | 'pulling_model'
+    | 'verifying'
+    | 'completed'
+    | 'failed'
+    | string;
+  statusText: string;
+  completedBytes: number;
+  totalBytes: number;
+  percent: number | null;
+  speedBytesPerSec: number | null;
+  error: string | null;
+  hardware: HardwareProfile | null;
 }
 
 export type OperoPersonality =

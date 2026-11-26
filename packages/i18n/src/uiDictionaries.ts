@@ -42,6 +42,10 @@ export interface OperoUiDictionary {
   onboardingOccupationPlaceholder: string;
   onboardingPersonalityTitle: string;
   onboardingLanguageTitle: string;
+  onboardingModelTitle: string;
+  onboardingModelSubtitle: string;
+  onboardingModelRecommended: string;
+  onboardingModelOffline: string;
   onboardingBack: string;
   onboardingContinue: string;
   onboardingFinish: string;
@@ -110,6 +114,10 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     onboardingOccupationPlaceholder: 'e.g. Operations Analyst, Engineer',
     onboardingPersonalityTitle: 'Choose Opero’s preferred tone',
     onboardingLanguageTitle: 'Select your default language',
+    onboardingModelTitle: 'Choose your local AI model',
+    onboardingModelSubtitle: 'Select the on-device intelligence engine for workflow drafting and translation.',
+    onboardingModelRecommended: 'Recommended for this PC',
+    onboardingModelOffline: 'Built-In Offline · 0 GB download',
     onboardingBack: 'Back',
     onboardingContinue: 'Continue',
     onboardingFinish: 'Enter OPERO',
@@ -176,6 +184,10 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     onboardingOccupationPlaceholder: '例：運用担当、エンジニア',
     onboardingPersonalityTitle: 'Operoのスタイルをお選びください',
     onboardingLanguageTitle: '標準言語を選択してください',
+    onboardingModelTitle: 'ローカルAIモデルをお選びください',
+    onboardingModelSubtitle: 'ワークフローの自動文書化と翻訳を行う端末内AIモデルを選択してください。',
+    onboardingModelRecommended: 'このPCに推奨',
+    onboardingModelOffline: '内蔵オフライン・ダウンロード不要',
     onboardingBack: '戻る',
     onboardingContinue: '次へ進みます',
     onboardingFinish: 'OPEROをはじめます',
@@ -242,6 +254,10 @@ export const UI_DICTIONARIES: Record<FirstClassLocale, OperoUiDictionary> = {
     onboardingOccupationPlaceholder: 'hal. Operations Analyst, Engineer',
     onboardingPersonalityTitle: 'Piliin ang tono ni Opero',
     onboardingLanguageTitle: 'Piliin ang pangunahing wika',
+    onboardingModelTitle: 'Piliin ang lokal na AI model',
+    onboardingModelSubtitle: 'Piliin ang local AI engine para sa paggawa ng manual at pagsasalin.',
+    onboardingModelRecommended: 'Inirerekomenda para sa PC na ito',
+    onboardingModelOffline: 'Built-In Offline · Walang i-download',
     onboardingBack: 'Bumalik',
     onboardingContinue: 'Magpatuloy',
     onboardingFinish: 'Buksan ang OPERO',

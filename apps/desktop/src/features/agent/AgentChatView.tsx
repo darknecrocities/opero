@@ -13,20 +13,13 @@ import { AgentThinkingBlock } from './AgentThinkingBlock';
 
 export const AgentChatView: React.FC = () => {
   const {
-    uiLocale,
-    activeModelId,
-    soundEnabled,
-    userProfile,
-    peroCapColor,
-    peroJacketColor,
-    pendingAgentPrompt,
-    clearPendingAgentPrompt,
-    setNavMode,
-    showToast,
+    uiLocale, activeModelId, hardwareProfile, soundEnabled, userProfile,
+    peroCapColor, peroJacketColor, pendingAgentPrompt, clearPendingAgentPrompt,
+    setNavMode, setHardwareProfile, showToast,
   } = useOperoStore();
   const feat = getFeatureStrings(uiLocale);
   const activeModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
-  const selectedOllamaTag = activeModel?.ollamaTag ?? 'qwen3:1.7b';
+  const selectedOllamaTag = activeModel?.ollamaTag ?? hardwareProfile?.installedModels?.[0] ?? 'qwen3:1.7b';
 
   const [threads, setThreads] = useState<AgentThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -69,6 +62,10 @@ export const AgentChatView: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    void refreshRuntime();
+  }, [activeModelId, hardwareProfile?.installedModels.length]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeThread?.messages.length, optimisticPrompt, busy]);
 
@@ -76,11 +73,10 @@ export const AgentChatView: React.FC = () => {
     setStartingRuntime(true);
     playJiggSfx('click', soundEnabled);
     try {
-      const { runtime: rt } = await operoClient.ensureModelRuntime({
-        modelTag: selectedOllamaTag,
-        pullIfMissing: true,
-      });
+      const { runtime: rt } = await operoClient.ensureModelRuntime({ modelTag: selectedOllamaTag, pullIfMissing: true });
       setRuntime(rt);
+      const hw = await operoClient.getHardwareProfile().catch(() => null);
+      if (hw?.hardware) setHardwareProfile(hw.hardware);
       playJiggSfx('success', soundEnabled);
     } finally {
       setStartingRuntime(false);

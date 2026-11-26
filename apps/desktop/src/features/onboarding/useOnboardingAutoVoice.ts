@@ -57,7 +57,7 @@ export function useOnboardingAutoVoice({
       lastSpokenRef.current = key;
       onSpoken({ text: line, lang: voiceLang });
       const hasPersonal =
-        cleanName.length > 0 || cleanRole.length > 0 || step === 3 || step === 5 || step === 6;
+        cleanName.length > 0 || cleanRole.length > 0 || step >= 3;
       void speakPeroDynamic(
         line,
         voiceLang,

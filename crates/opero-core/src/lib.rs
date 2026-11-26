@@ -14,6 +14,7 @@ pub mod meeting_audio;
 pub mod meeting_compiler;
 pub mod meeting_notes;
 pub mod memory;
+pub mod model_pull;
 pub mod models;
 pub mod ollama_runtime;
 pub mod permissions;

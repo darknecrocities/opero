@@ -15,6 +15,7 @@ import type {
   MeetingNoteRecord,
   MemoryChunk,
   MemorySearchHit,
+  ModelPullJobStatus,
   OllamaRuntimeStatus,
   OperoPersonality,
   OsPermissionSnapshot,
@@ -247,6 +248,20 @@ export const operoClient = {
       '/models/pull',
       { method: 'POST', body: JSON.stringify({ modelTag }) },
       300000,
+    ),
+
+  startModelPull: (modelTag: string) =>
+    fetchLocal<{ jobId: string; status: ModelPullJobStatus }>(
+      '/models/pull-async',
+      { method: 'POST', body: JSON.stringify({ modelTag }) },
+      15000,
+    ),
+
+  getModelPullStatus: (jobId: string) =>
+    fetchLocal<{ status: ModelPullJobStatus }>(
+      `/models/pull-status/${encodeURIComponent(jobId)}`,
+      undefined,
+      8000,
     ),
 
   getModelRuntimeStatus: () =>
