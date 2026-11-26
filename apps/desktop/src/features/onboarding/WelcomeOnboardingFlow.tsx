@@ -22,6 +22,7 @@ import {
   stopPeroVoice,
   type PeroVoiceLang,
 } from './peroVoicePlayer';
+import { useOnboardingAutoVoice } from './useOnboardingAutoVoice';
 
 const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
 const BOOP_SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
@@ -60,6 +61,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   }, [step, soundEnabled]);
 
   useEffect(() => () => stopPeroVoice(), []);
+  useOnboardingAutoVoice({ step, name, occupation, personality, locale, privacyAccepted, soundEnabled, onSpoken: setSpokenLine });
 
   const activeMotion: PeroMotionId = useMemo(() => {
     if (step === 1 && name.trim().length > 0) return 'thumbs-up';
@@ -115,9 +117,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     setBoopTick((t) => t + 1);
     if (step === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
     const hasPersonalInput =
-      (step === 1 && name.trim().length > 0) ||
-      (step === 2 && occupation.trim().length > 0) ||
-      (step === 6 && name.trim().length > 0);
+      name.trim().length > 0 || occupation.trim().length > 0 || step === 3 || step === 5 || step === 6;
     playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
     void speakPeroDynamic(
       line,

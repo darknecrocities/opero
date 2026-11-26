@@ -69,8 +69,12 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
           : '英語・日本語・フィリピン語の3言語に対応しています。';
       case 5:
         return ctx.privacyAccepted
-          ? 'ありがとうございます。すべて端末内で大切に保護いたします。'
-          : 'ご安心ください。すべてこの端末内のみで安全に保護いたします。';
+          ? cleanName
+            ? `ありがとうございます、${cleanName}さん。すべて端末内で大切に保護いたします。`
+            : 'ありがとうございます。すべて端末内で大切に保護いたします。'
+          : cleanName
+            ? `ご安心ください、${cleanName}さん。すべてこの端末内のみで安全に保護いたします。`
+            : 'ご安心ください。すべてこの端末内のみで安全に保護いたします。';
       default:
         return cleanName
           ? `準備が整いました、${cleanName}さん。いつでも始められます。`
@@ -143,7 +147,7 @@ async function fetchLiveNeuralSpeech(text: string, lang: PeroVoiceLang): Promise
   if (cached) return cached;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3500);
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
     const res = await fetch(SPEAK_ENDPOINT, {
       method: 'POST',
@@ -151,9 +155,9 @@ async function fetchLiveNeuralSpeech(text: string, lang: PeroVoiceLang): Promise
       body: JSON.stringify({ text, lang }),
       signal: controller.signal,
     });
-    // Only use daemon output when it comes from the live Kokoro-82M neural server (never robotic OS say)
+    // Accept any valid local daemon TTS engine (Kokoro loopback, local disk cache, or macOS native voice)
     const engine = res.headers.get('x-opero-tts-engine');
-    if (!res.ok || res.status === 204 || engine !== 'loopback-tts') return null;
+    if (!res.ok || res.status === 204 || !engine) return null;
     const bytes = await res.arrayBuffer();
     if (bytes.byteLength < 256) return null;
     audioBufferCache.set(key, bytes);
@@ -189,6 +193,13 @@ export function stopPeroVoice(): void {
       // Ignore pause errors
     }
     activeHtmlAudio = null;
+  }
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // Ignore speechSynthesis cancel errors
+    }
   }
 }
 
@@ -232,13 +243,26 @@ export async function speakPeroDynamic(
     void syncCtx.resume().catch(() => {});
   }
 
-  // For personalized lines (user's typed name/role), try live Kokoro-82M neural server first
+  // For personalized lines (user's typed name, role, style, or privacy), synthesize dynamically so their exact input is spoken
   if (preferDynamicNeural) {
     const neuralBytes = await fetchLiveNeuralSpeech(text, lang);
     if (token !== activePlayToken) return false;
     if (neuralBytes) {
       const ok = await playAudioBytes(neuralBytes, token);
       if (ok) return true;
+    }
+    // Cross-platform fallback (e.g. Windows without Kokoro server): browser speechSynthesis speaks exact personalized text
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = lang;
+        utter.rate = 0.96;
+        window.speechSynthesis.speak(utter);
+        return true;
+      } catch {
+        // Fall through to bundled clip
+      }
     }
   }
 

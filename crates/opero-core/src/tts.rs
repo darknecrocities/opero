@@ -75,18 +75,18 @@ fn synthesize_macos_child_mp3(cache_dir: &Path, key: &str, text: &str, lang: &st
     let aiff_path = cache_dir.join(format!("{key}.aiff"));
     let mp3_path = cache_dir.join(format!("{key}.mp3"));
 
-    // macOS `say` outputs 22050 Hz mono AIFF; pitch-shift cleanly from 22050 Hz for authentic child timbre.
+    // macOS `say` outputs 22050 Hz mono AIFF; apply gentle warmth without harsh chipmunk pitch distortion.
     let (voice, rate, filter) = if lang.starts_with("ja") {
         (
             "Kyoko",
-            "182",
-            "asetrate=22050*1.32,aresample=44100,atempo=0.82,highpass=f=140,treble=g=3,volume=1.35",
+            "178",
+            "aresample=44100,equalizer=f=240:t=q:w=1.2:g=2.0,highshelf=f=6000:g=-1.5,loudnorm=I=-16:TP=-1.5:LRA=11",
         )
     } else {
         (
-            "Junior",
-            "180",
-            "asetrate=22050*1.16,aresample=44100,atempo=0.90,highpass=f=120,treble=g=2.5,volume=1.35",
+            "Samantha",
+            "182",
+            "aresample=44100,equalizer=f=240:t=q:w=1.2:g=2.0,highshelf=f=6000:g=-1.5,loudnorm=I=-16:TP=-1.5:LRA=11",
         )
     };
 
