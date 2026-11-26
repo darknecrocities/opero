@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="OPERO Monocle Mascot Logo Mark">
+  <path d="M 96 164 L 122 178 M 86 196 L 114 200" stroke="#071B4F" stroke-width="14" stroke-linecap="round" />
+  <path d="M 140 212 C 138 110, 212 64, 294 76 C 350 84, 386 120, 392 164 L 140 212 Z" fill="#5BA3FC" stroke="#041036" stroke-width="10" stroke-linejoin="round" />
+  <path d="M 140 212 C 216 146, 368 132, 424 180 C 432 196, 412 208, 392 196 C 334 166, 218 178, 140 220 Z" fill="#80BEFC" stroke="#041036" stroke-width="10" stroke-linejoin="round" />
+  <circle cx="282" cy="118" r="19" fill="none" stroke="#FFFFFF" stroke-width="11" />
+  <path d="M 308 136 L 324 130" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" />
+  <circle cx="204" cy="298" r="68" fill="#E6F2FF" stroke="#041036" stroke-width="14" />
+  <circle cx="204" cy="298" r="56" fill="#FFFFFF" stroke="#071B4F" stroke-width="6" />
+  <ellipse cx="212" cy="302" rx="22" ry="29" fill="#071B4F" />
+  <circle cx="220" cy="294" r="8" fill="#FFFFFF" />
+  <circle cx="136" cy="288" r="10" fill="#FFFFFF" stroke="#041036" stroke-width="6" />
+  <path d="M 308 300 C 324 278, 356 278, 372 300" fill="none" stroke="#071B4F" stroke-width="16" stroke-linecap="round" />
+  <path d="M 236 344 C 252 320, 282 320, 298 344 C 280 366, 254 366, 236 344 Z" fill="#5BA3FC" stroke="#041036" stroke-width="8" stroke-linejoin="round" />
+</svg>
