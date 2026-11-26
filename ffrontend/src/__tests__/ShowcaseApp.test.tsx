@@ -66,9 +66,10 @@ describe('OPERO Release 1 Showcase (ffrontend)', () => {
     for (const btn of macBtns) expect(btn).toBeDisabled();
   });
 
-  it('renders clean footer with zero company or personal name references and opens Terms & Privacy modal', () => {
+  it('renders clean footer with zero company, personal name, or GitHub links and opens Terms & Privacy modal', () => {
     const { container } = render(<App />);
     expect(container.textContent).not.toMatch(/\bMMI\b|Man Machine Interface|マンマシン|Arron|Kian|Parejas/i);
+    expect(container.querySelector('a[href*="github.com"]')).toBeNull();
 
     const termsBtn = screen.getByRole('button', { name: /^Terms & Conditions$/i });
     fireEvent.click(termsBtn);

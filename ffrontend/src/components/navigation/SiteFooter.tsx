@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUp, ExternalLink } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { OperoLogo } from '../../assets/mascot';
 import type { LegalDocId } from '../../data/legalContent';
 import {
@@ -82,17 +82,6 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onNavigate }) => {
                 >
                   {RELEASE_LABEL} Roadmap
                 </button>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/darknecrocities/opero"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-[#172334]/85 hover:text-[#247BFA] no-underline transition-colors"
-                >
-                  <span>GitHub Repository</span>
-                  <ExternalLink size={12} aria-hidden="true" />
-                </a>
               </li>
             </ul>
           </div>
