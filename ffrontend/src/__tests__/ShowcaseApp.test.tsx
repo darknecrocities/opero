@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { FEATURE_CARDS, TECH_STACK_ITEMS } from '../data/showcaseContent';
@@ -88,5 +88,42 @@ describe('OPERO Release 1 Showcase (ffrontend)', () => {
     expect(peroButtons.length).toBeGreaterThan(0);
     fireEvent.click(peroButtons[0]);
     expect(screen.getByText(/^Opero!$/)).toBeInTheDocument();
+  });
+
+  it('morphs enlarged feature icons on card interaction and keeps horizontal track', () => {
+    const { container } = render(<App />);
+    const track = screen.getByTestId('features-horizontal-track');
+    expect(track).toBeInTheDocument();
+    const firstCard = container.querySelector('#features .feature-card') as HTMLElement;
+    expect(firstCard).toHaveAttribute('data-morphed', 'false');
+    const svg = firstCard.querySelector('svg');
+    expect(Number(svg?.getAttribute('height'))).toBeGreaterThanOrEqual(80);
+
+    fireEvent.click(firstCard);
+    expect(firstCard).toHaveAttribute('data-morphed', 'true');
+  });
+
+  it('renders ambient 20-motion Pero background stickers with interactive hints', () => {
+    render(<App />);
+    const sticker = screen.getByTestId('pero-sticker-v-1');
+    expect(sticker).toBeInTheDocument();
+    fireEvent.mouseEnter(sticker);
+    expect(screen.getByTestId('pero-sticker-hint-v-1')).toBeInTheDocument();
+    fireEvent.click(sticker);
+    expect(screen.getByTestId('pero-sticker-hint-v-1')).toBeInTheDocument();
+  });
+
+  it('opens mobile hamburger drawer with quick sections and closes on Escape', async () => {
+    render(<App />);
+    const menuBtn = screen.getByRole('button', { name: /Open navigation menu/i });
+    expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(menuBtn);
+    expect(screen.getByRole('navigation', { name: /Mobile sections/i })).toBeInTheDocument();
+    expect(screen.getByText(/Quick Sections/i)).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: /Open navigation menu/i })).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => {
+      expect(screen.queryByRole('navigation', { name: /Mobile sections/i })).toBeNull();
+    });
   });
 });

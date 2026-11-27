@@ -23,7 +23,7 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
     <section
       id="overview"
       aria-label="OPERO Overview"
-      className="flex flex-col lg:flex-row items-center gap-10 lg:gap-12 pt-32 pb-12 lg:py-0 px-5 sm:px-8 lg:pl-0 lg:pr-0 lg:shrink-0"
+      className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12 pt-28 pb-8 lg:py-0 px-4 sm:px-8 lg:pl-0 lg:pr-0 lg:shrink-0 w-full lg:w-auto"
     >
       <motion.div
         initial={{ opacity: 0, x: -24 }}
