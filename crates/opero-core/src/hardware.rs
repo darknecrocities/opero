@@ -7,16 +7,20 @@ use crate::win_process::silent_command;
 const OLLAMA_LOOPBACK: &str = "http://127.0.0.1:11434";
 static CACHED_RAW_HARDWARE: OnceLock<(String, usize, u64, u64, String, bool, bool)> = OnceLock::new();
 
+/// Release 1 ISMS-approved local Ollama models (Q3/Q16 governance):
+/// 1 Standard model (HP ProBook 450 G8 <=6 GB CPU-only baseline) + 1 Lighter Fallback.
 pub const ALLOWED_OLLAMA_MODELS: &[&str] = &[
-    "qwen2.5:1.5b",
-    "qwen3:1.7b",
     "qwen2.5:3b",
-    "phi4-mini:3.8b",
-    "qwen3:4b",
-    "gemma3:4b",
-    "qwen2.5:7b",
-    "qwen3:8b",
+    "qwen3:1.7b",
 ];
+
+/// Under ISMS policy (Q3/Q16), OPERO never downloads models or runtimes automatically
+/// unless an IT administrator explicitly sets `OPERO_ALLOW_MODEL_DOWNLOAD=true`.
+pub fn is_auto_download_allowed() -> bool {
+    std::env::var("OPERO_ALLOW_MODEL_DOWNLOAD")
+        .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,16 +37,15 @@ pub struct HardwareProfile {
     pub os_name: String,
     pub recommended_tier: String,
     pub recommended_model_id: String,
+    pub auto_download_allowed: bool,
     pub ollama_binary_available: bool,
     pub ollama_running: bool,
     pub installed_models: Vec<String>,
 }
 
 pub fn tier_for_ram_gb(ram_gb: u64) -> (&'static str, &'static str) {
-    if ram_gb >= 24 {
-        ("deep", "ollama-qwen3-8b")
-    } else if ram_gb >= 12 {
-        ("balanced", "ollama-qwen3-4b")
+    if ram_gb >= 12 {
+        ("balanced", "ollama-qwen2.5-3b")
     } else if ram_gb >= 8 {
         ("compact", "ollama-qwen3-1.7b")
     } else {
@@ -52,9 +55,9 @@ pub fn tier_for_ram_gb(ram_gb: u64) -> (&'static str, &'static str) {
 
 pub fn recommend_for_hardware(
     ram_gb: u64,
-    cpu_cores: usize,
-    has_dedicated_gpu: bool,
-    is_apple_silicon: bool,
+    _cpu_cores: usize,
+    _has_dedicated_gpu: bool,
+    _is_apple_silicon: bool,
 ) -> (&'static str, &'static str, f32, String) {
     if ram_gb < 8 {
         return (
@@ -68,51 +71,22 @@ pub fn recommend_for_hardware(
         return (
             "compact",
             "ollama-qwen3-1.7b",
-            2.5,
-            format!("{ram_gb} GB RAM — compact 1.7B model fits safely under 2.5 GB RAM."),
+            2.2,
+            format!("{ram_gb} GB RAM — Release 1 Lighter Fallback (Qwen3 1.7B, ~1.13 GB model RAM, Apache-2.0)."),
         );
     }
-    if ram_gb < 24 {
-        if !has_dedicated_gpu && !is_apple_silicon {
-            // Baseline MMI office PC (e.g. HP ProBook 450 G8: i7-1165G7, 16 GB RAM, Iris Xe CPU-only, <=6 GB cap)
-            let (model_id, reason) = if cpu_cores <= 8 {
-                (
-                    "ollama-qwen2.5-3b",
-                    format!(
-                        "{ram_gb} GB RAM · CPU-only ({cpu_cores} threads) — Qwen2.5 3B (~2.4 GB RAM) delivers fastest EN/JA manual generation well within the 6 GB RAM ceiling."
-                    ),
-                )
-            } else {
-                (
-                    "ollama-qwen3-4b",
-                    format!(
-                        "{ram_gb} GB RAM · CPU-only ({cpu_cores} threads) — Qwen3 4B (~3.4 GB RAM) stays well within the 6 GB RAM ceiling."
-                    ),
-                )
-            };
-            return ("balanced", model_id, 6.0, reason);
-        }
-        return (
-            "balanced",
-            "ollama-qwen3-4b",
-            6.0,
-            format!("{ram_gb} GB RAM with GPU/Metal acceleration — Qwen3 4B (~3.4 GB RAM) recommended."),
-        );
-    }
-    let max_ram = if has_dedicated_gpu || is_apple_silicon { 10.0 } else { 6.0 };
-    let model = if has_dedicated_gpu || is_apple_silicon { "ollama-qwen3-8b" } else { "ollama-qwen2.5-7b" };
     (
-        "deep",
-        model,
-        max_ram,
-        format!("{ram_gb} GB RAM — high-capacity tier unlocked (model RAM budget ≤ {max_ram:.0} GB)."),
+        "balanced",
+        "ollama-qwen2.5-3b",
+        6.0,
+        format!("{ram_gb} GB RAM — Release 1 Standard (Qwen2.5 3B, ~1.94 GB model RAM, Apache-2.0) runs stably within the 6 GB HP ProBook 450 G8 CPU-only ceiling."),
     )
 }
 
 pub fn validate_pull_model_tag(tag: &str) -> OperoResult<()> {
     if !ALLOWED_OLLAMA_MODELS.contains(&tag.trim()) {
         return Err(OperoError::Forbidden(format!(
-            "Model tag '{}' is not in the curated OPERO commercial-safe model catalog.",
+            "Model tag '{}' is not in the Release 1 ISMS-approved OPERO model list (qwen2.5:3b, qwen3:1.7b).",
             tag.trim()
         )));
     }
@@ -235,6 +209,7 @@ pub fn inspect_hardware_profile_with_data_dir(data_dir: Option<&std::path::Path>
         os_name: os_name.into(),
         recommended_tier: recommended_tier.into(),
         recommended_model_id: recommended_model_id.into(),
+        auto_download_allowed: is_auto_download_allowed(),
         ollama_binary_available,
         ollama_running,
         installed_models,
@@ -242,6 +217,11 @@ pub fn inspect_hardware_profile_with_data_dir(data_dir: Option<&std::path::Path>
 }
 
 pub fn pull_curated_ollama_model(tag: &str) -> OperoResult<HardwareProfile> {
+    if !is_auto_download_allowed() {
+        return Err(OperoError::Forbidden(
+            "ISMS policy (Q3/Q16) disables automatic model downloads. Ask IT to pre-install an approved model (qwen2.5:3b or qwen3:1.7b).".into(),
+        ));
+    }
     let clean = tag.trim();
     validate_pull_model_tag(clean)?;
     let bin = crate::ollama_runtime::find_ollama_binary()
@@ -318,8 +298,8 @@ mod tests {
     fn test_hardware_tier_mapping_and_model_allowlist() {
         assert_eq!(tier_for_ram_gb(4), ("offline", "offline-deterministic"));
         assert_eq!(tier_for_ram_gb(8), ("compact", "ollama-qwen3-1.7b"));
-        assert_eq!(tier_for_ram_gb(16), ("balanced", "ollama-qwen3-4b"));
-        assert_eq!(tier_for_ram_gb(32), ("deep", "ollama-qwen3-8b"));
+        assert_eq!(tier_for_ram_gb(16), ("balanced", "ollama-qwen2.5-3b"));
+        assert_eq!(tier_for_ram_gb(32), ("balanced", "ollama-qwen2.5-3b"));
 
         // HP ProBook 450 G8 baseline: i7-1165G7 (8 threads), 16 GB RAM, Iris Xe (CPU-only, <=6 GB cap)
         let (tier, model, max_ram, reason) = recommend_for_hardware(16, 8, false, false);
@@ -329,8 +309,9 @@ mod tests {
         assert!(reason.contains("6 GB"));
 
         assert!(validate_pull_model_tag("qwen2.5:3b").is_ok());
-        assert!(validate_pull_model_tag("phi4-mini:3.8b").is_ok());
-        assert!(validate_pull_model_tag("qwen3:4b").is_ok());
+        assert!(validate_pull_model_tag("qwen3:1.7b").is_ok());
+        assert!(validate_pull_model_tag("qwen3:4b").is_err());
         assert!(validate_pull_model_tag("evil/untrusted:latest").is_err());
+        assert!(!is_auto_download_allowed());
     }
 }

@@ -348,7 +348,8 @@ mod tests {
     #[test]
     fn test_model_allowlist_and_status_probe_never_panics() {
         assert!(is_allowed_model_tag("qwen3:1.7b"));
-        assert!(is_allowed_model_tag("gemma3:4b"));
+        assert!(is_allowed_model_tag("qwen2.5:3b"));
+        assert!(!is_allowed_model_tag("gemma3:4b"));
         assert!(!is_allowed_model_tag("evil:latest; rm -rf /"));
         let st = check_ollama_status(Some("qwen3:1.7b"));
         assert!(!st.guidance.is_empty());

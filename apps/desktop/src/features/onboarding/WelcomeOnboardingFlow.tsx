@@ -5,7 +5,7 @@ import { PeroMascot, type PeroMotionId } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
 import { DEFAULT_MODELS } from '../../store/defaults';
-import { isModelDownloadedOnPc } from '../../services/modelAvailability';
+import { isModelSelectableInApp } from '../../services/modelAvailability';
 import { OnboardingAmbientBg } from './OnboardingAmbientBg';
 import { OnboardingCompleteStep } from './OnboardingCompleteStep';
 import { OnboardingConfetti } from './OnboardingConfetti';
@@ -63,7 +63,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   }, [step, soundEnabled]);
 
   const selectedModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
-  const isModelReady = Boolean(selectedModel && isModelDownloadedOnPc(selectedModel, hardwareProfile));
+  const isModelReady = Boolean(selectedModel && isModelSelectableInApp(selectedModel, hardwareProfile));
   const readyModelName = isModelReady ? (selectedModel?.displayName ?? selectedModel?.modelName ?? '') : '';
 
   useEffect(() => () => stopPeroVoice(), []);

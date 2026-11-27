@@ -24,7 +24,7 @@ const CAPABILITY_LABELS: Record<string, Record<FirstClassLocale, string>> = {
   ocr: { 'en-US': 'OCR', 'ja-JP': '文字認識', 'fil-PH': 'OCR' },
 };
 
-const OLLAMA_MODELS = DEFAULT_MODELS.filter((m) => Boolean(m.ollamaTag));
+const RELEASE_MODELS = DEFAULT_MODELS;
 
 function getCapabilityLabel(cap: string, locale: FirstClassLocale): string {
   return CAPABILITY_LABELS[cap]?.[locale] ?? cap;
@@ -85,8 +85,9 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
 
   const dict = getUiDictionary(locale);
   const copy = getCopy(locale);
-  const recommendedId = hardwareProfile?.recommendedModelId ?? 'ollama-qwen3-1.7b';
+  const recommendedId = hardwareProfile?.recommendedModelId ?? 'ollama-qwen2.5-3b';
   const maxBudget = hardwareProfile?.maxModelRamGb ?? 6.0;
+  const autoDownloadAllowed = Boolean(hardwareProfile?.autoDownloadAllowed);
   const downloadedModels = getDownloadedOllamaModels(hardwareProfile);
   const hasAnyDownloaded = downloadedModels.length > 0;
 
@@ -131,9 +132,10 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
             {refreshing ? '...' : copy.refreshBtn}
           </button>
         </div>
-        {hardwareProfile && hardwareProfile.ollamaBinaryAvailable === false && !isPulling && (
+        {hardwareProfile && !autoDownloadAllowed && !hasAnyDownloaded && (
           <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', maxWidth: '470px' }}>
-            {copy.autoInstallHint}
+            ISMS Policy (Q3/Q16): Automatic model downloads are disabled. Select Built-In Offline or ask IT to pre-install{' '}
+            <code className="mono">qwen2.5:3b</code> / <code className="mono">qwen3:1.7b</code>.
           </div>
         )}
       </div>
@@ -151,8 +153,8 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
       )}
 
       <div role="radiogroup" aria-label={dict.onboardingModelTitle} className="onboard-model-list onboard-stagger-2">
-        {OLLAMA_MODELS.map((model) => {
-          const downloaded = isModelDownloadedOnPc(model, hardwareProfile);
+        {RELEASE_MODELS.map((model) => {
+          const downloaded = !model.ollamaTag || isModelDownloadedOnPc(model, hardwareProfile);
           const active = downloaded && model.id === selectedModelId;
           const isRecommended = model.id === recommendedId;
           const isThisDownloading = pullingTag === model.ollamaTag;
@@ -186,7 +188,7 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: active ? 700 : 600, color: 'var(--ink)' }}>
                     {model.displayName ?? model.modelName}
                   </span>
-                  {downloaded && (
+                  {downloaded && model.ollamaTag && (
                     <span className="status-pill verified" style={{ fontSize: '10px', padding: '1px 7px' }}>
                       {copy.downloaded}
                     </span>
@@ -217,25 +219,31 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                 {!downloaded && model.ollamaTag ? (
-                  <button
-                    type="button"
-                    className={`opero-btn ${isRecommended ? 'primary' : ''}`}
-                    disabled={isPulling}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void startDownload(model.ollamaTag!, model.id, (_hw, id) => onSelectModel(id));
-                    }}
-                    style={{ minHeight: '30px', padding: '4px 12px', fontSize: '11.5px', borderRadius: '999px' }}
-                  >
-                    <JiggIcon name="download" size={13} variant="duotone" />
-                    <span>
-                      {isThisDownloading
-                        ? pullJob?.percent != null
-                          ? `${Math.round(pullJob.percent)}%`
-                          : copy.downloading
-                        : copy.downloadBtn}
+                  autoDownloadAllowed ? (
+                    <button
+                      type="button"
+                      className={`opero-btn ${isRecommended ? 'primary' : ''}`}
+                      disabled={isPulling}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void startDownload(model.ollamaTag!, model.id, (_hw, id) => onSelectModel(id));
+                      }}
+                      style={{ minHeight: '30px', padding: '4px 12px', fontSize: '11.5px', borderRadius: '999px' }}
+                    >
+                      <JiggIcon name="download" size={13} variant="duotone" />
+                      <span>
+                        {isThisDownloading
+                          ? pullJob?.percent != null
+                            ? `${Math.round(pullJob.percent)}%`
+                            : copy.downloading
+                          : copy.downloadBtn}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="mono" style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>
+                      IT Pre-Install
                     </span>
-                  </button>
+                  )
                 ) : (
                   <span aria-hidden="true" className={`onboard-model-radio ${active ? 'active' : ''}`} />
                 )}
@@ -245,7 +253,7 @@ export const OnboardingModelStep: React.FC<OnboardingModelStepProps> = ({
         })}
       </div>
 
-      {!hasAnyDownloaded && (
+      {!hasAnyDownloaded && autoDownloadAllowed && (
         <div
           role="status"
           data-testid="onboarding-model-gate-notice"

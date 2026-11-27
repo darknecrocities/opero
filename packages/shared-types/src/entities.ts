@@ -216,6 +216,8 @@ export interface ModelProfile {
   licenseRef: string;
   capabilities: ('draft' | 'summarize' | 'translate' | 'vision' | 'embed' | 'reasoning')[];
   active: boolean;
+  ismsApproved?: boolean;
+  releaseRole?: 'standard' | 'fallback' | 'offline';
   researchOnly?: boolean;
 }
 
@@ -232,6 +234,7 @@ export interface HardwareProfile {
   osName: string;
   recommendedTier: 'offline' | 'compact' | 'balanced' | 'deep' | string;
   recommendedModelId: string;
+  autoDownloadAllowed?: boolean;
   ollamaBinaryAvailable?: boolean;
   ollamaRunning: boolean;
   installedModels: string[];

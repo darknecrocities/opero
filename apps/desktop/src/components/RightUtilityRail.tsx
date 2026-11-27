@@ -110,7 +110,7 @@ export const RightUtilityRail: React.FC = () => {
           </div>
         )}
 
-        {targetDownloadModel && targetDownloadModel.ollamaTag && (
+        {hardwareProfile?.autoDownloadAllowed && targetDownloadModel && targetDownloadModel.ollamaTag && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <select

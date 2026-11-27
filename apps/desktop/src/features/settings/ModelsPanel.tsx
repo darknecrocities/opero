@@ -32,6 +32,7 @@ export const ModelsPanel: React.FC = () => {
   const recommendedInstalled = recommendedModel
     ? isModelSelectableInApp(recommendedModel, hardwareProfile)
     : false;
+  const autoDownloadAllowed = Boolean(hardwareProfile?.autoDownloadAllowed);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -100,7 +101,7 @@ export const ModelsPanel: React.FC = () => {
               >
                 Apply Recommended
               </button>
-            ) : recommendedModel.ollamaTag ? (
+            ) : autoDownloadAllowed && recommendedModel.ollamaTag ? (
               <button
                 type="button"
                 className="opero-btn primary"
@@ -184,26 +185,32 @@ export const ModelsPanel: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {m.ollamaTag && !downloaded ? (
-                  <button
-                    type="button"
-                    className={`opero-btn ${isRecommended ? 'primary' : ''}`}
-                    disabled={isPulling}
-                    onClick={() => {
-                      setNotice(null);
-                      void startDownload(m.ollamaTag!, m.id, () => {
-                        setNotice(`Downloaded and selected ${m.displayName ?? m.modelName}.`);
-                      });
-                    }}
-                  >
-                    <JiggIcon name="download" size={14} variant="duotone" />
-                    <span>
-                      {isThisDownloading
-                        ? pullJob?.percent != null
-                          ? `Downloading ${Math.round(pullJob.percent)}%`
-                          : 'Downloading...'
-                        : 'Download'}
+                  autoDownloadAllowed ? (
+                    <button
+                      type="button"
+                      className={`opero-btn ${isRecommended ? 'primary' : ''}`}
+                      disabled={isPulling}
+                      onClick={() => {
+                        setNotice(null);
+                        void startDownload(m.ollamaTag!, m.id, () => {
+                          setNotice(`Downloaded and selected ${m.displayName ?? m.modelName}.`);
+                        });
+                      }}
+                    >
+                      <JiggIcon name="download" size={14} variant="duotone" />
+                      <span>
+                        {isThisDownloading
+                          ? pullJob?.percent != null
+                            ? `Downloading ${Math.round(pullJob.percent)}%`
+                            : 'Downloading...'
+                          : 'Download'}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                      IT Pre-Install ({m.ollamaTag})
                     </span>
-                  </button>
+                  )
                 ) : (
                   <>
                     <button

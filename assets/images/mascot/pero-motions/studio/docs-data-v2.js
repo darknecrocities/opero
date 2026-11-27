@@ -48,15 +48,13 @@
       diagrams: ['agent-rag-flow'],
       tables: [
         {
-          caption: 'Hardware-Aware Local Model Catalog (EN · JA · FIL)',
-          headers: ['Display Name', 'Model Tag', 'Recommended RAM', 'Primary Strength'],
-          rowIcons: ['sparkles', 'bot', 'eye', 'lightbulb', 'lock'],
+          caption: 'Release 1 ISMS-Approved Local Model Catalog (HP ProBook 450 G8 Baseline)',
+          headers: ['Display Name', 'Model Tag', 'Measured RAM', 'Release 1 Role & Strength'],
+          rowIcons: ['laptop', 'sparkles', 'lock'],
           rows: [
-            ['Qwen3 Compact', 'qwen3:1.7b', '8 GB+', 'Fast step-by-step reasoning, daily chat, and EN/JA/FIL summaries on everyday laptops.'],
-            ['Qwen3 Balanced', 'qwen3:4b', '16 GB+', 'Sharper document analysis, bilingual meeting translation, and SOP drafting.'],
-            ['Gemma 3 Vision', 'gemma3:4b', '16 GB+', 'Reads captured screenshots and visual documents alongside clear writing.'],
-            ['Qwen3 Deep', 'qwen3:8b', '32 GB+', 'Deepest multi-step reasoning and nuanced bilingual corporate phrasing.'],
-            ['Built-In Offline', 'offline', '4 GB+', 'Zero-download deterministic structural checks, glossary grounding, and offline export.'],
+            ['Qwen2.5 3B (Standard)', 'qwen2.5:3b', '1.94 GB (2.54 GB total)', 'Release 1 Standard for HP ProBook 450 G8 (16 GB CPU-only, <= 6 GB cap). Apache-2.0, 33.1 tok/s CPU-only, 90/100 SOP quality.'],
+            ['Qwen3 1.7B (Lighter Fallback)', 'qwen3:1.7b', '1.13 GB (1.73 GB total)', 'Release 1 Lighter Fallback for 8 GB or constrained PCs. Apache-2.0, 52.2 tok/s CPU-only, 90/100 SOP quality.'],
+            ['Built-In Offline', 'offline', '0 GB model RAM', 'Zero-download deterministic structural checks, glossary grounding, and offline export when Ollama is not provisioned.'],
           ],
         },
       ],

@@ -296,6 +296,20 @@ pub fn run_automated_model_pull(
         hardware: hw,
     };
 
+    if !crate::hardware::is_auto_download_allowed() {
+        on_update(make_status(
+            "failed",
+            "Automatic model download disabled by ISMS policy",
+            0,
+            0,
+            None,
+            None,
+            Some("ISMS policy (Q3/Q16) blocks automatic model downloads. Ask IT to pre-install an approved model (qwen2.5:3b or qwen3:1.7b).".into()),
+            None,
+        ));
+        return;
+    }
+
     if let Err(e) = validate_pull_model_tag(&clean) {
         on_update(make_status("failed", "Unsupported model tag", 0, 0, None, None, Some(e.to_string()), None));
         return;
