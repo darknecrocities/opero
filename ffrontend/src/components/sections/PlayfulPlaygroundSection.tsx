@@ -12,7 +12,7 @@ export const PlayfulPlaygroundSection: React.FC = () => {
   return (
     <section
       aria-label="Interactive playgrounds"
-      className="mx-auto w-full max-w-[1240px] px-5 sm:px-8 lg:px-10 py-14"
+      className="mx-auto w-full max-w-[1200px] px-4 sm:px-8 lg:px-10 py-10 sm:py-12"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div

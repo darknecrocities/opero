@@ -10,7 +10,7 @@ export const ShortcutsSection: React.FC = () => {
   return (
     <section
       aria-label="Keyboard shortcuts"
-      className="mx-auto w-full max-w-[1040px] px-5 sm:px-8 lg:px-10 py-14"
+      className="mx-auto w-full max-w-[1000px] px-4 sm:px-8 lg:px-10 py-10 sm:py-12"
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}

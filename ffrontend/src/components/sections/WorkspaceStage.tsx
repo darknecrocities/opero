@@ -10,7 +10,7 @@ export const WorkspaceStage: React.FC = () => {
     <section
       id="workspace"
       aria-label="OPERO Workspace"
-      className="px-5 sm:px-8 lg:px-0 py-10 lg:py-0 flex flex-col items-center justify-center gap-5 lg:shrink-0"
+      className="px-4 sm:px-8 lg:px-0 py-8 lg:py-0 flex flex-col items-center justify-center gap-4 sm:gap-5 lg:shrink-0 w-full lg:w-auto"
     >
       <div className="w-full max-w-[860px] lg:w-[780px] xl:w-[860px]">
         <LaptopFrame

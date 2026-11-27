@@ -14,7 +14,7 @@ export const ReversePanoramaSection: React.FC = () => {
 
   const panels = (
     <>
-      <div className="feature-card p-8 w-full lg:w-[540px] lg:h-[430px] flex flex-col justify-between shrink-0">
+      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[540px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">LOCAL AI RUNTIMES</span>
           <Cpu size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -47,7 +47,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-8 w-full lg:w-[520px] lg:h-[430px] flex flex-col justify-between shrink-0">
+      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[520px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">EVIDENCE ENGINE</span>
           <Database size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -78,7 +78,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-8 w-full lg:w-[540px] lg:h-[430px] flex flex-col justify-between shrink-0">
+      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[540px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">REAL TEAMS</span>
           <Users size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -103,7 +103,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-8 w-full lg:w-[580px] lg:h-[430px] flex flex-col justify-between shrink-0">
+      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[580px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">EXPORT DELIVERABLES</span>
           <FileText size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -159,11 +159,21 @@ export const ReversePanoramaSection: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div ref={containerRef} className="mx-auto max-w-[1240px] px-5 sm:px-8 py-12 flex flex-col gap-5">
-          <h2 className="m-0 text-[28px] font-extrabold tracking-[-0.03em] text-[#172334] text-center">
-            Built for real output.
-          </h2>
-          {panels}
+        <div ref={containerRef} className="w-full py-10">
+          <div className="mx-auto max-w-[1240px] px-5 sm:px-8 mb-4 flex items-end justify-between gap-3">
+            <h2 className="m-0 text-[24px] sm:text-[28px] font-extrabold tracking-[-0.03em] text-[#172334]">
+              Built for real output.
+            </h2>
+            <span className="opero-hand-cue text-[16px] text-[#247BFA] shrink-0">
+              swipe →
+            </span>
+          </div>
+          <div
+            data-testid="outputs-horizontal-track"
+            className="flex items-stretch gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar px-5 sm:px-8 pb-3"
+          >
+            {panels}
+          </div>
         </div>
       )}
     </section>

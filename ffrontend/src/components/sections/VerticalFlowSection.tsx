@@ -16,19 +16,19 @@ export const VerticalFlowSection: React.FC = () => {
       id="flow"
       ref={sectionRef}
       aria-label="From click to manual"
-      className="mx-auto w-full max-w-[1240px] px-5 sm:px-8 lg:px-10 pt-24 pb-16"
+      className="mx-auto w-full max-w-[1200px] px-5 sm:px-8 lg:px-10 pt-16 sm:pt-20 pb-12"
     >
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.35 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="text-center max-w-[520px] mx-auto mb-12"
+        className="text-center max-w-[480px] mx-auto mb-9 sm:mb-11"
       >
-        <h2 className="m-0 text-[32px] sm:text-[42px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#172334]">
+        <h2 className="m-0 text-[28px] sm:text-[38px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#172334]">
           From click to manual.
         </h2>
-        <p className="m-0 mt-3 text-[15px] text-[#68778B]">
+        <p className="m-0 mt-2.5 text-[14.5px] text-[#68778B]">
           Five quiet steps from live work to a verified guide.
         </p>
       </motion.div>
@@ -36,7 +36,7 @@ export const VerticalFlowSection: React.FC = () => {
       <div className="relative">
         <div
           aria-hidden="true"
-          className="hidden lg:block absolute top-[54px] left-12 right-12 h-[2px] bg-[#E1E8F0]"
+          className="hidden lg:block absolute top-[62px] left-12 right-12 h-[2px] bg-[#E1E8F0]"
         >
           <motion.div
             style={{ scaleX: lineScale }}
@@ -44,18 +44,18 @@ export const VerticalFlowSection: React.FC = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10">
+        <div className="flex lg:grid lg:grid-cols-5 gap-3.5 sm:gap-4 overflow-x-auto lg:overflow-visible snap-x snap-mandatory lg:snap-none no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 pb-2 lg:pb-0 relative z-10">
           {VERTICAL_FLOW_STEPS.map((step, idx) => (
             <motion.div
               key={step.number}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.25 }}
-              transition={{ duration: 0.4, delay: idx * 0.07, ease: [0.22, 1, 0.36, 1] }}
-              className="feature-card px-5 py-6 flex flex-col items-center text-center"
+              transition={{ duration: 0.4, delay: idx * 0.06, ease: [0.22, 1, 0.36, 1] }}
+              className="feature-card px-5 py-6 w-[72vw] max-w-[240px] lg:w-auto lg:max-w-none shrink-0 snap-center flex flex-col items-center text-center"
             >
-              <div className="h-[64px] flex items-center justify-center mb-3">
-                <FeatureMotionIcon id={step.iconId} />
+              <div className="h-[78px] flex items-center justify-center mb-3">
+                <FeatureMotionIcon id={step.iconId} size="md" />
               </div>
               <span className="mono-tabular text-[11px] font-semibold text-[#247BFA]">
                 {step.number}
