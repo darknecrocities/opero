@@ -323,6 +323,22 @@ export interface DocumentAnnotation {
   severity: 'info' | 'suggestion' | 'missing' | string;
 }
 
+export interface TranslatedBlock {
+  blockId: string;
+  sourceLocale: string;
+  targetLocale: string;
+  sourceText: string;
+  translatedText: string;
+}
+
+export interface StructuredReportSection {
+  id: string;
+  number: number;
+  title: string;
+  summary: string;
+  items: string[];
+}
+
 export interface AnalyzedDocument {
   id: string;
   filename: string;
@@ -331,6 +347,12 @@ export interface AnalyzedDocument {
   sha256: string;
   wordCount: number;
   detectedLanguages: string[];
+  sourceLanguage?: string;
+  translationTargetLocale?: string | null;
+  translatedSummary?: string | null;
+  translatedBlocks?: TranslatedBlock[];
+  structuredSections?: StructuredReportSection[];
+  ragIndexed?: boolean;
   documentType: string;
   engineUsed: string;
   executiveSummary: string;

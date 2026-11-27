@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { getFeatureStrings } from '@opero/i18n';
 import { JiggIcon } from '@opero/jiggicons';
-import type { AnalyzedDocument, DocumentAnnotation, ExportFormat } from '@opero/shared-types';
+import type { AnalyzedDocument, DocumentAnnotation, ExportFormat, FirstClassLocale } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
 import { AgentMessageContent } from '../agent/AgentMessageContent';
+import { AnalyzerStructuredSections } from './AnalyzerStructuredSections';
 
 type InspectorTab = 'full' | 'export';
 
@@ -13,14 +14,18 @@ interface AnalyzerReportPanelProps {
   exportNotice: string | null;
   busyExport: boolean;
   busyReanalyze: boolean;
+  busyTranslate: boolean;
   busyAsk: boolean;
   askAnswer: { question: string; answer: string; engineUsed: string } | null;
   onSelectAnnotation: (id: string) => void;
   onDeleteAnnotation: (id: string) => void;
   onUpdateAnnotation: (ann: DocumentAnnotation) => void;
   onCompileAndExport: (format?: ExportFormat) => void;
+  onDownloadReport: (format: ExportFormat) => void;
   onReanalyze: () => void;
+  onTranslate: (targetLocale: FirstClassLocale) => void;
   onAskPero: (question: string) => void;
+  onOpenAgent: () => void;
 }
 
 const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html', 'markdown'];
@@ -31,14 +36,18 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
   exportNotice,
   busyExport,
   busyReanalyze,
+  busyTranslate,
   busyAsk,
   askAnswer,
   onSelectAnnotation,
   onDeleteAnnotation,
   onUpdateAnnotation,
   onCompileAndExport,
+  onDownloadReport,
   onReanalyze,
+  onTranslate,
   onAskPero,
+  onOpenAgent,
 }) => {
   const { uiLocale } = useOperoStore();
   const feat = getFeatureStrings(uiLocale);
@@ -92,6 +101,14 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
 
       {tab === 'full' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* 8-Section Structured Analysis Report + Auto-Translation + Pero Agent Sync */}
+          <AnalyzerStructuredSections
+            doc={doc}
+            busyTranslate={busyTranslate}
+            onTranslate={onTranslate}
+            onOpenAgent={onOpenAgent}
+          />
+
           {/* Executive Summary Card */}
           <div style={{ padding: '13px', borderRadius: '12px', background: '#FFFFFF', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -319,10 +336,10 @@ export const AnalyzerReportPanel: React.FC<AnalyzerReportPanelProps> = ({
                 type="button"
                 className="opero-btn"
                 disabled={busyExport}
-                onClick={() => onCompileAndExport(fmt)}
+                onClick={() => onDownloadReport(fmt)}
               >
                 <JiggIcon name={`export-${fmt === 'markdown' ? 'md' : fmt}`} size={14} variant="duotone" />
-                <span>Export {fmt === 'markdown' ? 'MD' : fmt.toUpperCase()}</span>
+                <span>Download {fmt === 'markdown' ? 'MD' : fmt.toUpperCase()}</span>
               </button>
             ))}
           </div>

@@ -147,7 +147,10 @@ export const DocumentHistorySidebar: React.FC<DocumentHistorySidebarProps> = ({
                     {doc.filename}
                   </div>
                   <div className="mono" style={{ fontSize: '10px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                    {doc.fileFormat.toUpperCase()} · {doc.wordCount}w · {formatShortDate(doc.updatedAt)}
+                    {doc.fileFormat.toUpperCase()}
+                    {doc.sourceLanguage ? ` · ${doc.sourceLanguage.slice(0, 2).toUpperCase()}` : ''}
+                    {doc.translationTargetLocale ? `→${doc.translationTargetLocale.slice(0, 2).toUpperCase()}` : ''}
+                    {' · '}{doc.wordCount}w · {formatShortDate(doc.updatedAt)}
                   </div>
                 </button>
                 <button

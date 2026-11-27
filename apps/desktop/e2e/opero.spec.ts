@@ -212,9 +212,10 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     await page.getByRole('button', { name: 'Crop', exact: true }).click();
     await page.getByTestId('analyzer-block').first().click();
     await expect(page.getByText('Analyzing region with Local AI...')).toBeHidden({ timeout: 15000 });
+    await expect(page.getByTestId('analyzer-structured-sections')).toBeVisible();
     await page.getByRole('tab', { name: 'Export' }).click();
-    await page.getByRole('button', { name: 'Export PDF' }).click();
-    await expect(page.locator('.status-pill', { hasText: /Exported PDF/i }).first()).toBeVisible({
+    await page.getByRole('button', { name: 'Download PDF' }).click();
+    await expect(page.locator('.status-pill', { hasText: /Downloaded .*\.pdf/i }).first()).toBeVisible({
       timeout: 12000,
     });
 

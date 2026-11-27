@@ -120,8 +120,32 @@ pub fn upsert_memory_chunk(
 
 pub fn delete_memory_chunk(conn: &Connection, chunk_id: &str) -> OperoResult<bool> {
     conn.execute("DELETE FROM memory_chunks_fts WHERE chunk_id = ?1", params![chunk_id])?;
+    conn.execute("DELETE FROM memory_vectors WHERE chunk_id = ?1", params![chunk_id])?;
     let changed = conn.execute("DELETE FROM memory_chunks WHERE id = ?1", params![chunk_id])?;
     Ok(changed > 0)
+}
+
+/// Atomically deletes all memory chunks, FTS5 rows, and quantized vectors linked to
+/// a specific `(source_type, source_id)` pair so Pero Agent immediately forgets deleted documents.
+pub fn delete_memory_chunks_by_source(
+    conn: &Connection,
+    source_type: &str,
+    source_id: &str,
+) -> OperoResult<usize> {
+    let mut stmt = conn.prepare(
+        "SELECT id FROM memory_chunks WHERE source_type = ?1 AND source_id = ?2",
+    )?;
+    let ids: Vec<String> = stmt
+        .query_map(params![source_type, source_id], |r| r.get::<_, String>(0))?
+        .filter_map(Result::ok)
+        .collect();
+    let mut removed = 0usize;
+    for cid in &ids {
+        conn.execute("DELETE FROM memory_chunks_fts WHERE chunk_id = ?1", params![cid])?;
+        conn.execute("DELETE FROM memory_vectors WHERE chunk_id = ?1", params![cid])?;
+        removed += conn.execute("DELETE FROM memory_chunks WHERE id = ?1", params![cid])?;
+    }
+    Ok(removed)
 }
 
 pub fn query_dual_core_memory(

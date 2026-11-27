@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
-import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock, ExportFormat } from '@opero/shared-types';
+import type { AnalyzedDocument, DocumentAnnotation, DocumentBlock, ExportFormat, FirstClassLocale } from '@opero/shared-types';
 import { operoClient } from '../../services/operoClient';
 import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
 import { AnalyzerLoadingMascot } from './AnalyzerLoadingMascot';
@@ -24,7 +24,7 @@ function readFileAsBase64(file: File): Promise<string> {
 }
 
 export const DocumentAnalyzerView: React.FC = () => {
-  const { uiLocale, targetLocale, activeModelId, soundEnabled, projects, openManualInStudio } = useOperoStore();
+  const { uiLocale, targetLocale, activeModelId, soundEnabled, projects, openManualInStudio, setNavMode } = useOperoStore();
   const selectedOllamaTag = DEFAULT_MODELS.find((m) => m.id === activeModelId)?.ollamaTag;
   const dict = getUiDictionary(uiLocale);
   const feat = getFeatureStrings(uiLocale);
@@ -40,6 +40,7 @@ export const DocumentAnalyzerView: React.FC = () => {
   const [busyBlockId, setBusyBlockId] = useState<string | null>(null);
   const [busyExport, setBusyExport] = useState(false);
   const [busyReanalyze, setBusyReanalyze] = useState(false);
+  const [busyTranslate, setBusyTranslate] = useState(false);
   const [busyAsk, setBusyAsk] = useState(false);
   const [askAnswer, setAskAnswer] = useState<{ question: string; answer: string; engineUsed: string } | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export const DocumentAnalyzerView: React.FC = () => {
   const handleDeleteDoc = async (docId: string) => {
     playJiggSfx('click', soundEnabled);
     try {
-      await operoClient.deleteAnalyzedDoc(docId);
+      const res = await operoClient.deleteAnalyzedDoc(docId);
       const remaining = docs.filter((d) => d.id !== docId);
       setDocs(remaining);
       if (activeDoc?.id === docId) {
@@ -101,8 +102,51 @@ export const DocumentAnalyzerView: React.FC = () => {
         setSelectedAnnId(next?.annotations[0]?.id ?? null);
         setAskAnswer(null);
       }
+      const purged = res.removedMemoryChunks ?? 0;
+      setExportNotice(`Removed document and purged ${purged} chunk(s) from Pero Agent memory.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete document.');
+    }
+  };
+
+  const handleTranslate = async (locale: FirstClassLocale) => {
+    if (!activeDoc) return;
+    setBusyTranslate(true);
+    setError(null);
+    try {
+      const { document } = await operoClient.translateAnalyzedDoc(activeDoc.id, {
+        targetLocale: locale,
+        preferredModel: selectedOllamaTag,
+      });
+      syncDocState(document);
+      playJiggSfx('success', soundEnabled);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Document translation failed.');
+    } finally {
+      setBusyTranslate(false);
+    }
+  };
+
+  const handleDownloadReport = async (format: ExportFormat) => {
+    if (!activeDoc) return;
+    setBusyExport(true);
+    setError(null);
+    try {
+      const { blob, filename } = await operoClient.downloadAnalyzedReport(activeDoc.id, format, targetLocale);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportNotice(`Downloaded ${filename} (${blob.size} B)`);
+      playJiggSfx('success', soundEnabled);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Report download failed.');
+    } finally {
+      setBusyExport(false);
     }
   };
 
@@ -401,6 +445,7 @@ export const DocumentAnalyzerView: React.FC = () => {
               exportNotice={exportNotice}
               busyExport={busyExport}
               busyReanalyze={busyReanalyze}
+              busyTranslate={busyTranslate}
               busyAsk={busyAsk}
               askAnswer={askAnswer}
               onSelectAnnotation={setSelectedAnnId}
@@ -413,8 +458,11 @@ export const DocumentAnalyzerView: React.FC = () => {
                 )
               }
               onCompileAndExport={(fmt) => void handleCompileAndExport(fmt)}
+              onDownloadReport={(fmt) => void handleDownloadReport(fmt)}
               onReanalyze={() => void handleReanalyze()}
+              onTranslate={(loc) => void handleTranslate(loc)}
               onAskPero={(q) => void handleAskPero(q)}
+              onOpenAgent={() => setNavMode('agent')}
             />
           </div>
         )}

@@ -10,6 +10,8 @@ use opero_core::doc_analyzer::{
     analyze_document_bytes, explain_cropped_region, summarize_text_with_ollama, DocumentAnnotation,
 };
 use opero_core::doc_analyzer_llm::ask_about_document;
+use opero_core::doc_analyzer_report::{build_eight_structured_sections, ReportBuildInput};
+use opero_core::doc_analyzer_translate::translate_document_blocks;
 use opero_core::error::OperoError;
 use opero_core::hardware::{
     delete_curated_ollama_model, inspect_hardware_profile_with_data_dir, pull_curated_ollama_model,
@@ -61,7 +63,7 @@ async fn ingest_document(
     let preferred = req.preferred_model.clone();
     let data_dir = state.store.data_dir.clone();
     let bytes_for_parse = bytes.clone();
-    let doc = tokio::task::spawn_blocking(move || {
+    let mut doc = tokio::task::spawn_blocking(move || {
         let _ = ensure_ollama_ready_for_inference(&data_dir, preferred.as_deref());
         analyze_document_bytes(&filename, &bytes_for_parse, &locale, preferred.as_deref())
     })
@@ -80,14 +82,13 @@ async fn ingest_document(
     };
     let _ = std::fs::write(docs_dir.join(format!("{}.{ext}", doc.id)), &bytes);
 
+    doc.rag_indexed = true;
     state.store.save_analyzed_document(&doc)?;
+    let _ = state.store.sync_analyzed_document_to_rag(&doc);
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "document": doc }))))
 }
 
-async fn get_document_file(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Response {
+async fn get_document_file(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
     if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
         return ApiError(OperoError::Validation("Invalid document ID.".to_string())).into_response();
     }
@@ -98,8 +99,7 @@ async fn get_document_file(
         ("md", "text/markdown; charset=utf-8"),
         ("txt", "text/plain; charset=utf-8"),
     ] {
-        let p = docs_dir.join(format!("{id}.{ext}"));
-        if let Ok(bytes) = std::fs::read(&p) {
+        if let Ok(bytes) = std::fs::read(docs_dir.join(format!("{id}.{ext}"))) {
             return (
                 StatusCode::OK,
                 [
@@ -108,8 +108,7 @@ async fn get_document_file(
                     (header::CACHE_CONTROL, HeaderValue::from_static("private, max-age=300")),
                 ],
                 bytes,
-            )
-                .into_response();
+            ).into_response();
         }
     }
     ApiError(OperoError::NotFound(format!("Stored file for document {id} not found."))).into_response()
@@ -157,15 +156,56 @@ async fn save_annotations(
     Ok(Json(serde_json::json!({ "document": document })))
 }
 
-async fn delete_document(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+async fn delete_document(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, ApiError> {
     if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
         return Err(ApiError(OperoError::Validation("Invalid document ID.".to_string())));
     }
-    let deleted = state.store.delete_analyzed_document(&id)?;
-    Ok(Json(serde_json::json!({ "deleted": deleted })))
+    let (deleted, removed_chunks) = state.store.delete_analyzed_document(&id)?;
+    let memory = state.store.conn().ok().and_then(|c| get_memory_stats(&c).ok());
+    Ok(Json(serde_json::json!({ "deleted": deleted, "removedMemoryChunks": removed_chunks, "memory": memory })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TranslateDocReq {
+    target_locale: String,
+    preferred_model: Option<String>,
+}
+
+async fn translate_document(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<TranslateDocReq>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let mut doc = state.store.get_analyzed_document(&id)?;
+    let blocks = doc.blocks.clone();
+    let src = if doc.source_language.is_empty() { "ja-JP".to_string() } else { doc.source_language.clone() };
+    let target = req.target_locale.clone();
+    let pref = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
+    let (t_sum, t_blocks, _eng) = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, pref.as_deref());
+        translate_document_blocks(&blocks, &src, &target, pref.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Translate task failed: {e}"))))?;
+
+    doc.translation_target_locale = Some(req.target_locale.clone());
+    doc.translated_summary = t_sum;
+    doc.translated_blocks = t_blocks;
+    let src_ref = if doc.source_language.is_empty() { "en-US".to_string() } else { doc.source_language.clone() };
+    doc.structured_sections = build_eight_structured_sections(&ReportBuildInput {
+        filename: &doc.filename, file_format: &doc.file_format, document_type: &doc.document_type,
+        source_language: &src_ref, target_locale: &req.target_locale, word_count: doc.word_count,
+        completeness_score: doc.completeness_score, engine_used: &doc.engine_used,
+        executive_summary: &doc.executive_summary, key_findings: &doc.key_findings,
+        blocks: &doc.blocks, annotations: &doc.annotations,
+        translated_summary: doc.translated_summary.as_deref(), translated_blocks: &doc.translated_blocks,
+    });
+    doc.rag_indexed = true;
+    state.store.save_analyzed_document(&doc)?;
+    let _ = state.store.sync_analyzed_document_to_rag(&doc);
+    Ok(Json(serde_json::json!({ "document": doc })))
 }
 
 #[derive(Deserialize)]
@@ -274,6 +314,48 @@ async fn compile_report(
     Ok(Json(serde_json::json!({ "manual": manual, "artifact": artifact })))
 }
 
+async fn download_report(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<CompileReportReq>,
+) -> Response {
+    let locale = req.locale.as_deref().unwrap_or("en-US");
+    let fmt = req.export_format.as_deref().unwrap_or("pdf");
+    let project_id = req.project_id.unwrap_or_else(|| "default".to_string());
+    let manual = match state.store.compile_analyzed_report_manual(&project_id, &id, locale) {
+        Ok(m) => m,
+        Err(e) => return ApiError(e).into_response(),
+    };
+    let exports_dir = state.store.data_dir.join("exports");
+    let artifact = match export_manual_artifact(&manual, fmt, locale, &exports_dir, &state.store.data_dir) {
+        Ok(a) => a,
+        Err(e) => return ApiError(e).into_response(),
+    };
+    let bytes = match std::fs::read(&artifact.file_path) {
+        Ok(b) => b,
+        Err(e) => return ApiError(OperoError::Process(format!("Could not read exported report: {e}"))).into_response(),
+    };
+    let (mime, ext) = match fmt {
+        "docx" => ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
+        "html" => ("text/html; charset=utf-8", "html"),
+        "markdown" => ("text/markdown; charset=utf-8", "md"),
+        _ => ("application/pdf", "pdf"),
+    };
+    let safe_name = format!("opero-analysis-{}.{ext}", id.chars().take(12).collect::<String>());
+    let disp = HeaderValue::from_str(&format!("attachment; filename=\"{safe_name}\""))
+        .unwrap_or_else(|_| HeaderValue::from_static("attachment; filename=\"opero-report.pdf\""));
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, HeaderValue::from_static(mime)),
+            (header::CONTENT_DISPOSITION, disp),
+            (header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+
 async fn get_hardware(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let data_dir = state.store.data_dir.clone();
     let hardware = tokio::task::spawn_blocking(move || inspect_hardware_profile_with_data_dir(Some(&data_dir)))
@@ -357,10 +439,7 @@ async fn get_active_pull_job(
     Ok(Json(serde_json::json!({ "status": active })))
 }
 
-async fn delete_model(
-    State(state): State<Arc<AppState>>,
-    Path(tag): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+async fn delete_model(State(state): State<Arc<AppState>>, Path(tag): Path<String>) -> Result<Json<serde_json::Value>, ApiError> {
     let data_dir = state.store.data_dir.clone();
     let hardware = tokio::task::spawn_blocking(move || delete_curated_ollama_model(&tag, Some(&data_dir)))
         .await
@@ -368,18 +447,9 @@ async fn delete_model(
     Ok(Json(serde_json::json!({ "hardware": hardware })))
 }
 
-async fn get_pull_model_status(
-    State(state): State<Arc<AppState>>,
-    Path(job_id): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    let map = state
-        .pull_jobs
-        .lock()
-        .map_err(|_| ApiError(OperoError::Process("Job tracker lock poisoned".into())))?;
-    let status = map
-        .get(&job_id)
-        .cloned()
-        .ok_or_else(|| ApiError(OperoError::NotFound(format!("Download job '{job_id}' not found."))))?;
+async fn get_pull_model_status(State(state): State<Arc<AppState>>, Path(job_id): Path<String>) -> Result<Json<serde_json::Value>, ApiError> {
+    let map = state.pull_jobs.lock().map_err(|_| ApiError(OperoError::Process("Job tracker lock poisoned".into())))?;
+    let status = map.get(&job_id).cloned().ok_or_else(|| ApiError(OperoError::NotFound(format!("Download job '{job_id}' not found."))))?;
     Ok(Json(serde_json::json!({ "status": status })))
 }
 
@@ -408,10 +478,12 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/v1/analyzer/documents/{id}", delete(delete_document))
         .route("/api/v1/analyzer/documents/{id}/file", get(get_document_file))
         .route("/api/v1/analyzer/documents/{id}/reanalyze", post(reanalyze_document))
+        .route("/api/v1/analyzer/documents/{id}/translate", post(translate_document))
         .route("/api/v1/analyzer/documents/{id}/ask", post(ask_document))
         .route("/api/v1/analyzer/explain-region", post(explain_region))
         .route("/api/v1/analyzer/documents/{id}/annotations", put(save_annotations))
         .route("/api/v1/analyzer/documents/{id}/report", post(compile_report))
+        .route("/api/v1/analyzer/documents/{id}/download", post(download_report))
         .with_state(state)
         .merge(ingest_route)
 }

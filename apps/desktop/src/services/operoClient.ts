@@ -180,9 +180,10 @@ export const operoClient = {
   listAnalyzedDocs: () => fetchLocal<{ documents: AnalyzedDocument[] }>('/analyzer/documents'),
 
   deleteAnalyzedDoc: (docId: string) =>
-    fetchLocal<{ deleted: boolean }>(`/analyzer/documents/${encodeURIComponent(docId)}`, {
-      method: 'DELETE',
-    }),
+    fetchLocal<{ deleted: boolean; removedMemoryChunks?: number; memory?: DualCoreMemoryStats | null }>(
+      `/analyzer/documents/${encodeURIComponent(docId)}`,
+      { method: 'DELETE' },
+    ),
 
   reanalyzeDocument: (docId: string, payload: { locale: FirstClassLocale; preferredModel?: string }) =>
     fetchLocal<{ document: AnalyzedDocument }>(
@@ -240,6 +241,36 @@ export const operoClient = {
       manual: Manual;
       artifact: { format: string; locale: string; filePath: string; sha256: string; byteSize: number } | null;
     }>(`/analyzer/documents/${docId}/report`, { method: 'POST', body: JSON.stringify(payload) }, 15000),
+
+  translateAnalyzedDoc: (
+    docId: string,
+    payload: { targetLocale: FirstClassLocale; preferredModel?: string },
+  ) =>
+    fetchLocal<{ document: AnalyzedDocument }>(
+      `/analyzer/documents/${docId}/translate`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      65000,
+    ),
+
+  downloadAnalyzedReport: async (
+    docId: string,
+    format: ExportFormat,
+    locale: FirstClassLocale,
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const resp = await fetch(`${DAEMON_BASE}/analyzer/documents/${docId}/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exportFormat: format, locale }),
+    });
+    if (!resp.ok) {
+      throw new Error(`Report download failed (HTTP ${resp.status})`);
+    }
+    const disp = resp.headers.get('content-disposition') ?? '';
+    const match = disp.match(/filename="([^"]+)"/);
+    const ext = format === 'markdown' ? 'md' : format;
+    const filename = match?.[1] ?? `opero-analysis-${docId.slice(0, 12)}.${ext}`;
+    return { blob: await resp.blob(), filename };
+  },
 
   getHardwareProfile: () => fetchLocal<{ hardware: HardwareProfile }>('/system/hardware'),
 

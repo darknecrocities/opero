@@ -6,6 +6,12 @@ use uuid::Uuid;
 use crate::doc_analyzer_llm::{
     call_ollama_chat_json, detect_ollama_model, locale_output_instruction, sample_whole_document,
 };
+use crate::doc_analyzer_report::{
+    build_eight_structured_sections, ReportBuildInput, StructuredReportSection,
+};
+use crate::doc_analyzer_translate::{
+    detect_primary_language, translate_document_blocks, TranslatedBlock,
+};
 use crate::doc_parser::{extract_document_bytes, DocumentBlock, ParsedDocumentPayload};
 use crate::error::OperoResult;
 
@@ -41,6 +47,18 @@ pub struct AnalyzedDocument {
     pub sha256: String,
     pub word_count: usize,
     pub detected_languages: Vec<String>,
+    #[serde(default)]
+    pub source_language: String,
+    #[serde(default)]
+    pub translation_target_locale: Option<String>,
+    #[serde(default)]
+    pub translated_summary: Option<String>,
+    #[serde(default)]
+    pub translated_blocks: Vec<TranslatedBlock>,
+    #[serde(default)]
+    pub structured_sections: Vec<StructuredReportSection>,
+    #[serde(default)]
+    pub rag_indexed: bool,
     pub document_type: String,
     pub engine_used: String,
     pub executive_summary: String,
@@ -291,6 +309,33 @@ pub fn analyze_document_bytes(
         }
     }
 
+    let source_language = detect_primary_language(&parsed.raw_text);
+    let (translation_target_locale, translated_summary, translated_blocks) =
+        if source_language != locale {
+            let (t_sum, t_blocks, _t_eng) =
+                translate_document_blocks(&parsed.blocks, &source_language, locale, preferred_model);
+            (Some(locale.to_string()), t_sum, t_blocks)
+        } else {
+            (None, None, Vec::new())
+        };
+
+    let structured_sections = build_eight_structured_sections(&ReportBuildInput {
+        filename,
+        file_format: &parsed.format,
+        document_type: &doc_type,
+        source_language: &source_language,
+        target_locale: locale,
+        word_count: parsed.word_count,
+        completeness_score,
+        engine_used: &engine_used,
+        executive_summary: &executive_summary,
+        key_findings: &key_findings,
+        blocks: &parsed.blocks,
+        annotations: &annotations,
+        translated_summary: translated_summary.as_deref(),
+        translated_blocks: &translated_blocks,
+    });
+
     let now = Utc::now().to_rfc3339();
     Ok(AnalyzedDocument {
         id: format!("doc_{}", Uuid::new_v4().simple()),
@@ -300,6 +345,12 @@ pub fn analyze_document_bytes(
         sha256,
         word_count: parsed.word_count,
         detected_languages: parsed.detected_languages,
+        source_language,
+        translation_target_locale,
+        translated_summary,
+        translated_blocks,
+        structured_sections,
+        rag_indexed: false,
         document_type: doc_type,
         engine_used,
         executive_summary,
@@ -324,6 +375,7 @@ pub fn explain_cropped_region(
         let (lang_rule, lang_tail) = locale_output_instruction(locale);
         let system = format!(
             "You are OPERO's offline document analyst. {lang_rule}\n\
+             If the excerpt is in Japanese or another language different from the target language, include a clear translation first inside \"explanation\".\n\
              Return ONLY valid JSON with keys: title, explanation, reasoning, suggestedFix, severity (info|suggestion|missing)."
         );
         let user = format!(
