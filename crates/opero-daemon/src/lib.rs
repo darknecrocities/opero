@@ -488,6 +488,7 @@ pub async fn start_embedded_daemon(data_dir: PathBuf, port: u16, speech_enabled:
         }
     };
     let _ = store.recover_incomplete_sessions();
+    opero_core::ollama_runtime::auto_start_ollama_in_background(store.data_dir.clone(), None);
     let app = build_router(store, speech_enabled);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     tracing::info!(%addr, "OPERO local-first loopback daemon started");

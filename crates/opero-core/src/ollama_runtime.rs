@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use crate::win_process::silent_command;
 
 const OLLAMA_LOOPBACK: &str = "http://127.0.0.1:11434";
+static ENSURE_RUNTIME_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static LAST_WARMED_MODEL: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -137,7 +140,14 @@ pub fn list_live_ollama_models() -> Option<Vec<String>> {
 }
 
 pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus {
-    let binary_available = find_ollama_binary().is_some();
+    check_ollama_status_with_data_dir(None, preferred_model)
+}
+
+pub fn check_ollama_status_with_data_dir(
+    data_dir: Option<&Path>,
+    preferred_model: Option<&str>,
+) -> OllamaRuntimeStatus {
+    let binary_available = find_ollama_binary_with_data_dir(data_dir).is_some();
     if preferred_model == Some("offline") {
         return OllamaRuntimeStatus {
             running: false,
@@ -148,14 +158,20 @@ pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus
             guidance: "Built-In Offline mode selected.".to_string(),
         };
     }
-    let pref = preferred_model.filter(|m| !m.is_empty());
+    let pref = preferred_model.map(str::trim).filter(|m| !m.is_empty());
 
     if let Some(installed) = list_live_ollama_models() {
         let active_model = pref
             .and_then(|p| {
+                let p_low = p.to_ascii_lowercase();
                 installed
                     .iter()
-                    .find(|m| m.eq_ignore_ascii_case(p) || m.starts_with(&format!("{p}:")))
+                    .find(|m| {
+                        let m_low = m.to_ascii_lowercase();
+                        m_low == p_low
+                            || m_low.starts_with(&format!("{p_low}:"))
+                            || m_low.starts_with(&format!("{p_low}-"))
+                    })
                     .cloned()
             })
             .or_else(|| installed.first().cloned());
@@ -163,7 +179,7 @@ pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus
         let guidance = if ready {
             format!("Local Ollama live with {}", active_model.as_deref().unwrap_or("model"))
         } else {
-            "Ollama is running, but no model is downloaded yet. Pull Qwen3 Compact (qwen3:1.7b) to start chatting.".to_string()
+            "Ollama is running, but no local model is installed yet. Pre-install qwen2.5:3b or qwen3:1.7b to start chatting.".to_string()
         };
         return OllamaRuntimeStatus {
             running: true,
@@ -176,7 +192,7 @@ pub fn check_ollama_status(preferred_model: Option<&str>) -> OllamaRuntimeStatus
     }
 
     let guidance = if binary_available {
-        "Local Ollama server is stopped. Click Start Local AI to launch it automatically in OPERO's local model store.".to_string()
+        "Local Ollama server is stopped. Starting automatically in OPERO's local model runtime.".to_string()
     } else {
         "Install Ollama (ollama.com) to enable live local LLM conversations.".to_string()
     };
@@ -195,39 +211,124 @@ pub fn is_allowed_model_tag(tag: &str) -> bool {
     crate::hardware::ALLOWED_OLLAMA_MODELS.contains(&tag.trim())
 }
 
-pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_missing: bool) -> OllamaRuntimeStatus {
-    let target_tag = model_tag
-        .filter(|t| is_allowed_model_tag(t))
-        .unwrap_or("qwen3:1.7b");
-
-    let mut status = check_ollama_status(Some(target_tag));
-    if !status.running {
-        if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
-            spawn_ollama_serve(&bin, data_dir);
-
-            for _ in 0..24 {
-                std::thread::sleep(Duration::from_millis(250));
-                status = check_ollama_status(Some(target_tag));
-                if status.running {
-                    break;
+pub fn warm_ollama_model_async(model: &str) {
+    let clean = model.trim();
+    if clean.is_empty() || clean == "offline" {
+        return;
+    }
+    let lock = LAST_WARMED_MODEL.get_or_init(|| Mutex::new(None));
+    if let Ok(mut guard) = lock.lock() {
+        if guard.as_deref() == Some(clean) {
+            return;
+        }
+        *guard = Some(clean.to_string());
+    }
+    let model_owned = clean.to_string();
+    std::thread::spawn(move || {
+        let ok = reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_secs(3))
+            .timeout(Duration::from_secs(45))
+            .build()
+            .ok()
+            .and_then(|client| {
+                client
+                    .post(format!("{OLLAMA_LOOPBACK}/api/generate"))
+                    .json(&serde_json::json!({
+                        "model": model_owned,
+                        "prompt": "",
+                        "stream": false,
+                        "keep_alive": "15m"
+                    }))
+                    .send()
+                    .ok()
+            })
+            .map(|r| r.status().is_success())
+            .unwrap_or(false);
+        if !ok {
+            if let Ok(mut guard) = LAST_WARMED_MODEL.get_or_init(|| Mutex::new(None)).lock() {
+                if guard.as_deref() == Some(model_owned.as_str()) {
+                    *guard = None;
                 }
             }
         }
+    });
+}
+
+pub fn ensure_ollama_runtime(data_dir: &Path, model_tag: Option<&str>, pull_if_missing: bool) -> OllamaRuntimeStatus {
+    if model_tag == Some("offline") {
+        return check_ollama_status_with_data_dir(Some(data_dir), Some("offline"));
     }
 
-    if status.running && !status.active_model_ready && pull_if_missing {
-        if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
-            let _ = silent_command(&bin)
-                .args(["pull", target_tag])
-                .env("OLLAMA_HOST", "127.0.0.1:11434")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
-            status = check_ollama_status(Some(target_tag));
+    let requested_tag = model_tag.map(str::trim).filter(|t| !t.is_empty());
+    let status = {
+        let _guard = ENSURE_RUNTIME_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let mut st = check_ollama_status_with_data_dir(Some(data_dir), requested_tag);
+        if !st.running {
+            if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
+                spawn_ollama_serve(&bin, data_dir);
+
+                for _ in 0..32 {
+                    std::thread::sleep(Duration::from_millis(250));
+                    st = check_ollama_status_with_data_dir(Some(data_dir), requested_tag);
+                    if st.running {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if st.running
+            && !st.active_model_ready
+            && pull_if_missing
+            && crate::hardware::is_auto_download_allowed()
+        {
+            let pull_tag = requested_tag
+                .filter(|t| is_allowed_model_tag(t))
+                .unwrap_or("qwen2.5:3b");
+            if let Some(bin) = find_ollama_binary_with_data_dir(Some(data_dir)) {
+                let _ = silent_command(&bin)
+                    .args(["pull", pull_tag])
+                    .env("OLLAMA_HOST", "127.0.0.1:11434")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status();
+                st = check_ollama_status_with_data_dir(Some(data_dir), Some(pull_tag));
+            }
+        }
+        st
+    };
+
+    if status.running && status.active_model_ready {
+        if let Some(active) = status.active_model.as_deref() {
+            warm_ollama_model_async(active);
         }
     }
 
     status
+}
+
+pub fn ensure_ollama_ready_for_inference(
+    data_dir: &Path,
+    preferred_model: Option<&str>,
+) -> OllamaRuntimeStatus {
+    let rt = check_ollama_status_with_data_dir(Some(data_dir), preferred_model);
+    if !rt.running && preferred_model != Some("offline") && rt.binary_available {
+        return ensure_ollama_runtime(data_dir, preferred_model, false);
+    }
+    rt
+}
+
+pub fn auto_start_ollama_in_background(data_dir: PathBuf, preferred_model: Option<String>) {
+    std::thread::spawn(move || {
+        if find_ollama_binary_with_data_dir(Some(&data_dir)).is_none() {
+            return;
+        }
+        let _ = ensure_ollama_runtime(&data_dir, preferred_model.as_deref(), false);
+    });
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -278,6 +379,7 @@ pub fn call_ollama_chat_with_thinking(
             "model": model_owned,
             "messages": msgs_owned,
             "stream": false,
+            "keep_alive": "15m",
             "options": {
                 "temperature": 0.35,
                 "top_p": 0.9
@@ -353,5 +455,11 @@ mod tests {
         assert!(!is_allowed_model_tag("evil:latest; rm -rf /"));
         let st = check_ollama_status(Some("qwen3:1.7b"));
         assert!(!st.guidance.is_empty());
+
+        let tmp = tempfile::tempdir().unwrap();
+        let off = ensure_ollama_runtime(tmp.path(), Some("offline"), false);
+        assert!(!off.running && !off.active_model_ready && off.guidance.contains("Offline"));
+        let inf_off = ensure_ollama_ready_for_inference(tmp.path(), Some("offline"));
+        assert!(!inf_off.running && !inf_off.active_model_ready);
     }
 }

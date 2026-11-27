@@ -274,8 +274,10 @@ export const operoClient = {
       30000,
     ),
 
-  getModelRuntimeStatus: () =>
-    fetchLocal<{ runtime: OllamaRuntimeStatus }>('/models/runtime-status'),
+  getModelRuntimeStatus: (modelTag?: string) =>
+    fetchLocal<{ runtime: OllamaRuntimeStatus }>(
+      modelTag ? `/models/runtime-status?modelTag=${encodeURIComponent(modelTag)}` : '/models/runtime-status',
+    ),
 
   ensureModelRuntime: (payload: { modelTag?: string; pullIfMissing?: boolean }) =>
     fetchLocal<{ runtime: OllamaRuntimeStatus }>(

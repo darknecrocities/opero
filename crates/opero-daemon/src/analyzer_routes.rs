@@ -18,6 +18,7 @@ use opero_core::hardware::{
 use opero_core::memory::dual_core::get_memory_stats;
 use opero_core::memory::mmi_knowledge::seed_mmi_public_knowledge;
 use opero_core::model_pull::{run_automated_model_pull, ModelPullJobStatus};
+use opero_core::ollama_runtime::ensure_ollama_ready_for_inference;
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -58,8 +59,10 @@ async fn ingest_document(
     let filename = req.filename.clone();
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let preferred = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let bytes_for_parse = bytes.clone();
     let doc = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, preferred.as_deref());
         analyze_document_bytes(&filename, &bytes_for_parse, &locale, preferred.as_deref())
     })
     .await
@@ -181,7 +184,9 @@ async fn reanalyze_document(
     let full_text = doc.blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join("\n");
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let pref = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let res = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, pref.as_deref());
         summarize_text_with_ollama(&full_text, &locale, pref.as_deref())
     })
     .await
@@ -220,7 +225,9 @@ async fn ask_document(
     let question = req.question.trim().to_string();
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let pref = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let (answer, engine_used) = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, pref.as_deref());
         ask_about_document(&filename, &full_text, &question, &locale, pref.as_deref())
     })
     .await

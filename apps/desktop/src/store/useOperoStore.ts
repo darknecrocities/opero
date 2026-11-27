@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { RecordingSession, UserProfile } from '@opero/shared-types';
+import type { UserProfile } from '@opero/shared-types';
 import { playJiggSfx } from '@opero/jiggicons';
 import { resolveValidActiveModelId } from '../services/modelAvailability';
 import { operoClient } from '../services/operoClient';
 import {
+  createLocalRecordingSession,
   DEFAULT_ANALYTICS,
   DEFAULT_MEMORY_STATS,
   DEFAULT_MODELS,
@@ -11,6 +12,7 @@ import {
   loadCachedProfile,
   saveCachedProfile,
 } from './defaults';
+import { resolvePreferredOllamaTag, useRuntimeStore, waitForDaemonHealth } from './useRuntimeStore';
 import type { ExportHistoryItem, ImpulseSample, OperoStoreState, WorkspaceNavMode } from './types';
 
 export { DEFAULT_MODELS };
@@ -29,7 +31,7 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   role: 'author',
   speechEnabled: false,
   soundEnabled: cachedInitial?.soundEnabled ?? true,
-  activeModelId: 'ollama-qwen3-1.7b',
+  activeModelId: 'ollama-qwen2.5-3b',
   hardwareProfile: null,
   peroState: 'ready',
   peroCapColor: cachedInitial?.peroCapColor ?? '#69BCFC',
@@ -101,14 +103,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
     if (next) playJiggSfx('click', true);
     if (get().daemonOnline) {
       void operoClient.saveProfile({
-        name: p.name,
-        occupation: p.occupation,
-        personality: p.personality,
-        defaultLocale: p.defaultLocale,
-        soundEnabled: next,
-        onboardingCompleted: p.onboardingCompleted,
-        peroCapColor: p.peroCapColor,
-        peroJacketColor: p.peroJacketColor,
+        name: p.name, occupation: p.occupation, personality: p.personality, defaultLocale: p.defaultLocale,
+        soundEnabled: next, onboardingCompleted: p.onboardingCompleted, peroCapColor: p.peroCapColor, peroJacketColor: p.peroJacketColor,
       });
     }
   },
@@ -120,23 +116,38 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
   setTargetLocale: (targetLocale) => set({ targetLocale }),
   setRole: (role) => set({ role }),
   setSpeechEnabled: (speechEnabled) => set({ speechEnabled }),
-  setActiveModelId: (activeModelId) => set({ activeModelId }),
+  setActiveModelId: (activeModelId) => {
+    set({ activeModelId });
+    const chosen = DEFAULT_MODELS.find((m) => m.id === activeModelId);
+    const rtStore = useRuntimeStore.getState();
+    if (activeModelId === 'offline-deterministic') {
+      rtStore.setManualOffline(true);
+      if (get().daemonOnline) void rtStore.refreshRuntime('offline');
+      return;
+    }
+    rtStore.setManualOffline(false);
+    if (get().daemonOnline && chosen?.ollamaTag) {
+      void rtStore.ensureRuntime(chosen.ollamaTag, {
+        force: true,
+        onHardwareUpdated: (hw) => set({ hardwareProfile: hw }),
+      });
+    }
+  },
   setHardwareProfile: (hardwareProfile) =>
-    set((s) => ({ hardwareProfile, activeModelId: resolveValidActiveModelId(s.activeModelId, hardwareProfile) })),
+    set((s) => ({
+      hardwareProfile,
+      activeModelId: useRuntimeStore.getState().manualOffline
+        ? s.activeModelId
+        : resolveValidActiveModelId(s.activeModelId, hardwareProfile),
+    })),
   setPeroOutfit: (peroCapColor, peroJacketColor) => {
     const p = { ...get().userProfile, peroCapColor, peroJacketColor };
     saveCachedProfile(p);
     set({ peroCapColor, peroJacketColor, userProfile: p });
     if (get().daemonOnline) {
       void operoClient.saveProfile({
-        name: p.name,
-        occupation: p.occupation,
-        personality: p.personality,
-        defaultLocale: p.defaultLocale,
-        soundEnabled: p.soundEnabled,
-        onboardingCompleted: p.onboardingCompleted,
-        peroCapColor,
-        peroJacketColor,
+        name: p.name, occupation: p.occupation, personality: p.personality, defaultLocale: p.defaultLocale,
+        soundEnabled: p.soundEnabled, onboardingCompleted: p.onboardingCompleted, peroCapColor, peroJacketColor,
       });
     }
   },
@@ -146,8 +157,8 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [h, pRes, sRes, mRes, profRes, anRes, hwRes] = await Promise.all([
-        operoClient.health(),
+      const h = await waitForDaemonHealth();
+      const [pRes, sRes, mRes, profRes, anRes, hwRes] = await Promise.all([
         operoClient.listProjects(),
         operoClient.listSessions(),
         operoClient.searchMemory('Save Inventory', 'en-US', 5),
@@ -166,25 +177,29 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         projects = [created.project];
       }
       saveCachedProfile(profRes.profile);
+      const resolvedModelId = resolveValidActiveModelId(get().activeModelId, hwRes.hardware);
       set({
-        daemonOnline: true,
-        permissions: h.permissions,
-        memoryStats: h.memory,
-        memoryHits: mRes.hits,
-        userProfile: profRes.profile,
-        showOnboarding: !profRes.profile.onboardingCompleted,
-        uiLocale: profRes.profile.defaultLocale,
-        targetLocale: profRes.profile.defaultLocale,
-        soundEnabled: profRes.profile.soundEnabled,
-        peroCapColor: profRes.profile.peroCapColor,
-        peroJacketColor: profRes.profile.peroJacketColor,
-        analytics: anRes.analytics,
-        hardwareProfile: hwRes.hardware,
-        activeModelId: resolveValidActiveModelId(get().activeModelId, hwRes.hardware),
-        projects,
-        sessions: sRes.sessions,
-        activeSessionId: sRes.sessions[0]?.id ?? null,
+        daemonOnline: true, permissions: h.permissions, memoryStats: h.memory, memoryHits: mRes.hits,
+        userProfile: profRes.profile, showOnboarding: !profRes.profile.onboardingCompleted,
+        uiLocale: profRes.profile.defaultLocale, targetLocale: profRes.profile.defaultLocale,
+        soundEnabled: profRes.profile.soundEnabled, peroCapColor: profRes.profile.peroCapColor,
+        peroJacketColor: profRes.profile.peroJacketColor, analytics: anRes.analytics,
+        hardwareProfile: hwRes.hardware, activeModelId: resolvedModelId,
+        projects, sessions: sRes.sessions, activeSessionId: sRes.sessions[0]?.id ?? null,
       });
+      const rtStore = useRuntimeStore.getState();
+      const targetTag = resolvePreferredOllamaTag(resolvedModelId, hwRes.hardware, rtStore.manualOffline);
+      if (targetTag && targetTag !== 'offline') {
+        void rtStore.ensureRuntime(targetTag, {
+          onHardwareUpdated: (hw) =>
+            set((s) => ({
+              hardwareProfile: hw,
+              activeModelId: useRuntimeStore.getState().manualOffline
+                ? s.activeModelId
+                : resolveValidActiveModelId(s.activeModelId, hw),
+            })),
+        });
+      }
     } catch {
       set({ daemonOnline: false });
     }
@@ -292,27 +307,10 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       }));
       void get().refreshAnalytics();
     } else {
-      const localSess: RecordingSession = {
-        id: `sess_${Date.now()}`,
-        projectId,
-        title,
-        startedAt: new Date().toISOString(),
-        endedAt: null,
-        activeDurationMs: 0,
-        status: 'recording',
-        captureProfile: 'standard',
-        appVersion: '1.0.0',
-        consentAcknowledgedAt: new Date().toISOString(),
-        eventCount: 0,
-        screenshotCount: 0,
-      };
+      const localSess = createLocalRecordingSession(projectId, title);
       set((s) => ({
-        sessions: [localSess, ...s.sessions],
-        activeSessionId: localSess.id,
-        navMode: 'capture',
-        peroState: 'recording',
-        elapsedMs: 0,
-        impulses: [],
+        sessions: [localSess, ...s.sessions], activeSessionId: localSess.id,
+        navMode: 'capture', peroState: 'recording', elapsedMs: 0, impulses: [],
       }));
     }
     playJiggSfx('step', state.soundEnabled);

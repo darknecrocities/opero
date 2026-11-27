@@ -2,6 +2,7 @@ import type {
   DashboardAnalytics,
   DualCoreMemoryStats,
   ModelProfile,
+  RecordingSession,
   UserProfile,
 } from '@opero/shared-types';
 
@@ -113,6 +114,24 @@ export function loadCachedProfile(): UserProfile | null {
   } catch {
     return null;
   }
+}
+
+export function createLocalRecordingSession(projectId: string, title: string): RecordingSession {
+  const now = new Date().toISOString();
+  return {
+    id: `sess_${Date.now()}`,
+    projectId,
+    title,
+    startedAt: now,
+    endedAt: null,
+    activeDurationMs: 0,
+    status: 'recording',
+    captureProfile: 'standard',
+    appVersion: '1.1.0',
+    consentAcknowledgedAt: now,
+    eventCount: 0,
+    screenshotCount: 0,
+  };
 }
 
 export function saveCachedProfile(profile: UserProfile): void {
