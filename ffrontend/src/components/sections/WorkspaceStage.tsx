@@ -10,9 +10,9 @@ export const WorkspaceStage: React.FC = () => {
     <section
       id="workspace"
       aria-label="OPERO Workspace"
-      className="px-4 sm:px-8 lg:px-0 py-8 lg:py-0 flex flex-col items-center justify-center gap-4 sm:gap-5 lg:shrink-0 w-full lg:w-auto"
+      className="flex flex-col items-center justify-center gap-3 sm:gap-5 shrink-0"
     >
-      <div className="w-full max-w-[860px] lg:w-[780px] xl:w-[860px]">
+      <div className="w-[88vw] max-w-[350px] sm:max-w-[600px] lg:w-[780px] lg:max-w-none xl:w-[860px]">
         <LaptopFrame
           activeModule={activeModule}
           onSelectModule={setActiveModule}

@@ -9,12 +9,12 @@ import {
 import { useReverseHorizontalScroll } from '../../hooks/useReverseHorizontalScroll';
 
 export const ReversePanoramaSection: React.FC = () => {
-  const { containerRef, trackRef, isDesktop, reverseX, runwayHeight } =
+  const { containerRef, trackRef, reverseX, runwayHeight } =
     useReverseHorizontalScroll();
 
   const panels = (
     <>
-      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[540px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
+      <div className="feature-card p-5 sm:p-8 w-[84vw] max-w-[340px] sm:max-w-[460px] h-[390px] sm:h-[430px] lg:w-[540px] lg:max-w-none flex flex-col justify-between gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">LOCAL AI RUNTIMES</span>
           <Cpu size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -47,7 +47,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[520px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
+      <div className="feature-card p-5 sm:p-8 w-[84vw] max-w-[340px] sm:max-w-[460px] h-[390px] sm:h-[430px] lg:w-[520px] lg:max-w-none flex flex-col justify-between gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">EVIDENCE ENGINE</span>
           <Database size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -78,7 +78,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[540px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
+      <div className="feature-card p-5 sm:p-8 w-[84vw] max-w-[340px] sm:max-w-[460px] h-[390px] sm:h-[430px] lg:w-[540px] lg:max-w-none flex flex-col justify-between gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">REAL TEAMS</span>
           <Users size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -103,7 +103,7 @@ export const ReversePanoramaSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="feature-card p-6 sm:p-8 w-[84vw] max-w-[440px] lg:w-[580px] lg:max-w-none lg:h-[430px] flex flex-col justify-between gap-4 shrink-0 snap-center">
+      <div className="feature-card p-5 sm:p-8 w-[84vw] max-w-[340px] sm:max-w-[460px] h-[390px] sm:h-[430px] lg:w-[580px] lg:max-w-none flex flex-col justify-between gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <span className="mono-tabular text-xs font-semibold text-[#247BFA]">EXPORT DELIVERABLES</span>
           <FileText size={18} className="text-[#68778B]" aria-hidden="true" />
@@ -133,49 +133,31 @@ export const ReversePanoramaSection: React.FC = () => {
 
   return (
     <section id="outputs" aria-label="Deliverables and architecture" className="w-full">
-      {isDesktop ? (
-        <div
-          ref={containerRef}
-          style={{ height: runwayHeight }}
-          className="relative w-full"
-        >
-          <div className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-center pt-16">
-            <div className="mx-auto w-full max-w-[1360px] px-10 mb-5 flex items-end justify-between">
-              <h2 className="m-0 text-[28px] font-extrabold tracking-[-0.03em] text-[#172334]">
-                Built for real output.
-              </h2>
-              <span className="opero-hand-cue text-[18px] text-[#68778B]">
-                ← gliding left to right
-              </span>
-            </div>
-
-            <motion.div
-              ref={trackRef}
-              style={{ x: reverseX }}
-              className="flex items-center gap-7 px-12 w-max will-change-transform"
-            >
-              {panels}
-            </motion.div>
-          </div>
-        </div>
-      ) : (
-        <div ref={containerRef} className="w-full py-10">
-          <div className="mx-auto max-w-[1240px] px-5 sm:px-8 mb-4 flex items-end justify-between gap-3">
-            <h2 className="m-0 text-[24px] sm:text-[28px] font-extrabold tracking-[-0.03em] text-[#172334]">
+      <div
+        ref={containerRef}
+        style={{ height: runwayHeight }}
+        className="relative w-full"
+      >
+        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden flex flex-col justify-center pt-16 sm:pt-20">
+          <div className="mx-auto w-full max-w-[1360px] px-5 sm:px-10 mb-4 sm:mb-5 flex items-end justify-between gap-3">
+            <h2 className="m-0 text-[22px] sm:text-[28px] font-extrabold tracking-[-0.03em] text-[#172334]">
               Built for real output.
             </h2>
-            <span className="opero-hand-cue text-[16px] text-[#247BFA] shrink-0">
-              swipe →
+            <span className="opero-hand-cue text-[15px] sm:text-[18px] text-[#68778B] shrink-0">
+              ← gliding left to right
             </span>
           </div>
-          <div
+
+          <motion.div
+            ref={trackRef}
             data-testid="outputs-horizontal-track"
-            className="flex items-stretch gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar px-5 sm:px-8 pb-3"
+            style={{ x: reverseX }}
+            className="flex items-center gap-5 sm:gap-7 px-5 sm:px-12 w-max will-change-transform"
           >
             {panels}
-          </div>
+          </motion.div>
         </div>
-      )}
+      </div>
     </section>
   );
 };

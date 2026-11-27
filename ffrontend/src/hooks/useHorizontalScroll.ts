@@ -3,16 +3,12 @@ import { useReducedMotion, useScroll, useSpring, useTransform } from 'framer-mot
 import { PANORAMA_ANCHORS } from '../data/showcaseContent';
 import type { PanoramaAnchorId } from '../types/showcase';
 
-const DESKTOP_BREAKPOINT = 1024;
-
 export function useHorizontalScroll() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
-  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : true,
-  );
+  const isDesktop = true;
   const [maxScrollX, setMaxScrollX] = useState<number>(2800);
   const [viewportHeight, setViewportHeight] = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 900,
@@ -21,11 +17,9 @@ export function useHorizontalScroll() {
 
   const measureTrack = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const desktop = window.innerWidth >= DESKTOP_BREAKPOINT;
-    setIsDesktop(desktop);
     setViewportHeight(window.innerHeight);
 
-    if (desktop && trackRef.current) {
+    if (trackRef.current) {
       const overflow = Math.max(0, trackRef.current.scrollWidth - window.innerWidth);
       setMaxScrollX(overflow);
     }

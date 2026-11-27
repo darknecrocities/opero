@@ -17,9 +17,9 @@ export const PeroStage: React.FC<PeroStageProps> = ({ onNavigate }) => {
     <section
       id="meet-pero"
       aria-label="Meet Pero"
-      className="px-5 sm:px-8 lg:pl-0 lg:pr-20 py-12 lg:py-0 flex flex-col lg:flex-row items-center gap-10 lg:gap-12 lg:shrink-0"
+      className="pr-8 sm:pr-14 lg:pr-20 flex flex-row items-center gap-6 sm:gap-10 lg:gap-12 shrink-0"
     >
-      <div className="feature-card flex flex-col items-center justify-between text-center px-7 py-8 w-full max-w-[340px] lg:w-[310px] lg:h-[490px]">
+      <div className="feature-card flex flex-col items-center justify-between text-center px-5 py-6 sm:px-7 sm:py-8 w-[275px] h-[410px] sm:w-[310px] sm:h-[490px] shrink-0">
         <div className="flex flex-col items-center">
           <span className="opero-appbar-wordmark text-[18px]">
             Meet Pero<span className="text-[#247BFA]">.</span>

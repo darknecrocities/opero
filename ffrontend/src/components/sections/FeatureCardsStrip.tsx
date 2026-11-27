@@ -11,20 +11,11 @@ export const FeatureCardsStrip: React.FC = () => {
     <section
       id="features"
       aria-label="OPERO Features"
-      className="py-6 lg:py-0 lg:shrink-0 w-full lg:w-auto"
+      className="shrink-0"
     >
-      <div className="flex items-center justify-between px-5 sm:px-8 mb-3 lg:hidden">
-        <span className="mono-tabular text-[11px] font-semibold uppercase tracking-[0.06em] text-[#68778B]">
-          Core Capabilities
-        </span>
-        <span className="opero-hand-cue text-[16px] text-[#247BFA]">
-          swipe to explore →
-        </span>
-      </div>
-
       <div
         data-testid="features-horizontal-track"
-        className="flex lg:grid lg:grid-rows-2 lg:grid-flow-col gap-4 lg:gap-5 overflow-x-auto lg:overflow-visible snap-x snap-mandatory lg:snap-none no-scrollbar px-5 sm:px-8 lg:px-0 pb-3 lg:pb-0"
+        className="grid grid-rows-2 grid-flow-col gap-3 sm:gap-4 lg:gap-5"
       >
         {FEATURE_CARDS.map((item) => {
           const isMorphed = hoveredId === item.id || tappedId === item.id;
@@ -42,15 +33,15 @@ export const FeatureCardsStrip: React.FC = () => {
                 borderRadius: isMorphed ? 30 : 24,
               }}
               transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-              className="feature-card flex flex-col items-center justify-center text-center px-6 py-7 w-[78vw] max-w-[300px] sm:w-[292px] lg:w-[292px] lg:h-[262px] shrink-0 snap-center cursor-pointer select-none"
+              className="feature-card flex flex-col items-center justify-center text-center px-4 py-4 sm:px-6 sm:py-6 w-[236px] h-[206px] sm:w-[272px] sm:h-[238px] lg:w-[292px] lg:h-[262px] shrink-0 cursor-pointer select-none"
             >
-              <div className="flex items-center justify-center h-[96px] mb-4">
+              <div className="flex items-center justify-center h-[82px] sm:h-[96px] mb-2 sm:mb-4">
                 <FeatureMotionIcon id={item.id} morphed={isMorphed} size="lg" />
               </div>
-              <h2 className="m-0 text-[16px] font-bold tracking-[-0.015em] text-[#172334]">
+              <h2 className="m-0 text-[14.5px] sm:text-[16px] font-bold tracking-[-0.015em] text-[#172334]">
                 {item.title}
               </h2>
-              <p className="m-0 mt-1.5 text-[13px] leading-[1.45] text-[#68778B] max-w-[24ch]">
+              <p className="m-0 mt-1 text-[12px] sm:text-[13px] leading-[1.4] text-[#68778B] max-w-[24ch]">
                 {item.description}
               </p>
             </motion.article>

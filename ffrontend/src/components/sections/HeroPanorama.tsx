@@ -23,16 +23,16 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
     <section
       id="overview"
       aria-label="OPERO Overview"
-      className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12 pt-28 pb-8 lg:py-0 px-4 sm:px-8 lg:pl-0 lg:pr-0 lg:shrink-0 w-full lg:w-auto"
+      className="flex flex-row items-center gap-8 sm:gap-10 lg:gap-12 pl-5 sm:pl-8 lg:pl-0 pr-2 lg:pr-0 shrink-0"
     >
       <motion.div
         initial={{ opacity: 0, x: -24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[740px] lg:w-[660px] xl:w-[740px] lg:-ml-28 shrink-0 flex flex-col items-center"
+        className="order-2 lg:order-1 w-[86vw] max-w-[350px] sm:max-w-[520px] lg:w-[660px] lg:max-w-none xl:w-[740px] lg:-ml-28 shrink-0 flex flex-col items-center"
       >
         <LaptopFrame activeModule="dashboard" peekOro />
-        <span className="opero-hand-cue mt-2.5 text-[16px] text-[#68778B] select-none hidden lg:inline">
+        <span className="opero-hand-cue mt-2 text-[14px] sm:text-[16px] text-[#68778B] select-none">
           ↖ live Windows desktop preview
         </span>
       </motion.div>
@@ -41,22 +41,22 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="flex flex-col items-center text-center gap-3.5 w-full max-w-[460px] lg:w-[440px] shrink-0"
+        className="order-1 lg:order-2 flex flex-col items-center text-center gap-2.5 sm:gap-3.5 w-[88vw] max-w-[345px] sm:max-w-[440px] lg:w-[440px] shrink-0"
       >
         <OroMascot
           motionId="wave-hello"
-          size={152}
+          size={128}
           interactive
           whispers={HERO_WHISPERS}
         />
 
-        <h1 className="m-0 text-[38px] sm:text-[46px] lg:text-[48px] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#172334]">
+        <h1 className="m-0 text-[30px] sm:text-[42px] lg:text-[48px] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#172334]">
           Your workflow.
           <br />
           Automatically documented.
         </h1>
 
-        <p className="m-0 text-[15px] text-[#68778B] leading-[1.5]">
+        <p className="m-0 text-[13.5px] sm:text-[15px] text-[#68778B] leading-[1.45]">
           Local-first desktop documentation for Windows.
         </p>
 
