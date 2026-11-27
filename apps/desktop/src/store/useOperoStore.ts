@@ -176,11 +176,13 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
         });
         projects = [created.project];
       }
-      saveCachedProfile(profRes.profile);
+      const alreadyCompleted = get().userProfile.onboardingCompleted;
+      const effectiveProfile = alreadyCompleted ? { ...profRes.profile, onboardingCompleted: true } : profRes.profile;
+      saveCachedProfile(effectiveProfile);
       const resolvedModelId = resolveValidActiveModelId(get().activeModelId, hwRes.hardware);
       set({
         daemonOnline: true, permissions: h.permissions, memoryStats: h.memory, memoryHits: mRes.hits,
-        userProfile: profRes.profile, showOnboarding: !profRes.profile.onboardingCompleted,
+        userProfile: effectiveProfile, showOnboarding: !effectiveProfile.onboardingCompleted,
         uiLocale: profRes.profile.defaultLocale, targetLocale: profRes.profile.defaultLocale,
         soundEnabled: profRes.profile.soundEnabled, peroCapColor: profRes.profile.peroCapColor,
         peroJacketColor: profRes.profile.peroJacketColor, analytics: anRes.analytics,
@@ -229,38 +231,26 @@ export const useOperoStore = create<OperoStoreState>((set, get) => ({
       onboardingCompleted,
       updatedAt: new Date().toISOString(),
     };
+    let resolved = nextLocal;
     if (state.daemonOnline) {
-      const { profile } = await operoClient.saveProfile({
-        name: nextLocal.name,
-        occupation: nextLocal.occupation,
-        personality: nextLocal.personality,
-        defaultLocale: nextLocal.defaultLocale,
-        soundEnabled: nextLocal.soundEnabled,
-        onboardingCompleted: nextLocal.onboardingCompleted,
-        peroCapColor: state.peroCapColor,
-        peroJacketColor: state.peroJacketColor,
-      });
-      saveCachedProfile(profile);
-      set({
-        userProfile: profile,
-        uiLocale: profile.defaultLocale,
-        targetLocale: profile.defaultLocale,
-        soundEnabled: profile.soundEnabled,
-        showOnboarding: !profile.onboardingCompleted,
-        navMode: 'dashboard',
-        peroState: 'ready',
-      });
-    } else {
-      saveCachedProfile(nextLocal);
-      set({
-        userProfile: nextLocal,
-        uiLocale: nextLocal.defaultLocale,
-        targetLocale: nextLocal.defaultLocale,
-        soundEnabled: nextLocal.soundEnabled,
-        showOnboarding: !nextLocal.onboardingCompleted,
-        navMode: 'dashboard',
-      });
+      try {
+        const { profile } = await operoClient.saveProfile({
+          name: nextLocal.name, occupation: nextLocal.occupation, personality: nextLocal.personality,
+          defaultLocale: nextLocal.defaultLocale, soundEnabled: nextLocal.soundEnabled,
+          onboardingCompleted: nextLocal.onboardingCompleted,
+          peroCapColor: state.peroCapColor, peroJacketColor: state.peroJacketColor,
+        });
+        resolved = profile;
+      } catch {
+        // Keep local fallback when daemon is busy
+      }
     }
+    saveCachedProfile(resolved);
+    set({
+      userProfile: resolved, uiLocale: resolved.defaultLocale, targetLocale: resolved.defaultLocale,
+      soundEnabled: resolved.soundEnabled, showOnboarding: !resolved.onboardingCompleted,
+      navMode: 'dashboard', peroState: 'ready',
+    });
     playJiggSfx('success', soundEnabled);
   },
 

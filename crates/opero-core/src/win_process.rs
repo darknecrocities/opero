@@ -5,6 +5,7 @@ use std::process::Command;
 /// on Windows (`CREATE_NO_WINDOW = 0x08000000`) while remaining a zero-cost pass-through
 /// on macOS and Linux.
 pub fn silent_command<S: AsRef<OsStr>>(program: S) -> Command {
+    #[allow(unused_mut)]
     let mut cmd = Command::new(program);
     #[cfg(target_os = "windows")]
     {

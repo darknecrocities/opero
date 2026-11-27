@@ -23,8 +23,9 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       maxModelRamGb: 6,
       recommendationReason: '16 GB RAM — Qwen3 Compact fits smoothly.',
       osName: 'CI Runner',
-      recommendedTier: 'compact',
-      recommendedModelId: 'ollama-qwen3-1.7b',
+      recommendedTier: 'balanced',
+      recommendedModelId: 'ollama-qwen2.5-3b',
+      autoDownloadAllowed: false,
       ollamaBinaryAvailable: installedModels.length > 0,
       ollamaRunning: installedModels.length > 0,
       installedModels,
@@ -120,12 +121,12 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       await expect(page.getByTestId('pero-click-cue')).toContainText("Whenever you're ready, Arron");
       await page.getByRole('button', { name: /English/i }).click();
       await page.getByRole('button', { name: /Continue/i }).click();
-      // Step 5: Model Selection Download Gate
+      // Step 5: ISMS Release 1 Model Selection (no automatic downloads; Built-In Offline selectable)
       await expect(page.getByRole('heading', { name: 'Choose your local AI model' })).toBeVisible();
-      await expect(page.getByTestId('onboarding-model-gate-notice')).toBeVisible();
-      await expect(page.getByRole('button', { name: /Continue/i })).toBeDisabled();
-      await page.getByRole('button', { name: /^Download$/i }).nth(1).click();
-      await expect(page.getByRole('button', { name: /Continue/i })).toBeEnabled({ timeout: 8000 });
+      await expect(page.getByText(/ISMS Policy \(Q3\/Q16\)/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Download$/i })).toHaveCount(0);
+      await page.getByRole('radio', { name: /Built-In Offline/i }).click();
+      await expect(page.getByRole('button', { name: /Continue/i })).toBeEnabled({ timeout: 5000 });
       await page.getByRole('button', { name: /Continue/i }).click();
       await expect(page.getByTestId('pero-click-cue')).toContainText("Don't worry, Arron");
       await expect(page.getByRole('heading', { name: 'Data Privacy Notice' })).toBeVisible();
