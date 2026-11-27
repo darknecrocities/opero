@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use crate::error::{OperoError, OperoResult};
 
@@ -87,7 +86,7 @@ pub fn verify_file_sha256(path: &Path, expected_hex: &str) -> OperoResult<bool> 
 }
 
 fn fetch_https_text(url: &str, timeout_secs: u64) -> OperoResult<String> {
-    let out = Command::new("curl")
+    let out = crate::win_process::silent_command("curl")
         .args([
             "-fsSL",
             "--proto",
@@ -176,7 +175,7 @@ pub fn download_and_replace_update(
     let filename = asset_url.rsplit('/').next().unwrap_or("OPERO_update");
     let download_path = tmp_dir.join(filename);
 
-    let dl = Command::new("curl")
+    let dl = crate::win_process::silent_command("curl")
         .args([
             "-fsSL",
             "--proto",
@@ -214,8 +213,8 @@ pub fn download_and_replace_update(
             tmp_dir.to_string_lossy()
         );
         fs::write(&script_path, script)?;
-        let _ = Command::new("chmod").args(["+x", script_path.to_string_lossy().as_ref()]).status();
-        Command::new("bash")
+        let _ = crate::win_process::silent_command("chmod").args(["+x", script_path.to_string_lossy().as_ref()]).status();
+        crate::win_process::silent_command("bash")
             .arg(&script_path)
             .spawn()
             .map_err(|e| OperoError::Validation(format!("Failed to launch macOS updater helper: {e}")))?;
@@ -229,7 +228,7 @@ pub fn download_and_replace_update(
 
     #[cfg(target_os = "windows")]
     {
-        Command::new(&download_path)
+        crate::win_process::silent_command(&download_path)
             .spawn()
             .map_err(|e| OperoError::Validation(format!("Failed to launch Windows installer: {e}")))?;
         return Ok(UpdateInstallResult {

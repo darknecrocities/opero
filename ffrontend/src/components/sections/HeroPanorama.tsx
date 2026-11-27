@@ -63,6 +63,7 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           {DOWNLOADS_ENABLED ? (
             <Button
+              type="button"
               variant="secondary"
               href={windows.downloadUrl}
               download={windows.fileName}
@@ -73,6 +74,7 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
             </Button>
           ) : (
             <Button
+              type="button"
               variant="secondary"
               disabled
               aria-disabled="true"
@@ -84,6 +86,7 @@ export const HeroPanorama: React.FC<HeroPanoramaProps> = ({ onNavigate }) => {
           )}
 
           <Button
+            type="button"
             variant="ghost"
             disabled
             aria-disabled="true"

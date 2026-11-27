@@ -10,14 +10,91 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
 
+    let installedModels: string[] = [];
+    let pullPolls = 0;
+    const buildMockHardware = () => ({
+      cpuName: 'CI Virtual CPU',
+      cpuCores: 8,
+      totalRamGb: 16,
+      freeDiskGb: 120,
+      gpuName: 'Integrated GPU',
+      hasDedicatedGpu: false,
+      computeMode: 'cpu-only',
+      maxModelRamGb: 6,
+      recommendationReason: '16 GB RAM — Qwen3 Compact fits smoothly.',
+      osName: 'CI Runner',
+      recommendedTier: 'compact',
+      recommendedModelId: 'ollama-qwen3-1.7b',
+      ollamaBinaryAvailable: installedModels.length > 0,
+      ollamaRunning: installedModels.length > 0,
+      installedModels,
+    });
+    await page.route('**/api/v1/system/hardware', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hardware: buildMockHardware() }) });
+    });
+    await page.route('**/api/v1/models/pull-async', async (route) => {
+      pullPolls = 0;
+      const body = route.request().postDataJSON() as { modelTag?: string };
+      const tag = body?.modelTag || 'qwen3:1.7b';
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          jobId: 'e2e-job-1',
+          status: {
+            jobId: 'e2e-job-1',
+            modelTag: tag,
+            phase: 'pulling_model',
+            statusText: `Downloading ${tag}`,
+            completedBytes: 500_000_000,
+            totalBytes: 1_000_000_000,
+            percent: 50,
+            speedBytesPerSec: 25_000_000,
+            error: null,
+            hardware: null,
+          },
+        }),
+      });
+    });
+    await page.route('**/api/v1/models/pull-status/*', async (route) => {
+      pullPolls += 1;
+      if (pullPolls >= 1 && !installedModels.includes('qwen3:1.7b')) {
+        installedModels = ['qwen3:1.7b'];
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: {
+            jobId: 'e2e-job-1',
+            modelTag: 'qwen3:1.7b',
+            phase: 'completed',
+            statusText: 'Downloaded qwen3:1.7b',
+            completedBytes: 1_000_000_000,
+            totalBytes: 1_000_000_000,
+            percent: 100,
+            speedBytesPerSec: 25_000_000,
+            error: null,
+            hardware: buildMockHardware(),
+          },
+        }),
+      });
+    });
+
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    // 1. Welcome Splash + 7-Screen Playful Onboarding (EN -> JA tap voiceover cycle + privacy + confetti)
+    // 1. Welcome Splash + 8-Screen Playful Onboarding (EN -> JA tap voiceover + model download gate + privacy + confetti)
     const dialog = page.getByRole('dialog', { name: 'OPERO Welcome Onboarding' });
     if (await dialog.isVisible({ timeout: 2500 }).catch(() => false)) {
       await expect(page.getByRole('heading', { name: 'Opero', exact: true })).toBeVisible();
-      for (const clip of ['/audio/pero/welcome-opero.mp3', '/audio/pero/step-0-en.mp3', '/audio/pero/step-0-ja.mp3']) {
+      for (const clip of [
+        '/audio/pero/welcome-opero.mp3',
+        '/audio/pero/step-0-en.mp3',
+        '/audio/pero/step-0-ja.mp3',
+        '/audio/pero/step-model-en.mp3',
+        '/audio/pero/step-model-ja.mp3',
+      ]) {
         const res = await page.request.get(clip);
         expect(res.status()).toBe(200);
         expect((await res.body()).byteLength).toBeGreaterThan(10000);
@@ -42,6 +119,13 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
       await page.getByRole('button', { name: /Continue/i }).click();
       await expect(page.getByTestId('pero-click-cue')).toContainText("Whenever you're ready, Arron");
       await page.getByRole('button', { name: /English/i }).click();
+      await page.getByRole('button', { name: /Continue/i }).click();
+      // Step 5: Model Selection Download Gate
+      await expect(page.getByRole('heading', { name: 'Choose your local AI model' })).toBeVisible();
+      await expect(page.getByTestId('onboarding-model-gate-notice')).toBeVisible();
+      await expect(page.getByRole('button', { name: /Continue/i })).toBeDisabled();
+      await page.getByRole('button', { name: /^Download$/i }).nth(1).click();
+      await expect(page.getByRole('button', { name: /Continue/i })).toBeEnabled({ timeout: 8000 });
       await page.getByRole('button', { name: /Continue/i }).click();
       await expect(page.getByTestId('pero-click-cue')).toContainText("Don't worry, Arron");
       await expect(page.getByRole('heading', { name: 'Data Privacy Notice' })).toBeVisible();
@@ -90,7 +174,7 @@ test.describe('OPERO UI Overhaul, Onboarding, Dashboard, 7 Templates & 4-Viewpor
     // Create & export a manual from an MMI template
     await page.getByRole('button', { name: 'Create Manual' }).first().click();
     await expect(page.getByRole('button', { name: 'Number', exact: true })).toBeVisible({ timeout: 6000 });
-    await page.getByRole('button', { name: /PDF ⌘E/i }).click();
+    await page.getByRole('button', { name: /PDF (⌘E|Ctrl\+E)/i }).click();
     await expect(page.getByRole('status').filter({ hasText: /Exported PDF/i }).first()).toBeVisible({
       timeout: 6000,
     });

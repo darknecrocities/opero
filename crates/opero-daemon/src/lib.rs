@@ -11,13 +11,15 @@ use axum::{
 use opero_core::db::OperoStore;
 use opero_core::error::OperoError;
 use opero_core::memory::dual_core::{delete_memory_chunk, get_memory_stats, query_dual_core_memory, upsert_memory_chunk};
+use opero_core::model_pull::ModelPullJobStatus;
 use opero_core::permissions::{inspect_os_permissions, open_os_privacy_settings, trigger_native_permission_prompt, PermissionSurface};
 use opero_core::updater::{check_for_official_update, download_and_replace_update};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use uuid::Uuid;
@@ -25,6 +27,7 @@ use uuid::Uuid;
 pub(crate) struct AppState {
     pub(crate) store: OperoStore,
     pub(crate) speech_enabled: bool,
+    pub(crate) pull_jobs: Arc<Mutex<HashMap<String, ModelPullJobStatus>>>,
 }
 
 pub(crate) struct ApiError(pub(crate) OperoError);
@@ -400,14 +403,16 @@ async fn install_update(Json(req): Json<InstallUpdateReq>) -> Result<Json<serde_
 struct SpeakReq {
     text: String,
     lang: Option<String>,
+    tone: Option<String>,
 }
 
 async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<SpeakReq>) -> Response {
     let data_dir = st.store.data_dir.clone();
     let text = req.text;
     let lang = req.lang.unwrap_or_else(|| "en-US".to_string());
+    let tone = req.tone;
     let res = tokio::task::spawn_blocking(move || {
-        opero_core::tts::synthesize_child_speech(&data_dir, &text, &lang)
+        opero_core::tts::synthesize_child_speech_with_tone(&data_dir, &text, &lang, tone.as_deref())
     })
     .await;
     match res {
@@ -430,7 +435,11 @@ async fn speak_child_voice(State(st): State<Arc<AppState>>, Json(req): Json<Spea
 }
 
 pub fn build_router(store: OperoStore, speech_enabled: bool) -> Router {
-    let state = Arc::new(AppState { store, speech_enabled });
+    let state = Arc::new(AppState {
+        store,
+        speech_enabled,
+        pull_jobs: Arc::new(Mutex::new(HashMap::new())),
+    });
     let allowed_origins = [
         HeaderValue::from_static("http://localhost:5173"),
         HeaderValue::from_static("http://127.0.0.1:5173"),
@@ -479,6 +488,7 @@ pub async fn start_embedded_daemon(data_dir: PathBuf, port: u16, speech_enabled:
         }
     };
     let _ = store.recover_incomplete_sessions();
+    opero_core::ollama_runtime::auto_start_ollama_in_background(store.data_dir.clone(), None);
     let app = build_router(store, speech_enabled);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     tracing::info!(%addr, "OPERO local-first loopback daemon started");

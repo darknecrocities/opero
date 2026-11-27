@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getFeatureStrings, getUiDictionary, LOCALE_MODEL_MAP } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import type { ExportFormat, FirstClassLocale } from '@opero/shared-types';
+import { useModelPull } from '../hooks/useModelPull';
+import { isModelDownloadedOnPc, isModelSelectableInApp } from '../services/modelAvailability';
+import { formatShortcut } from '../services/platformShortcuts';
 import { DEFAULT_MODELS, useOperoStore } from '../store/useOperoStore';
+import { ModelDownloadProgressBar } from './ModelDownloadProgressBar';
 
 export const RightUtilityRail: React.FC = () => {
   const {
@@ -22,15 +26,30 @@ export const RightUtilityRail: React.FC = () => {
     setNavMode,
     runExport,
   } = useOperoStore();
+  const { pullJob, isPulling, error: pullError, startDownload } = useModelPull();
   const dict = getUiDictionary(uiLocale);
   const feat = getFeatureStrings(uiLocale);
-  const activeModel = DEFAULT_MODELS.find((m) => m.id === activeModelId) ?? DEFAULT_MODELS[0];
 
+  const selectableModels = DEFAULT_MODELS.filter((m) => isModelSelectableInApp(m, hardwareProfile));
+  const undownloadedModels = DEFAULT_MODELS.filter(
+    (m) => Boolean(m.ollamaTag) && !isModelDownloadedOnPc(m, hardwareProfile),
+  );
+  const [downloadChoiceId, setDownloadChoiceId] = useState<string>('');
+  const targetDownloadModel =
+    undownloadedModels.find((m) => m.id === downloadChoiceId) ??
+    undownloadedModels.find((m) => m.id === hardwareProfile?.recommendedModelId) ??
+    undownloadedModels[0] ??
+    null;
+
+  const activeModel =
+    selectableModels.find((m) => m.id === activeModelId) ?? selectableModels[0] ?? DEFAULT_MODELS[DEFAULT_MODELS.length - 1];
+
+  const os = hardwareProfile?.osName;
   const exportRows: { fmt: ExportFormat; icon: string; label: string; keyHint: string }[] = [
-    { fmt: 'pdf', icon: 'export-pdf', label: 'PDF', keyHint: '⌘E' },
-    { fmt: 'docx', icon: 'export-docx', label: 'Word (.docx)', keyHint: '⌘⇧D' },
-    { fmt: 'markdown', icon: 'export-md', label: 'Markdown', keyHint: '⌘⇧M' },
-    { fmt: 'html', icon: 'export-html', label: 'HTML', keyHint: '⌘⇧H' },
+    { fmt: 'pdf', icon: 'export-pdf', label: 'PDF', keyHint: formatShortcut({ mod: true, key: 'E' }, os) },
+    { fmt: 'docx', icon: 'export-docx', label: 'Word (.docx)', keyHint: formatShortcut({ mod: true, shift: true, key: 'D' }, os) },
+    { fmt: 'markdown', icon: 'export-md', label: 'Markdown', keyHint: formatShortcut({ mod: true, shift: true, key: 'M' }, os) },
+    { fmt: 'html', icon: 'export-html', label: 'HTML', keyHint: formatShortcut({ mod: true, shift: true, key: 'H' }, os) },
   ];
 
   return (
@@ -53,10 +72,12 @@ export const RightUtilityRail: React.FC = () => {
 
         <select
           aria-label="Active AI Model"
-          value={activeModelId}
+          value={activeModel?.id ?? 'offline-deterministic'}
           onChange={(e) => {
+            const chosen = DEFAULT_MODELS.find((m) => m.id === e.target.value);
+            if (!chosen || !isModelSelectableInApp(chosen, hardwareProfile)) return;
             playJiggSfx('click', soundEnabled);
-            setActiveModelId(e.target.value);
+            setActiveModelId(chosen.id);
           }}
           style={{
             border: '1px solid var(--border)',
@@ -68,9 +89,10 @@ export const RightUtilityRail: React.FC = () => {
             color: 'var(--ink)',
           }}
         >
-          {DEFAULT_MODELS.map((m) => (
+          {selectableModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.displayName ?? m.modelName} ({m.ramTierGb} GB+)
+              {m.displayName ?? m.modelName}
+              {m.ollamaTag ? ' (Downloaded)' : ''}
             </option>
           ))}
         </select>
@@ -83,6 +105,53 @@ export const RightUtilityRail: React.FC = () => {
             {hardwareProfile && (
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
                 {hardwareProfile.cpuName} · {hardwareProfile.totalRamGb} GB
+              </div>
+            )}
+          </div>
+        )}
+
+        {hardwareProfile?.autoDownloadAllowed && targetDownloadModel && targetDownloadModel.ollamaTag && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <select
+                aria-label="Download Local AI Model"
+                value={targetDownloadModel.id}
+                disabled={isPulling}
+                onChange={(e) => setDownloadChoiceId(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '5px 6px',
+                  fontSize: '11.5px',
+                  background: 'var(--bg)',
+                  color: 'var(--ink)',
+                }}
+              >
+                {undownloadedModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName ?? m.modelName} ({m.downloadSizeLabel ?? 'Local'})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="opero-btn primary"
+                disabled={isPulling}
+                onClick={() => void startDownload(targetDownloadModel.ollamaTag!, targetDownloadModel.id)}
+                style={{ minHeight: '28px', padding: '4px 9px', fontSize: '11px', flexShrink: 0 }}
+              >
+                <JiggIcon name="download" size={12} variant="duotone" />
+                <span>{isPulling ? '...' : 'Get'}</span>
+              </button>
+            </div>
+            {pullJob && (isPulling || pullJob.phase === 'completed') && (
+              <ModelDownloadProgressBar job={pullJob} compact />
+            )}
+            {pullError && (
+              <div role="alert" style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600 }}>
+                {pullError}
               </div>
             )}
           </div>

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use uuid::Uuid;
 
 use crate::agent_action_parser::build_ics_content;
@@ -196,10 +196,10 @@ fn is_safe_external_url(url: &str) -> bool {
 
 fn open_os_target(target: &str) -> Result<(), String> {
     if cfg!(target_os = "macos") {
-        Command::new("open").arg(target).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+        crate::win_process::silent_command("open").arg(target).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
             .map_err(|e| format!("Failed to launch target: {e}"))?;
     } else if cfg!(target_os = "windows") {
-        Command::new("cmd").args(["/C", "start", "", target]).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+        crate::win_process::silent_command("cmd").args(["/C", "start", "", target]).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
             .map_err(|e| format!("Failed to launch target: {e}"))?;
     }
     Ok(())
@@ -285,7 +285,7 @@ fn execute_action_side_effect(
                 params![rem_id, title, due, Utc::now().to_rfc3339()],
             );
             if cfg!(target_os = "macos") && !skip_open {
-                let _ = Command::new("osascript")
+                let _ = crate::win_process::silent_command("osascript")
                     .args(["-e", "on run argv\ntell application \"Reminders\" to make new reminder with properties {name:(item 1 of argv)}\nend run", title])
                     .stdout(Stdio::null()).stderr(Stdio::null()).spawn();
             }
@@ -312,7 +312,7 @@ fn execute_action_side_effect(
             let topic = action.payload.get("topic").map(|s| s.as_str()).unwrap_or(title);
             let (path, bytes) = generate_agent_document(data_dir, &action.id, fmt, title, topic)?;
             if cfg!(target_os = "macos") && !skip_open {
-                let _ = Command::new("open").args(["-R", &path.to_string_lossy()]).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
+                let _ = crate::win_process::silent_command("open").args(["-R", &path.to_string_lossy()]).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
             }
             Ok(format!("Generated {} ({} bytes) → {}", fmt.to_uppercase(), bytes, path.display()))
         }
@@ -320,7 +320,7 @@ fn execute_action_side_effect(
             let title = action.payload.get("title").map(|s| s.as_str()).unwrap_or("OPERO Pero");
             let body = action.payload.get("body").map(|s| s.as_str()).unwrap_or("Reminder");
             if cfg!(target_os = "macos") && !skip_open {
-                let _ = Command::new("osascript")
+                let _ = crate::win_process::silent_command("osascript")
                     .args(["-e", "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run", title, body])
                     .stdout(Stdio::null()).stderr(Stdio::null()).spawn();
             }
@@ -329,7 +329,7 @@ fn execute_action_side_effect(
         "clipboard_copy" => {
             let text = action.payload.get("text").map(|s| s.as_str()).unwrap_or("");
             if cfg!(target_os = "macos") && !skip_open {
-                if let Ok(mut child) = Command::new("pbcopy").stdin(Stdio::piped()).spawn() {
+                if let Ok(mut child) = crate::win_process::silent_command("pbcopy").stdin(Stdio::piped()).spawn() {
                     if let Some(mut stdin) = child.stdin.take() { let _ = stdin.write_all(text.as_bytes()); }
                     let _ = child.wait();
                 }

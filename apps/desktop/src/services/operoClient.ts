@@ -15,6 +15,7 @@ import type {
   MeetingNoteRecord,
   MemoryChunk,
   MemorySearchHit,
+  ModelPullJobStatus,
   OllamaRuntimeStatus,
   OperoPersonality,
   OsPermissionSnapshot,
@@ -249,8 +250,34 @@ export const operoClient = {
       300000,
     ),
 
-  getModelRuntimeStatus: () =>
-    fetchLocal<{ runtime: OllamaRuntimeStatus }>('/models/runtime-status'),
+  startModelPull: (modelTag: string) =>
+    fetchLocal<{ jobId: string; status: ModelPullJobStatus }>(
+      '/models/pull-async',
+      { method: 'POST', body: JSON.stringify({ modelTag }) },
+      15000,
+    ),
+
+  getModelPullStatus: (jobId: string) =>
+    fetchLocal<{ status: ModelPullJobStatus }>(
+      `/models/pull-status/${encodeURIComponent(jobId)}`,
+      undefined,
+      15000,
+    ),
+
+  getActiveModelPull: () =>
+    fetchLocal<{ status: ModelPullJobStatus | null }>('/models/pull-active', undefined, 8000),
+
+  deleteModel: (modelTag: string) =>
+    fetchLocal<{ hardware: HardwareProfile }>(
+      `/models/${encodeURIComponent(modelTag)}`,
+      { method: 'DELETE' },
+      30000,
+    ),
+
+  getModelRuntimeStatus: (modelTag?: string) =>
+    fetchLocal<{ runtime: OllamaRuntimeStatus }>(
+      modelTag ? `/models/runtime-status?modelTag=${encodeURIComponent(modelTag)}` : '/models/runtime-status',
+    ),
 
   ensureModelRuntime: (payload: { modelTag?: string; pullIfMissing?: boolean }) =>
     fetchLocal<{ runtime: OllamaRuntimeStatus }>(
@@ -270,7 +297,7 @@ export const operoClient = {
     fetchLocal<AgentChatResponse>(
       '/agent/chat',
       { method: 'POST', body: JSON.stringify(payload) },
-      45000,
+      80000,
     ),
 
   deleteAgentThread: (threadId: string) =>

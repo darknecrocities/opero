@@ -13,7 +13,7 @@ use crate::error::OperoResult;
 use crate::meeting_notes::{list_meeting_notes, translate_text_local};
 use crate::memory::dual_core::query_dual_core_memory;
 use crate::ollama_runtime::{
-    call_ollama_chat_with_thinking, check_ollama_status, OllamaChatMessage,
+    call_ollama_chat_with_thinking, ensure_ollama_ready_for_inference, OllamaChatMessage,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -303,6 +303,7 @@ pub fn run_agent_turn(
     }
 
     let (reply_text, model_thinking, engine_used, model_live) = synthesize_live_chat_reply(
+        &store.data_dir,
         clean_prompt,
         reply_locale,
         &prior_history,
@@ -396,16 +397,11 @@ fn load_thread_messages(conn: &Connection, thread_id: &str) -> OperoResult<Vec<A
 
 #[allow(clippy::too_many_arguments)]
 fn synthesize_live_chat_reply(
-    prompt: &str,
-    locale: &str,
-    prior_history: &[AgentMessage],
-    grounded_facts: &[String],
-    action_instruction: &str,
-    pending_action: Option<&PendingAgentAction>,
-    preferred_model: Option<&str>,
-    enable_thinking: bool,
+    data_dir: &std::path::Path, prompt: &str, locale: &str, prior_history: &[AgentMessage],
+    grounded_facts: &[String], action_instruction: &str, pending_action: Option<&PendingAgentAction>,
+    preferred_model: Option<&str>, enable_thinking: bool,
 ) -> (String, Option<String>, String, bool) {
-    let rt = check_ollama_status(preferred_model);
+    let rt = ensure_ollama_ready_for_inference(data_dir, preferred_model);
     if let Some(live_model) = rt.active_model.as_deref() {
         let lang_rule = match locale {
             "ja-JP" => "strictly polite Japanese (です・ます調・丁寧語). Always end sentences with です/ます/ください. NEVER use casual forms (だよ/ね/だ/〜て止め), Chinese-only idioms (分心), or awkward katakana (use 承認 instead of アプローブ)",

@@ -1,0 +1,306 @@
+{
+  "generated_at": "2026-11-27T01:46:49.122226+00:00",
+  "host": {
+    "cpu": "Apple M3",
+    "ram_gb": 16,
+    "os": "darwin"
+  },
+  "baseline_target": "HP ProBook 450 G8 (i7-1165G7, 16 GB RAM, CPU-only, <= 6 GB total RAM)",
+  "app_overhead_gb": 0.6,
+  "workstations": [
+    {
+      "id": "entry_8gb_cpu",
+      "label": "8 GB Entry Laptop (CPU-Only)",
+      "max_model_ram_gb": 2.2,
+      "speed_factor": 0.48,
+      "use_gpu": false
+    },
+    {
+      "id": "probook_450_g8",
+      "label": "HP ProBook 450 G8 (16 GB, i7-1165G7, CPU-Only)",
+      "max_model_ram_gb": 4.8,
+      "speed_factor": 0.62,
+      "use_gpu": false
+    },
+    {
+      "id": "apple_m3_16gb",
+      "label": "16 GB Apple Silicon (M1-M3 Metal)",
+      "max_model_ram_gb": 5.4,
+      "speed_factor": 1.0,
+      "use_gpu": true
+    },
+    {
+      "id": "workstation_32gb_gpu",
+      "label": "32 GB+ Dedicated GPU (>=8 GB VRAM)",
+      "max_model_ram_gb": 10.0,
+      "speed_factor": 1.45,
+      "use_gpu": true
+    }
+  ],
+  "models": [
+    {
+      "tag": "qwen2.5:1.5b",
+      "display": "Qwen2.5 1.5B",
+      "license": "Apache-2.0",
+      "quant": "Q4_K_M",
+      "download_gb": 1.0,
+      "peak_model_ram_gb": 1.03,
+      "est_total_app_ram_gb": 1.63,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 79.49,
+      "measured_metal_ttft_ms": 127.1,
+      "measured_cpu_tok_per_sec": 62.76,
+      "measured_cpu_ttft_ms": 489.1,
+      "quality_en_json": 31,
+      "quality_ja_polite": 30,
+      "quality_fil_business": 26,
+      "quality_total": 87,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 95,
+          "fits_ram": true,
+          "est_tok_per_sec": 30.1,
+          "est_total_ram_gb": 1.63
+        },
+        "probook_450_g8": {
+          "score": 97,
+          "fits_ram": true,
+          "est_tok_per_sec": 38.9,
+          "est_total_ram_gb": 1.63
+        },
+        "apple_m3_16gb": {
+          "score": 97,
+          "fits_ram": true,
+          "est_tok_per_sec": 79.5,
+          "est_total_ram_gb": 1.63
+        },
+        "workstation_32gb_gpu": {
+          "score": 97,
+          "fits_ram": true,
+          "est_tok_per_sec": 115.3,
+          "est_total_ram_gb": 1.63
+        }
+      }
+    },
+    {
+      "tag": "qwen3:1.7b",
+      "display": "Qwen3 1.7B",
+      "license": "Apache-2.0",
+      "quant": "Q4_K_M",
+      "download_gb": 1.4,
+      "peak_model_ram_gb": 1.13,
+      "est_total_app_ram_gb": 1.73,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 66.0,
+      "measured_metal_ttft_ms": 146.5,
+      "measured_cpu_tok_per_sec": 52.16,
+      "measured_cpu_ttft_ms": 526.4,
+      "quality_en_json": 35,
+      "quality_ja_polite": 25,
+      "quality_fil_business": 30,
+      "quality_total": 90,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 95,
+          "fits_ram": true,
+          "est_tok_per_sec": 25.0,
+          "est_total_ram_gb": 1.73
+        },
+        "probook_450_g8": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 32.3,
+          "est_total_ram_gb": 1.73
+        },
+        "apple_m3_16gb": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 66.0,
+          "est_total_ram_gb": 1.73
+        },
+        "workstation_32gb_gpu": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 95.7,
+          "est_total_ram_gb": 1.73
+        }
+      }
+    },
+    {
+      "tag": "qwen2.5:3b",
+      "display": "Qwen2.5 3B",
+      "license": "Apache-2.0",
+      "quant": "Q4_K_M",
+      "download_gb": 1.9,
+      "peak_model_ram_gb": 1.94,
+      "est_total_app_ram_gb": 2.54,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 38.56,
+      "measured_metal_ttft_ms": 252.2,
+      "measured_cpu_tok_per_sec": 33.06,
+      "measured_cpu_ttft_ms": 1062.3,
+      "quality_en_json": 35,
+      "quality_ja_polite": 25,
+      "quality_fil_business": 30,
+      "quality_total": 90,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 89,
+          "fits_ram": true,
+          "est_tok_per_sec": 15.9,
+          "est_total_ram_gb": 2.54
+        },
+        "probook_450_g8": {
+          "score": 96,
+          "fits_ram": true,
+          "est_tok_per_sec": 20.5,
+          "est_total_ram_gb": 2.54
+        },
+        "apple_m3_16gb": {
+          "score": 97,
+          "fits_ram": true,
+          "est_tok_per_sec": 38.6,
+          "est_total_ram_gb": 2.54
+        },
+        "workstation_32gb_gpu": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 55.9,
+          "est_total_ram_gb": 2.54
+        }
+      }
+    },
+    {
+      "tag": "phi4-mini:3.8b",
+      "display": "Phi-4 Mini 3.8B",
+      "license": "MIT",
+      "quant": "Q4_K_M",
+      "download_gb": 2.5,
+      "peak_model_ram_gb": 2.64,
+      "est_total_app_ram_gb": 3.24,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 31.13,
+      "measured_metal_ttft_ms": 272.6,
+      "measured_cpu_tok_per_sec": 25.12,
+      "measured_cpu_ttft_ms": 1384.7,
+      "quality_en_json": 26,
+      "quality_ja_polite": 35,
+      "quality_fil_business": 30,
+      "quality_total": 91,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 38,
+          "fits_ram": false,
+          "est_tok_per_sec": 12.1,
+          "est_total_ram_gb": 3.24
+        },
+        "probook_450_g8": {
+          "score": 94,
+          "fits_ram": true,
+          "est_tok_per_sec": 15.6,
+          "est_total_ram_gb": 3.24
+        },
+        "apple_m3_16gb": {
+          "score": 95,
+          "fits_ram": true,
+          "est_tok_per_sec": 31.1,
+          "est_total_ram_gb": 3.24
+        },
+        "workstation_32gb_gpu": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 45.1,
+          "est_total_ram_gb": 3.24
+        }
+      }
+    },
+    {
+      "tag": "qwen3:4b",
+      "display": "Qwen3 4B",
+      "license": "Apache-2.0",
+      "quant": "Q4_K_M",
+      "download_gb": 2.6,
+      "peak_model_ram_gb": 2.68,
+      "est_total_app_ram_gb": 3.28,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 27.52,
+      "measured_metal_ttft_ms": 288.8,
+      "measured_cpu_tok_per_sec": 20.43,
+      "measured_cpu_ttft_ms": 1349.9,
+      "quality_en_json": 0,
+      "quality_ja_polite": 35,
+      "quality_fil_business": 18,
+      "quality_total": 53,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 38,
+          "fits_ram": false,
+          "est_tok_per_sec": 9.8,
+          "est_total_ram_gb": 3.28
+        },
+        "probook_450_g8": {
+          "score": 85,
+          "fits_ram": true,
+          "est_tok_per_sec": 12.7,
+          "est_total_ram_gb": 3.28
+        },
+        "apple_m3_16gb": {
+          "score": 86,
+          "fits_ram": true,
+          "est_tok_per_sec": 27.5,
+          "est_total_ram_gb": 3.28
+        },
+        "workstation_32gb_gpu": {
+          "score": 88,
+          "fits_ram": true,
+          "est_tok_per_sec": 39.9,
+          "est_total_ram_gb": 3.28
+        }
+      }
+    },
+    {
+      "tag": "gemma3:4b",
+      "display": "Gemma 3 4B",
+      "license": "Gemma Terms",
+      "quant": "Q4_K_M",
+      "download_gb": 3.3,
+      "peak_model_ram_gb": 2.17,
+      "est_total_app_ram_gb": 2.77,
+      "fits_probook_6gb": true,
+      "measured_metal_tok_per_sec": 28.68,
+      "measured_metal_ttft_ms": 324.2,
+      "measured_cpu_tok_per_sec": 22.49,
+      "measured_cpu_ttft_ms": 1310.8,
+      "quality_en_json": 35,
+      "quality_ja_polite": 35,
+      "quality_fil_business": 30,
+      "quality_total": 100,
+      "compatibility": {
+        "entry_8gb_cpu": {
+          "score": 87,
+          "fits_ram": true,
+          "est_tok_per_sec": 10.8,
+          "est_total_ram_gb": 2.77
+        },
+        "probook_450_g8": {
+          "score": 98,
+          "fits_ram": true,
+          "est_tok_per_sec": 13.9,
+          "est_total_ram_gb": 2.77
+        },
+        "apple_m3_16gb": {
+          "score": 99,
+          "fits_ram": true,
+          "est_tok_per_sec": 28.7,
+          "est_total_ram_gb": 2.77
+        },
+        "workstation_32gb_gpu": {
+          "score": 100,
+          "fits_ram": true,
+          "est_tok_per_sec": 41.6,
+          "est_total_ram_gb": 2.77
+        }
+      }
+    }
+  ]
+}

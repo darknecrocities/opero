@@ -4,9 +4,12 @@ import { playJiggSfx } from '@opero/jiggicons';
 import { PeroMascot, type PeroMotionId } from '@opero/mascot';
 import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 import { useOperoStore } from '../../store/useOperoStore';
+import { DEFAULT_MODELS } from '../../store/defaults';
+import { isModelSelectableInApp } from '../../services/modelAvailability';
 import { OnboardingAmbientBg } from './OnboardingAmbientBg';
 import { OnboardingCompleteStep } from './OnboardingCompleteStep';
 import { OnboardingConfetti } from './OnboardingConfetti';
+import { OnboardingModelStep } from './OnboardingModelStep';
 import { OnboardingPrivacyStep } from './OnboardingPrivacyStep';
 import {
   getOnboardingStepSpec,
@@ -28,7 +31,7 @@ const WORDMARK_LETTERS = ['O', 'p', 'e', 'r', 'o'] as const;
 const BOOP_SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
 export const WelcomeOnboardingFlow: React.FC = () => {
-  const { userProfile, soundEnabled, toggleSound, saveOnboardingProfile, setUiLocale } = useOperoStore();
+  const { userProfile, activeModelId, hardwareProfile, soundEnabled, toggleSound, saveOnboardingProfile, setUiLocale, setActiveModelId } = useOperoStore();
   const [step, setStep] = useState<number>(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [name, setName] = useState<string>(userProfile.name);
@@ -50,9 +53,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   useEffect(() => {
     if (!soundEnabled) return;
     if (step === 0) prefetchPeroClip('/audio/pero/welcome-opero.mp3');
-    prefetchPeroClip(bundledClipPathForStep(step, 'en-US'));
-    prefetchPeroClip(bundledClipPathForStep(step, 'ja-JP'));
-  }, [step, soundEnabled]);
+    prefetchPeroClip(bundledClipPathForStep(step, locale, personality));
+  }, [step, locale, personality, soundEnabled]);
 
   useEffect(() => {
     if (step !== 0 || introPlayedRef.current || !soundEnabled) return;
@@ -60,25 +62,37 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     void speakPeroDynamic('Opero!', 'en-US', soundEnabled, '/audio/pero/welcome-opero.mp3', false);
   }, [step, soundEnabled]);
 
+  const selectedModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
+  const isModelReady = Boolean(selectedModel && isModelSelectableInApp(selectedModel, hardwareProfile));
+  const readyModelName = isModelReady ? (selectedModel?.displayName ?? selectedModel?.modelName ?? '') : '';
+
   useEffect(() => () => stopPeroVoice(), []);
-  useOnboardingAutoVoice({ step, name, occupation, personality, locale, privacyAccepted, soundEnabled, onSpoken: setSpokenLine });
+  useOnboardingAutoVoice({
+    step, name, occupation, personality, locale, privacyAccepted,
+    selectedModelName: readyModelName, soundEnabled, onSpoken: setSpokenLine,
+  });
 
   const activeMotion: PeroMotionId = useMemo(() => {
     if (step === 1 && name.trim().length > 0) return 'thumbs-up';
     if (step === 3) return TONE_TO_PERO_MOTION[personality] ?? 'thinking-processing';
-    if (step === 5 && privacyAccepted) return 'thumbs-up';
-    if (step === 6) return boopTick % 2 === 1 ? 'verified-celebrate' : 'jump-cheer';
+    if (step === 5 && isModelReady) return 'thumbs-up';
+    if (step === 6 && privacyAccepted) return 'thumbs-up';
+    if (step === 7) return boopTick % 2 === 1 ? 'verified-celebrate' : 'jump-cheer';
     return spec.defaultMotion;
-  }, [step, name, personality, privacyAccepted, boopTick, spec.defaultMotion]);
+  }, [step, name, personality, isModelReady, privacyAccepted, boopTick, spec.defaultMotion]);
 
   const cueText = useMemo(() => {
-    const activeLang: PeroVoiceLang = spokenLine?.lang ?? (locale === 'ja-JP' ? 'ja-JP' : 'en-US');
-    return buildDynamicPeroLine({ step, name, occupation, personality, privacyAccepted }, activeLang);
-  }, [spokenLine, locale, step, name, occupation, personality, privacyAccepted]);
+    const activeLang: PeroVoiceLang = spokenLine?.lang ?? locale;
+    return buildDynamicPeroLine(
+      { step, name, occupation, personality, privacyAccepted, modelName: readyModelName },
+      activeLang,
+    );
+  }, [spokenLine, locale, step, name, occupation, personality, privacyAccepted, readyModelName]);
 
   const canAdvanceFromStep = (current: number): boolean => {
     if (current === 1 && !name.trim()) return false;
-    if (current === 5 && !privacyAccepted) return false;
+    if (current === 5 && !isModelReady) return false;
+    if (current === 6 && !privacyAccepted) return false;
     return current < TOTAL_SCREENS - 1;
   };
 
@@ -107,9 +121,9 @@ export const WelcomeOnboardingFlow: React.FC = () => {
   const handlePeroTap = () => {
     const nextTap = stepTapCount + 1;
     const voiceLang: PeroVoiceLang =
-      locale === 'ja-JP' ? 'ja-JP' : nextTap % 2 === 1 ? 'en-US' : 'ja-JP';
+      locale === 'ja-JP' ? 'ja-JP' : nextTap % 2 === 1 ? locale : 'ja-JP';
     const line = buildDynamicPeroLine(
-      { step, name, occupation, personality, privacyAccepted },
+      { step, name, occupation, personality, privacyAccepted, modelName: readyModelName },
       voiceLang,
     );
     setStepTapCount(nextTap);
@@ -117,15 +131,9 @@ export const WelcomeOnboardingFlow: React.FC = () => {
     setBoopTick((t) => t + 1);
     if (step === TOTAL_SCREENS - 1) setConfettiBurst((b) => b + 1);
     const hasPersonalInput =
-      name.trim().length > 0 || occupation.trim().length > 0 || step === 3 || step === 5 || step === 6;
+      name.trim().length > 0 || occupation.trim().length > 0 || readyModelName.length > 0 || voiceLang === 'fil-PH' || step >= 3;
     playJiggSfx(step === TOTAL_SCREENS - 1 ? 'success' : 'click', soundEnabled);
-    void speakPeroDynamic(
-      line,
-      voiceLang,
-      soundEnabled,
-      bundledClipPathForStep(step, voiceLang),
-      hasPersonalInput,
-    );
+    void speakPeroDynamic(line, voiceLang, soundEnabled, bundledClipPathForStep(step, voiceLang, personality), hasPersonalInput, personality);
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -144,6 +152,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
 
   const handleLocalePick = (nextLocale: FirstClassLocale) => {
     playJiggSfx('click', soundEnabled);
+    setSpokenLine(null);
+    setStepTapCount(0);
     setLocale(nextLocale);
     setUiLocale(nextLocale);
     setBoopTick((t) => t + 1);
@@ -180,21 +190,10 @@ export const WelcomeOnboardingFlow: React.FC = () => {
       aria-label="OPERO Welcome Onboarding"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        background: 'var(--bg-canvas)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px 24px',
-        overflow: 'hidden',
-      }}
+      className="onboard-viewport"
     >
       <OnboardingAmbientBg step={step} boopTick={boopTick} />
-      {step === 6 && <OnboardingConfetti burstKey={confettiBurst} />}
+      {step === 7 && <OnboardingConfetti burstKey={confettiBurst} />}
 
       <button
         type="button"
@@ -204,25 +203,14 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           toggleSound();
         }}
         className="onboard-ghost-btn"
-        style={{ position: 'fixed', top: '18px', right: '22px', zIndex: 4, fontSize: '12.5px' }}
+        style={{ position: 'fixed', top: '14px', right: '18px', zIndex: 4, fontSize: '12.5px' }}
       >
         {locale === 'ja-JP' ? (soundEnabled ? '音声: オン' : '音声: オフ') : soundEnabled ? 'Voice: ON' : 'Voice: OFF'}
       </button>
 
       <div
         key={step}
-        className={direction === 'next' ? 'onboard-swipe-next' : 'onboard-swipe-prev'}
-        style={{
-          width: '100%',
-          maxWidth: '520px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px',
-          textAlign: 'center',
-          position: 'relative',
-          zIndex: 2,
-        }}
+        className={`onboard-stage ${direction === 'next' ? 'onboard-swipe-next' : 'onboard-swipe-prev'}`}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <button
@@ -377,6 +365,8 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                     className={`onboard-choice ${active ? 'active' : ''}`}
                     onClick={() => {
                       playJiggSfx('click', soundEnabled);
+                      setSpokenLine(null);
+                      setStepTapCount(0);
                       setPersonality(opt.id);
                       setBoopTick((t) => t + 1);
                     }}
@@ -389,13 +379,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
                     </span>
                     <span
                       aria-hidden="true"
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '999px',
-                        backgroundColor: active ? '#0F172A' : 'transparent',
-                        flexShrink: 0,
-                      }}
+                      style={{ width: '8px', height: '8px', borderRadius: '999px', backgroundColor: active ? '#0F172A' : 'transparent', flexShrink: 0 }}
                     />
                   </button>
                 );
@@ -433,6 +417,18 @@ export const WelcomeOnboardingFlow: React.FC = () => {
         )}
 
         {step === 5 && (
+          <OnboardingModelStep
+            locale={locale}
+            selectedModelId={activeModelId}
+            soundEnabled={soundEnabled}
+            onSelectModel={(modelId) => {
+              setActiveModelId(modelId);
+              setBoopTick((t) => t + 1);
+            }}
+          />
+        )}
+
+        {step === 6 && (
           <OnboardingPrivacyStep
             locale={locale}
             accepted={privacyAccepted}
@@ -444,7 +440,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           />
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <OnboardingCompleteStep
             locale={locale}
             name={name}
@@ -461,7 +457,7 @@ export const WelcomeOnboardingFlow: React.FC = () => {
           <div
             style={{
               width: '100%',
-              maxWidth: step === 5 ? '480px' : '380px',
+              maxWidth: step === 5 || step === 6 ? '500px' : '380px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',

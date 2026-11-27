@@ -79,6 +79,7 @@ export const VerticalDownloadFooter: React.FC<VerticalDownloadFooterProps> = ({
 
             {DOWNLOADS_ENABLED && isWindows ? (
               <Button
+                type="button"
                 variant="primary"
                 href={artifact.downloadUrl}
                 download={artifact.fileName}
@@ -89,6 +90,7 @@ export const VerticalDownloadFooter: React.FC<VerticalDownloadFooterProps> = ({
               </Button>
             ) : (
               <Button
+                type="button"
                 variant={isWindows ? 'secondary' : 'ghost'}
                 disabled
                 aria-disabled="true"

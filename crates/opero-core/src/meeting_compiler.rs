@@ -1,5 +1,4 @@
 use chrono::Utc;
-use std::process::Command;
 use uuid::Uuid;
 
 use crate::db::OperoStore;
@@ -207,32 +206,31 @@ pub(crate) fn synthesize_meeting_summary(
 }
 
 pub fn call_ollama_quick(model: &str, prompt: &str) -> Option<String> {
-    let payload = serde_json::json!({
-        "model": model,
-        "prompt": prompt,
-        "stream": false,
-        "think": false
+    let model_owned = model.to_string();
+    let prompt_owned = prompt.to_string();
+    let val: serde_json::Value = std::thread::spawn(move || {
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(2))
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .ok()?;
+        let resp = client
+            .post("http://127.0.0.1:11434/api/generate")
+            .json(&serde_json::json!({
+                "model": model_owned,
+                "prompt": prompt_owned,
+                "stream": false
+            }))
+            .send()
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        resp.json().ok()
     })
-    .to_string();
-    let out = Command::new("curl")
-        .args([
-            "-fsS",
-            "--connect-timeout",
-            "1",
-            "--max-time",
-            "12",
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            &payload,
-            "http://127.0.0.1:11434/api/generate",
-        ])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let val: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+    .join()
+    .ok()
+    .flatten()?;
     let text = val.get("response")?.as_str()?.trim().to_string();
     if text.is_empty() { None } else { Some(text) }
 }

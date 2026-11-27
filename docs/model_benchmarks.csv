@@ -1,0 +1,7 @@
+Model,Tag,License,Download (GB),Model RAM (GB),App+Model RAM (GB),CPU-Only tok/s [measured],Metal tok/s [measured],CPU TTFT (ms),EN JSON (/35),Polite JA (/35),FIL (/30),Quality (/100),8GB CPU Compat (%),HP ProBook 450 G8 Compat (%),16GB Apple Silicon Compat (%),32GB GPU Compat (%)
+Qwen2.5 1.5B,qwen2.5:1.5b,Apache-2.0,1.0,1.03,1.63,62.76,79.49,489.1,31,30,26,87,95,97,97,97
+Qwen3 1.7B,qwen3:1.7b,Apache-2.0,1.4,1.13,1.73,52.16,66.0,526.4,35,25,30,90,95,98,98,98
+Qwen2.5 3B,qwen2.5:3b,Apache-2.0,1.9,1.94,2.54,33.06,38.56,1062.3,35,25,30,90,89,96,97,98
+Phi-4 Mini 3.8B,phi4-mini:3.8b,MIT,2.5,2.64,3.24,25.12,31.13,1384.7,26,35,30,91,38,94,95,98
+Qwen3 4B,qwen3:4b,Apache-2.0,2.6,2.68,3.28,20.43,27.52,1349.9,0,35,18,53,38,85,86,88
+Gemma 3 4B,gemma3:4b,Gemma Terms,3.3,2.17,2.77,22.49,28.68,1310.8,35,35,30,100,87,98,99,100

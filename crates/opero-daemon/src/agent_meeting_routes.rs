@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::{delete, get, post},
     Json, Router,
 };
@@ -14,7 +14,9 @@ use opero_core::meeting_notes::{
     compile_meeting_to_manual, get_meeting_note, list_meeting_notes, start_meeting_recording,
     stop_and_compile_meeting,
 };
-use opero_core::ollama_runtime::{check_ollama_status, ensure_ollama_runtime};
+use opero_core::ollama_runtime::{
+    check_ollama_status_with_data_dir, ensure_ollama_ready_for_inference, ensure_ollama_runtime,
+};
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -44,13 +46,21 @@ async fn chat_turn(
         return Err(ApiError(OperoError::Validation("Prompt cannot be empty.".to_string())));
     }
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
-    let resp = run_agent_turn(
-        &state.store,
-        req.thread_id.as_deref(),
-        &req.prompt,
-        &locale,
-        req.preferred_model.as_deref(),
-    )?;
+    let thread_id = req.thread_id;
+    let prompt = req.prompt;
+    let preferred = req.preferred_model;
+    let st = Arc::clone(&state);
+    let resp = tokio::task::spawn_blocking(move || {
+        run_agent_turn(
+            &st.store,
+            thread_id.as_deref(),
+            &prompt,
+            &locale,
+            preferred.as_deref(),
+        )
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Agent chat task failed: {e}"))))??;
     Ok(Json(serde_json::json!(resp)))
 }
 
@@ -147,12 +157,17 @@ async fn stop_compile_meeting(
     Path(id): Path<String>,
     Json(req): Json<StopCompileMeetingReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let meeting = stop_and_compile_meeting(
-        &state.store,
-        &id,
-        req.transcript_override.as_deref(),
-        req.preferred_model.as_deref(),
-    )?;
+    let st = Arc::clone(&state);
+    let transcript = req.transcript_override;
+    let preferred = req.preferred_model;
+    let meeting = tokio::task::spawn_blocking(move || {
+        if preferred.as_deref().is_some_and(|m| !m.is_empty() && m != "offline") {
+            let _ = ensure_ollama_ready_for_inference(&st.store.data_dir, preferred.as_deref());
+        }
+        stop_and_compile_meeting(&st.store, &id, transcript.as_deref(), preferred.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Meeting compile task failed: {e}"))))??;
     Ok(Json(serde_json::json!({ "meeting": meeting })))
 }
 
@@ -191,13 +206,28 @@ async fn export_meeting(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RuntimeStatusQuery {
+    model_tag: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct EnsureRuntimeReq {
     model_tag: Option<String>,
     pull_if_missing: Option<bool>,
 }
 
-async fn get_runtime_status() -> Result<Json<serde_json::Value>, ApiError> {
-    let status = check_ollama_status(Some("qwen3:1.7b"));
+async fn get_runtime_status(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<RuntimeStatusQuery>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let data_dir = state.store.data_dir.clone();
+    let tag = query.model_tag;
+    let status = tokio::task::spawn_blocking(move || {
+        check_ollama_status_with_data_dir(Some(&data_dir), tag.as_deref())
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Runtime status task failed: {e}"))))?;
     Ok(Json(serde_json::json!({ "runtime": status })))
 }
 
@@ -205,11 +235,14 @@ async fn post_ensure_runtime(
     State(state): State<Arc<AppState>>,
     Json(req): Json<EnsureRuntimeReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let status = ensure_ollama_runtime(
-        &state.store.data_dir,
-        req.model_tag.as_deref(),
-        req.pull_if_missing.unwrap_or(true),
-    );
+    let data_dir = state.store.data_dir.clone();
+    let tag = req.model_tag;
+    let pull = req.pull_if_missing.unwrap_or(false);
+    let status = tokio::task::spawn_blocking(move || {
+        ensure_ollama_runtime(&data_dir, tag.as_deref(), pull)
+    })
+    .await
+    .map_err(|e| ApiError(OperoError::Process(format!("Ensure runtime task failed: {e}"))))?;
     Ok(Json(serde_json::json!({ "runtime": status })))
 }
 

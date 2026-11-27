@@ -1,38 +1,40 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getFeatureStrings } from '@opero/i18n';
-import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
+import { playJiggSfx } from '@opero/jiggicons';
 import { PeroAmbientPresence } from '@opero/mascot';
-import type { AgentThread, OllamaRuntimeStatus } from '@opero/shared-types';
+import type { AgentThread } from '@opero/shared-types';
 import { PeroAvatar } from '../../components/PeroAvatar';
 import { operoClient } from '../../services/operoClient';
 import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
+import { resolvePreferredOllamaTag, useRuntimeStore } from '../../store/useRuntimeStore';
 import { AgentActionCard } from './AgentActionCard';
+import { AgentChatHeader } from './AgentChatHeader';
 import { AgentHistorySidebar } from './AgentHistorySidebar';
 import { AgentMessageContent } from './AgentMessageContent';
 import { AgentThinkingBlock } from './AgentThinkingBlock';
 
 export const AgentChatView: React.FC = () => {
   const {
-    uiLocale,
-    activeModelId,
-    soundEnabled,
-    userProfile,
-    peroCapColor,
-    peroJacketColor,
-    pendingAgentPrompt,
-    clearPendingAgentPrompt,
-    setNavMode,
-    showToast,
+    uiLocale, activeModelId, hardwareProfile, daemonOnline, soundEnabled, userProfile,
+    peroCapColor, peroJacketColor, pendingAgentPrompt, clearPendingAgentPrompt,
+    setNavMode, setHardwareProfile, showToast,
   } = useOperoStore();
+  const {
+    runtime,
+    starting: startingRuntime,
+    manualOffline,
+    autoStartAttemptedKey,
+    refreshRuntime,
+    ensureRuntime,
+  } = useRuntimeStore();
   const feat = getFeatureStrings(uiLocale);
   const activeModel = DEFAULT_MODELS.find((m) => m.id === activeModelId);
-  const selectedOllamaTag = activeModel?.ollamaTag ?? 'qwen3:1.7b';
+  const selectedOllamaTag =
+    resolvePreferredOllamaTag(activeModelId, hardwareProfile, manualOffline) ?? 'qwen2.5:3b';
 
   const [threads, setThreads] = useState<AgentThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState<boolean>(true);
-  const [runtime, setRuntime] = useState<OllamaRuntimeStatus | null>(null);
-  const [startingRuntime, setStartingRuntime] = useState(false);
   const [input, setInput] = useState('');
   const [optimisticPrompt, setOptimisticPrompt] = useState<string | null>(null);
   const [animatingMsgId, setAnimatingMsgId] = useState<string | null>(null);
@@ -42,15 +44,12 @@ export const AgentChatView: React.FC = () => {
 
   const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
   const userInitial = (userProfile.name?.trim()[0] ?? 'U').toUpperCase();
-
-  const refreshRuntime = async () => {
-    try {
-      const { runtime: rt } = await operoClient.getModelRuntimeStatus();
-      setRuntime(rt);
-    } catch {
-      // Daemon offline
-    }
-  };
+  const isModelLive = Boolean(!manualOffline && runtime?.running && runtime?.activeModelReady);
+  const liveModelLabel =
+    (activeModel?.ollamaTag ? activeModel.displayName : null) ??
+    runtime?.activeModel ??
+    activeModel?.displayName ??
+    'Local AI';
 
   const refreshThreads = async (selectId?: string) => {
     try {
@@ -64,26 +63,49 @@ export const AgentChatView: React.FC = () => {
   };
 
   useEffect(() => {
-    void refreshRuntime();
     void refreshThreads();
-  }, []);
+  }, [daemonOnline]);
+
+  useEffect(() => {
+    if (!daemonOnline) return;
+    if (manualOffline) {
+      void refreshRuntime('offline');
+      return;
+    }
+    if (!isModelLive && !startingRuntime && autoStartAttemptedKey !== selectedOllamaTag) {
+      void ensureRuntime(selectedOllamaTag, {
+        onHardwareUpdated: (hw) => setHardwareProfile(hw),
+      });
+    } else if (isModelLive && runtime?.activeModel && runtime.activeModel !== selectedOllamaTag) {
+      void refreshRuntime(selectedOllamaTag);
+    }
+  }, [
+    daemonOnline,
+    manualOffline,
+    selectedOllamaTag,
+    isModelLive,
+    startingRuntime,
+    autoStartAttemptedKey,
+    hardwareProfile?.installedModels.length,
+    ensureRuntime,
+    refreshRuntime,
+    setHardwareProfile,
+    runtime?.activeModel,
+  ]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeThread?.messages.length, optimisticPrompt, busy]);
 
   const handleStartLocalAi = async () => {
-    setStartingRuntime(true);
     playJiggSfx('click', soundEnabled);
-    try {
-      const { runtime: rt } = await operoClient.ensureModelRuntime({
-        modelTag: selectedOllamaTag,
-        pullIfMissing: true,
-      });
-      setRuntime(rt);
+    const rt = await ensureRuntime(selectedOllamaTag, {
+      force: true,
+      pullIfMissing: Boolean(hardwareProfile?.autoDownloadAllowed),
+      onHardwareUpdated: (hw) => setHardwareProfile(hw),
+    });
+    if (rt?.running && rt.activeModelReady) {
       playJiggSfx('success', soundEnabled);
-    } finally {
-      setStartingRuntime(false);
     }
   };
 
@@ -99,11 +121,11 @@ export const AgentChatView: React.FC = () => {
         threadId: activeThreadId ?? undefined,
         prompt: clean,
         locale: uiLocale,
-        preferredModel: selectedOllamaTag,
+        preferredModel: manualOffline ? 'offline' : selectedOllamaTag,
       });
       setAnimatingMsgId(resp.message.id);
       await refreshThreads(resp.threadId);
-      if (resp.modelLive) void refreshRuntime();
+      if (resp.modelLive) void refreshRuntime(selectedOllamaTag);
       playJiggSfx('success', soundEnabled);
     } finally {
       setOptimisticPrompt(null);
@@ -163,7 +185,6 @@ export const AgentChatView: React.FC = () => {
   const starters = uiLocale === 'ja-JP'
     ? ['明日の14時に「チーム定例」をGoogleカレンダーに登録してください', '「Q4タスク管理表」というタイトルでExcelを作成してください', '「MMIオンボーディング手順」のPDFを作成してください', feat.agentStarter1]
     : ['Schedule "MMI Team Sync" on Google Calendar tomorrow at 2pm', 'Generate an Excel spreadsheet titled "Q4 Task Tracker"', 'Create a PDF guide titled "MMI Onboarding Checklist"', 'Gumawa ng iskedyul sa kalendaryo bukas ng 10am para sa Design Review'];
-  const isModelLive = Boolean(runtime?.running && runtime?.activeModelReady);
 
   return (
     <div
@@ -204,75 +225,21 @@ export const AgentChatView: React.FC = () => {
           minHeight: 0,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {!historyOpen && (
-              <button
-                type="button"
-                className="opero-btn"
-                aria-label="Open chat history"
-                title="Show Chat History"
-                onClick={() => setHistoryOpen(true)}
-                style={{ minHeight: '32px', width: '32px', padding: 0 }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-            )}
-            <PeroAvatar size={38} thinking={busy || startingRuntime} />
-            <div>
-              <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.025em' }}>
-                {feat.agentTitle}
-              </h1>
-              <div style={{ marginTop: '2px', fontSize: '12px', color: 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span
-                  style={{
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '999px',
-                    background: isModelLive ? '#69BCFC' : '#C7C3BC',
-                    display: 'inline-block',
-                  }}
-                />
-                <span>
-                  {isModelLive
-                    ? `${activeModel?.displayName ?? runtime?.activeModel} · Live · EN / JA / Tagalog`
-                    : uiLocale === 'ja-JP'
-                      ? 'ローカルAIが停止しています（上のボタンから起動してください）'
-                      : 'Local AI offline — start Ollama for live replies'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {!isModelLive && (
-              <button
-                type="button"
-                className="opero-btn primary"
-                disabled={startingRuntime}
-                onClick={() => void handleStartLocalAi()}
-                style={{ minHeight: '32px', padding: '4px 12px', fontSize: '12px' }}
-              >
-                <JiggIcon name="router" size={14} variant="duotone" />
-                <span>{startingRuntime ? 'Starting Local AI...' : 'Start Local AI'}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="opero-btn"
-              onClick={() => setNavMode('settings')}
-              title="Configure Agent Capabilities"
-              style={{ minHeight: '32px', padding: '4px 10px', fontSize: '12px' }}
-            >
-              <JiggIcon name="settings" size={14} variant="duotone" />
-              <span>Capabilities</span>
-            </button>
-          </div>
-        </div>
+        <AgentChatHeader
+          title={feat.agentTitle}
+          uiLocale={uiLocale}
+          historyOpen={historyOpen}
+          busy={busy}
+          startingRuntime={startingRuntime}
+          manualOffline={manualOffline}
+          isModelLive={isModelLive}
+          liveModelLabel={liveModelLabel}
+          runtime={runtime}
+          autoStartAttemptedKey={autoStartAttemptedKey}
+          onOpenHistory={() => setHistoryOpen(true)}
+          onStartLocalAi={() => void handleStartLocalAi()}
+          onOpenCapabilities={() => setNavMode('settings')}
+        />
 
         <div
           style={{

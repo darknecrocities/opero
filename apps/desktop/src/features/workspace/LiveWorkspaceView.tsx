@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getUiDictionary } from '@opero/i18n';
 import { JiggIcon } from '@opero/jiggicons';
 import { PeroAmbientPresence } from '@opero/mascot';
+import { formatShortcut } from '../../services/platformShortcuts';
 import { useOperoStore } from '../../store/useOperoStore';
 
 function formatClock(ms: number): string {
@@ -186,7 +187,7 @@ export const LiveWorkspaceView: React.FC = () => {
                   onClick={() => void startRecordingFlow(sessionTitleInput)}
                 >
                   <JiggIcon name="capture" size={16} variant="duotone" />
-                  <span>{dict.startCapture} (⌥Space)</span>
+                  <span>{dict.startCapture} ({formatShortcut({ alt: true, key: 'Space' })})</span>
                 </button>
                 <button
                   type="button"
@@ -399,7 +400,7 @@ export const LiveWorkspaceView: React.FC = () => {
             />
             <button type="submit" className="opero-btn primary" style={{ minHeight: '34px' }}>
               <span>Ask RAG</span>
-              <span className="mono" style={{ fontSize: '11px' }}>⌘↵</span>
+              <span className="mono" style={{ fontSize: '11px' }}>{formatShortcut({ mod: true, key: 'Enter' })}</span>
             </button>
           </form>
 

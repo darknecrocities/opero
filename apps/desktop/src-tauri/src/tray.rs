@@ -43,6 +43,7 @@ pub fn setup_system_tray(app: &App) -> tauri::Result<()> {
 
     let icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
 
+    #[allow(unused_mut)]
     let mut builder = TrayIconBuilder::with_id("opero-quickbar")
         .icon(icon)
         .tooltip("OPERO Quick Actions")

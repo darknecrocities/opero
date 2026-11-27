@@ -3,14 +3,8 @@ import { getFeatureStrings, getUiDictionary } from '@opero/i18n';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
 import { OperoLogo } from '@opero/mascot';
 import type { ExportFormat } from '@opero/shared-types';
+import { formatShortcut } from '../services/platformShortcuts';
 import { useOperoStore } from '../store/useOperoStore';
-
-const EXPORT_ITEMS: { fmt: ExportFormat; icon: string; label: string; keyHint: string }[] = [
-  { fmt: 'pdf', icon: 'export-pdf', label: 'Export PDF', keyHint: '⌘E' },
-  { fmt: 'docx', icon: 'export-docx', label: 'Export Word (.docx)', keyHint: '⌘⇧D' },
-  { fmt: 'markdown', icon: 'export-md', label: 'Export Markdown', keyHint: '⌘⇧M' },
-  { fmt: 'html', icon: 'export-html', label: 'Export HTML', keyHint: '⌘⇧H' },
-];
 
 export const TopWindowBar: React.FC = () => {
   const {
@@ -18,6 +12,7 @@ export const TopWindowBar: React.FC = () => {
     navMode,
     leftOpen,
     rightOpen,
+    hardwareProfile,
     soundEnabled,
     toggleLeft,
     toggleRight,
@@ -26,6 +21,13 @@ export const TopWindowBar: React.FC = () => {
   } = useOperoStore();
   const dict = getUiDictionary(uiLocale);
   const feat = getFeatureStrings(uiLocale);
+  const os = hardwareProfile?.osName;
+  const exportItems: { fmt: ExportFormat; icon: string; label: string; keyHint: string }[] = [
+    { fmt: 'pdf', icon: 'export-pdf', label: 'Export PDF', keyHint: formatShortcut({ mod: true, key: 'E' }, os) },
+    { fmt: 'docx', icon: 'export-docx', label: 'Export Word (.docx)', keyHint: formatShortcut({ mod: true, shift: true, key: 'D' }, os) },
+    { fmt: 'markdown', icon: 'export-md', label: 'Export Markdown', keyHint: formatShortcut({ mod: true, shift: true, key: 'M' }, os) },
+    { fmt: 'html', icon: 'export-html', label: 'Export HTML', keyHint: formatShortcut({ mod: true, shift: true, key: 'H' }, os) },
+  ];
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,7 +55,7 @@ export const TopWindowBar: React.FC = () => {
             }}
             aria-label="Show navigation sidebar"
             aria-pressed={leftOpen}
-            title="Show Sidebar (⌘B)"
+            title={`Show Sidebar (${formatShortcut({ mod: true, key: 'B' }, os)})`}
             style={{ minHeight: '32px', width: '32px', padding: 0 }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -87,7 +89,7 @@ export const TopWindowBar: React.FC = () => {
           >
             <JiggIcon name="export-pdf" size={15} variant="duotone" />
             <span>{dict.exportTitle}</span>
-            <span className="mono" style={{ fontSize: '11px', opacity: 0.7 }}>⌘E</span>
+            <span className="mono" style={{ fontSize: '11px', opacity: 0.7 }}>{formatShortcut({ mod: true, key: 'E' }, os)}</span>
           </button>
 
           {exportMenuOpen && (
@@ -109,7 +111,7 @@ export const TopWindowBar: React.FC = () => {
                 background: 'var(--bg-surface)',
               }}
             >
-              {EXPORT_ITEMS.map((item) => (
+              {exportItems.map((item) => (
                 <button
                   key={item.fmt}
                   type="button"
@@ -138,7 +140,7 @@ export const TopWindowBar: React.FC = () => {
           onClick={toggleSettingsView}
           aria-label="Open Settings"
           aria-pressed={navMode === 'settings'}
-          title="Settings (⌘,)"
+          title={`Settings (${formatShortcut({ mod: true, key: ',' }, os)})`}
           style={{ minHeight: '32px', padding: '4px 8px' }}
         >
           <JiggIcon name="settings" size={16} variant="duotone" />
@@ -153,7 +155,7 @@ export const TopWindowBar: React.FC = () => {
           }}
           aria-label="Toggle right utility sidebar"
           aria-pressed={rightOpen}
-          title="Toggle Utility Rail (⌘⇧B)"
+          title={`Toggle Utility Rail (${formatShortcut({ mod: true, shift: true, key: 'B' }, os)})`}
           style={{ minHeight: '32px', padding: '4px 10px' }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

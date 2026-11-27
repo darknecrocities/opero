@@ -1,7 +1,6 @@
 use chrono::Utc;
 use rusqlite::params;
 use std::path::Path;
-use std::process::Command;
 use uuid::Uuid;
 
 use crate::db::OperoStore;
@@ -28,7 +27,7 @@ pub fn isolate_untrusted_screen_text(raw: &str) -> String {
 
 /// Stage 2: Invoke host Tesseract 5.5 safely via argument array (zero shell injection).
 pub fn run_tesseract_ocr(image_path: &Path) -> OperoResult<String> {
-    let out = Command::new("tesseract")
+    let out = crate::win_process::silent_command("tesseract")
         .arg(image_path)
         .arg("stdout")
         .args(["--psm", "6"])

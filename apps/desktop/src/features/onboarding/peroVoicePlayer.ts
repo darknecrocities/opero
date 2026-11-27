@@ -1,7 +1,6 @@
-import { PERSONALITY_OPTIONS } from '@opero/i18n';
-import type { OperoPersonality } from '@opero/shared-types';
+import type { FirstClassLocale, OperoPersonality } from '@opero/shared-types';
 
-export type PeroVoiceLang = 'en-US' | 'ja-JP';
+export type PeroVoiceLang = FirstClassLocale;
 
 export interface DynamicVoiceContext {
   readonly step: number;
@@ -9,6 +8,7 @@ export interface DynamicVoiceContext {
   readonly occupation: string;
   readonly personality: OperoPersonality;
   readonly privacyAccepted: boolean;
+  readonly modelName?: string;
 }
 
 const DAEMON_PORT = (import.meta.env?.VITE_OPERO_DAEMON_PORT as string | undefined) || '4317';
@@ -20,6 +20,7 @@ const inflightFetch = new Map<string, Promise<ArrayBuffer | null>>();
 let voiceAudioCtx: AudioContext | null = null;
 let activeSourceNode: AudioBufferSourceNode | null = null;
 let activeHtmlAudio: HTMLAudioElement | null = null;
+let activeSpeechAbort: AbortController | null = null;
 let activePlayToken = 0;
 
 function getVoiceAudioContext(): AudioContext | null {
@@ -32,18 +33,64 @@ function getVoiceAudioContext(): AudioContext | null {
   return voiceAudioCtx;
 }
 
-export function bundledClipPathForStep(step: number, lang: PeroVoiceLang): string {
-  const clamped = Math.max(0, Math.min(6, step));
-  const suffix = lang === 'ja-JP' ? 'ja' : 'en';
+export function bundledClipPathForStep(
+  step: number,
+  lang: PeroVoiceLang,
+  personality: OperoPersonality = 'calm_concise',
+): string {
+  const suffix = lang === 'ja-JP' ? 'ja' : lang === 'fil-PH' ? 'fil' : 'en';
+  if (step === 3) return `/audio/pero/step-3-${personality}-${suffix}.mp3`;
+  if (step === 5) return `/audio/pero/step-model-${suffix}.mp3`;
+  if (step === 6) return `/audio/pero/step-5-${suffix}.mp3`;
+  if (step >= 7) return `/audio/pero/step-6-${suffix}.mp3`;
+  const clamped = Math.max(0, Math.min(4, step));
   return `/audio/pero/step-${clamped}-${suffix}.mp3`;
+}
+
+function buildToneSampleLine(personality: OperoPersonality, cleanName: string, lang: PeroVoiceLang): string {
+  if (lang === 'ja-JP') {
+    const who = cleanName ? `${cleanName}さん、` : '';
+    switch (personality) {
+      case 'friendly_guide':
+        return `${who}よろしくおねがいします！わかりやすく親しみやすいガイドでサポートいたします。`;
+      case 'technical_direct':
+        return `了解いたしました、${who}技術的でダイレクトな表現で的確にまとめます。`;
+      case 'formal_sop':
+        return `承知いたしました、${who}監査にも対応する公式SOPの敬語表現で作成いたします。`;
+      default:
+        return `承知いたしました、${who}簡潔で落ち着いた表現でお話しします。`;
+    }
+  }
+  if (lang === 'fil-PH') {
+    const who = cleanName ? `, ${cleanName}` : '';
+    switch (personality) {
+      case 'friendly_guide':
+        return `Sige po${who}! Magiliw at madaling sundan ang magiging gabay ko sa bawat hakbang.`;
+      case 'technical_direct':
+        return `Nakuha ko${who}. Diretso at eksaktong teknikal na detalye ang ibibigay ko.`;
+      case 'formal_sop':
+        return `Nauunawaan ko po${who}. Pormal at handa sa audit ang dokumentasyon natin.`;
+      default:
+        return `Ayos${who}. Kalmado, malinaw, at maikling mga hakbang ang gagamitin ko.`;
+    }
+  }
+  const who = cleanName ? `, ${cleanName}` : '';
+  switch (personality) {
+    case 'friendly_guide':
+      return `Got it${who}! I'll be your warm, friendly guide every step of the way!`;
+    case 'technical_direct':
+      return `Got it${who} — technical and direct. Exact commands, crisp steps, zero guesswork.`;
+    case 'formal_sop':
+      return `Got it${who}. Formal MMI SOP style selected — structured, compliant, and audit-ready.`;
+    default:
+      return `Got it${who} — calm and concise. Short, clear steps with zero fluff.`;
+  }
 }
 
 export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLang): string {
   const cleanName = ctx.name.trim();
   const cleanRole = ctx.occupation.trim();
-  const toneOpt = PERSONALITY_OPTIONS.find((opt) => opt.id === ctx.personality);
-  const toneEn = toneOpt?.label['en-US'] ?? 'Calm and Concise';
-  const toneJa = toneOpt?.label['ja-JP'] ?? '丁寧で簡潔';
+  const cleanModel = ctx.modelName?.trim() ?? '';
 
   if (lang === 'ja-JP') {
     switch (ctx.step) {
@@ -55,19 +102,26 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
           : 'こんにちは。お名前を教えていただけますでしょうか？';
       case 2:
         return cleanRole
-          ? `${cleanRole}をご担当されているのですね。素敵です。`
+          ? `${cleanName ? `${cleanName}さん、` : ''}${cleanRole}をご担当されているのですね。素敵です。`
           : cleanName
             ? `${cleanName}さんは、どのようなお仕事を担当されていますか？`
             : 'どのようなお仕事を担当されていますか？';
       case 3:
-        return cleanName
-          ? `承知いたしました、${cleanName}さん。${toneJa}でお話しします。`
-          : `承知いたしました。${toneJa}でお話しします。`;
+        return buildToneSampleLine(ctx.personality, cleanName, 'ja-JP');
       case 4:
         return cleanName
           ? `${cleanName}さん、英語・日本語・フィリピン語の3言語に対応しています。`
           : '英語・日本語・フィリピン語の3言語に対応しています。';
       case 5:
+        if (cleanModel) {
+          return cleanName
+            ? `${cleanName}さん、${cleanModel}の準備が整いました。ローカルで快適に動作します。`
+            : `${cleanModel}の準備が整いました。ローカルで快適に動作します。`;
+        }
+        return cleanName
+          ? `${cleanName}さんのPC環境に合わせて、最適なローカルAIモデルをお選びください。`
+          : 'お使いのPC環境に合わせて、最適なローカルAIモデルをお選びください。';
+      case 6:
         return ctx.privacyAccepted
           ? cleanName
             ? `ありがとうございます、${cleanName}さん。すべて端末内で大切に保護いたします。`
@@ -82,6 +136,47 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
     }
   }
 
+  if (lang === 'fil-PH') {
+    switch (ctx.step) {
+      case 0:
+        return 'Kumusta! Ako si Pero — maligayang pagdating sa Opero.';
+      case 1:
+        return cleanName ? `Kumusta, ${cleanName}! Ikinagagalak kitang makilala!` : 'Kumusta! Ano ang dapat itawag ko sa iyo?';
+      case 2:
+        if (cleanRole) {
+          return cleanName ? `Ang galing, ${cleanName}! Magandang papel ang ${cleanRole}.` : `Ang galing! Magandang papel ang ${cleanRole}.`;
+        }
+        return cleanName ? `${cleanName}, ano ang iyong trabaho o tungkulin?` : 'Ano ang iyong trabaho o tungkulin?';
+      case 3:
+        return buildToneSampleLine(ctx.personality, cleanName, 'fil-PH');
+      case 4:
+        return cleanName
+          ? `Handa na ako, ${cleanName} — nagsasalita ako ng English, Japanese, at Filipino.`
+          : 'Handa na ako — nagsasalita ako ng English, Japanese, at Filipino.';
+      case 5:
+        if (cleanModel) {
+          return cleanName
+            ? `Magandang pili, ${cleanName}! Handa na ang ${cleanModel} sa iyong PC.`
+            : `Magandang pili! Handa na ang ${cleanModel} sa iyong PC.`;
+        }
+        return cleanName
+          ? `Piliin at i-download ang lokal na AI model na babagay sa PC mo, ${cleanName}.`
+          : 'Piliin at i-download ang lokal na AI model na babagay sa PC mo.';
+      case 6:
+        return ctx.privacyAccepted
+          ? cleanName
+            ? `Salamat, ${cleanName} — mananatiling ligtas at pribado ang lahat sa iyong device.`
+            : 'Salamat — mananatiling ligtas at pribado ang lahat sa iyong device.'
+          : cleanName
+            ? `Huwag mag-alala, ${cleanName} — lahat ay mananatiling pribado sa iyong device.`
+            : 'Huwag mag-alala — lahat ay mananatiling pribado sa iyong device.';
+      default:
+        return cleanName
+          ? `Yehey, ${cleanName}! Handang-handa na ang lahat para sa iyo.`
+          : 'Yehey! Handang-handa na ang lahat para sa iyo.';
+    }
+  }
+
   switch (ctx.step) {
     case 0:
       return "Ooh, hi there! I'm Pero — welcome to Opero.";
@@ -93,14 +188,21 @@ export function buildDynamicPeroLine(ctx: DynamicVoiceContext, lang: PeroVoiceLa
       }
       return cleanName ? `Ooh, ${cleanName}, what kind of work do you do?` : 'Ooh, what kind of work do you do?';
     case 3:
-      return cleanName
-        ? `Got it, ${cleanName} — I'll speak in a ${toneEn} tone.`
-        : `Got it — I'll speak in a ${toneEn} tone.`;
+      return buildToneSampleLine(ctx.personality, cleanName, 'en-US');
     case 4:
       return cleanName
         ? `Whenever you're ready, ${cleanName} — I speak English, Japanese, and Filipino.`
         : "Whenever you're ready — I speak English, Japanese, and Filipino.";
     case 5:
+      if (cleanModel) {
+        return cleanName
+          ? `Nice choice, ${cleanName} — ${cleanModel} is downloaded and ready on your PC!`
+          : `Nice choice — ${cleanModel} is downloaded and ready on your PC!`;
+      }
+      return cleanName
+        ? `Pick the local AI model that matches your PC speed, ${cleanName}.`
+        : 'Pick the local AI model that matches your PC speed.';
+    case 6:
       if (ctx.privacyAccepted) {
         return cleanName
           ? `Thank you, ${cleanName} — everything stays safe right here on your device.`
@@ -141,34 +243,63 @@ async function fetchBundledClip(path: string): Promise<ArrayBuffer | null> {
   return job;
 }
 
-async function fetchLiveNeuralSpeech(text: string, lang: PeroVoiceLang): Promise<ArrayBuffer | null> {
-  const key = `neural::${lang}::${text.trim()}`;
+async function fetchLiveNeuralSpeech(
+  text: string,
+  lang: PeroVoiceLang,
+  tone: OperoPersonality = 'calm_concise',
+  signal?: AbortSignal,
+): Promise<ArrayBuffer | null> {
+  const key = `neural::${lang}::${tone}::${text.trim()}`;
   const cached = audioBufferCache.get(key);
   if (cached) return cached;
+  const existing = inflightFetch.get(key);
+  if (existing) return existing;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
-  try {
-    const res = await fetch(SPEAK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang }),
-      signal: controller.signal,
-    });
-    // Only play natural neural child voice (Kokoro-82M loopback or cached Kokoro) — never robotic OS say
-    const engine = res.headers.get('x-opero-tts-engine');
-    if (!res.ok || res.status === 204 || (engine !== 'loopback-tts' && engine !== 'local-cache')) {
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener('abort', onExternalAbort, { once: true });
+  const timer = setTimeout(() => controller.abort(), 7000);
+
+  const job = (async (): Promise<ArrayBuffer | null> => {
+    try {
+      const res = await fetch(SPEAK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang, tone }),
+        signal: controller.signal,
+      });
+      const engine = res.headers.get('x-opero-tts-engine');
+      if (
+        !res.ok ||
+        res.status === 204 ||
+        (engine !== 'loopback-tts' && engine !== 'local-cache' && engine !== 'edge-neural')
+      ) {
+        return null;
+      }
+      const bytes = await res.arrayBuffer();
+      if (bytes.byteLength < 256) return null;
+      audioBufferCache.set(key, bytes);
+      return bytes;
+    } catch {
       return null;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onExternalAbort);
+      inflightFetch.delete(key);
     }
-    const bytes = await res.arrayBuffer();
-    if (bytes.byteLength < 256) return null;
-    audioBufferCache.set(key, bytes);
-    return bytes;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  })();
+
+  inflightFetch.set(key, job);
+  return job;
+}
+
+export function prefetchLiveNeuralSpeech(
+  text: string,
+  lang: PeroVoiceLang,
+  tone: OperoPersonality = 'calm_concise',
+): void {
+  if (!text.trim()) return;
+  void fetchLiveNeuralSpeech(text, lang, tone);
 }
 
 export function prefetchPeroClip(bundledPath: string): void {
@@ -178,12 +309,16 @@ export function prefetchPeroClip(bundledPath: string): void {
 
 export function stopPeroVoice(): void {
   activePlayToken += 1;
+  if (activeSpeechAbort) {
+    activeSpeechAbort.abort();
+    activeSpeechAbort = null;
+  }
   if (activeSourceNode) {
     try {
       activeSourceNode.stop();
       activeSourceNode.disconnect();
     } catch {
-      // Node already stopped
+      // Already stopped
     }
     activeSourceNode = null;
   }
@@ -192,7 +327,7 @@ export function stopPeroVoice(): void {
       activeHtmlAudio.pause();
       activeHtmlAudio.currentTime = 0;
     } catch {
-      // Ignore pause errors
+      // Ignore
     }
     activeHtmlAudio = null;
   }
@@ -200,7 +335,7 @@ export function stopPeroVoice(): void {
     try {
       window.speechSynthesis.cancel();
     } catch {
-      // Ignore speechSynthesis cancel errors
+      // Ignore
     }
   }
 }
@@ -234,28 +369,38 @@ export async function speakPeroDynamic(
   enabled: boolean,
   bundledFallbackPath: string,
   preferDynamicNeural = false,
+  tone: OperoPersonality = 'calm_concise',
 ): Promise<boolean> {
   if (!enabled || !text.trim()) return false;
   stopPeroVoice();
   const token = activePlayToken;
 
-  // Synchronously unlock Web Audio inside the user click gesture (required by macOS WKWebView)
   const syncCtx = getVoiceAudioContext();
   if (syncCtx && syncCtx.state === 'suspended') {
     void syncCtx.resume().catch(() => {});
   }
 
-  // For personalized lines (user's typed name, role, style, or privacy), synthesize dynamically with Kokoro-82M neural child voice
   if (preferDynamicNeural) {
-    const neuralBytes = await fetchLiveNeuralSpeech(text, lang);
-    if (token !== activePlayToken) return false;
-    if (neuralBytes) {
-      const ok = await playAudioBytes(neuralBytes, token);
+    const neuralKey = `neural::${lang}::${tone}::${text.trim()}`;
+    const alreadyCached = audioBufferCache.get(neuralKey);
+    if (alreadyCached) {
+      const ok = await playAudioBytes(alreadyCached, token);
       if (ok) return true;
+    } else {
+      const neuralPromise = fetchLiveNeuralSpeech(text, lang, tone);
+      // Instant for disk-cached (<20ms) or already-warmed neural audio; otherwise immediately play exact per-tone/per-language bundled clip while neural finishes caching in background
+      const fastBudget = new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), 350);
+      });
+      const neuralBytes = await Promise.race([neuralPromise, fastBudget]);
+      if (token !== activePlayToken) return false;
+      if (neuralBytes) {
+        const ok = await playAudioBytes(neuralBytes, token);
+        if (ok) return true;
+      }
     }
   }
 
-  // Play bundled Kokoro-82M neural child MP3 via Web Audio API, falling back to HTMLAudioElement
   const clipBytes = await fetchBundledClip(bundledFallbackPath);
   if (token !== activePlayToken) return false;
   if (clipBytes) {
@@ -267,9 +412,6 @@ export async function speakPeroDynamic(
   try {
     const audio = new Audio(bundledFallbackPath);
     activeHtmlAudio = audio;
-    audio.onended = () => {
-      if (activeHtmlAudio === audio) activeHtmlAudio = null;
-    };
     await audio.play();
     return true;
   } catch {

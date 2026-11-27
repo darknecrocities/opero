@@ -11,9 +11,14 @@ use opero_core::doc_analyzer::{
 };
 use opero_core::doc_analyzer_llm::ask_about_document;
 use opero_core::error::OperoError;
-use opero_core::hardware::{inspect_hardware_profile, pull_curated_ollama_model};
+use opero_core::hardware::{
+    delete_curated_ollama_model, inspect_hardware_profile_with_data_dir, pull_curated_ollama_model,
+    validate_pull_model_tag,
+};
 use opero_core::memory::dual_core::get_memory_stats;
 use opero_core::memory::mmi_knowledge::seed_mmi_public_knowledge;
+use opero_core::model_pull::{run_automated_model_pull, ModelPullJobStatus};
+use opero_core::ollama_runtime::ensure_ollama_ready_for_inference;
 use opero_export::writers::export_manual_artifact;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -54,8 +59,10 @@ async fn ingest_document(
     let filename = req.filename.clone();
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let preferred = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let bytes_for_parse = bytes.clone();
     let doc = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, preferred.as_deref());
         analyze_document_bytes(&filename, &bytes_for_parse, &locale, preferred.as_deref())
     })
     .await
@@ -177,7 +184,9 @@ async fn reanalyze_document(
     let full_text = doc.blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join("\n");
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let pref = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let res = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, pref.as_deref());
         summarize_text_with_ollama(&full_text, &locale, pref.as_deref())
     })
     .await
@@ -216,7 +225,9 @@ async fn ask_document(
     let question = req.question.trim().to_string();
     let locale = req.locale.unwrap_or_else(|| "en-US".to_string());
     let pref = req.preferred_model.clone();
+    let data_dir = state.store.data_dir.clone();
     let (answer, engine_used) = tokio::task::spawn_blocking(move || {
+        let _ = ensure_ollama_ready_for_inference(&data_dir, pref.as_deref());
         ask_about_document(&filename, &full_text, &question, &locale, pref.as_deref())
     })
     .await
@@ -263,8 +274,11 @@ async fn compile_report(
     Ok(Json(serde_json::json!({ "manual": manual, "artifact": artifact })))
 }
 
-async fn get_hardware() -> Json<serde_json::Value> {
-    let hardware = inspect_hardware_profile();
+async fn get_hardware(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let data_dir = state.store.data_dir.clone();
+    let hardware = tokio::task::spawn_blocking(move || inspect_hardware_profile_with_data_dir(Some(&data_dir)))
+        .await
+        .unwrap_or_else(|_| inspect_hardware_profile_with_data_dir(None));
     Json(serde_json::json!({ "hardware": hardware }))
 }
 
@@ -280,6 +294,93 @@ async fn pull_model(Json(req): Json<PullModelReq>) -> Result<Json<serde_json::Va
         .await
         .map_err(|e| ApiError(OperoError::Validation(format!("Model download task failed: {e}"))))??;
     Ok(Json(serde_json::json!({ "hardware": hardware })))
+}
+
+async fn start_pull_model_async(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<PullModelReq>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let clean = req.model_tag.trim().to_string();
+    validate_pull_model_tag(&clean)?;
+    if let Ok(map) = state.pull_jobs.lock() {
+        if let Some(existing) = map.values().find(|j| {
+            j.model_tag.eq_ignore_ascii_case(&clean)
+                && j.phase != "completed"
+                && j.phase != "failed"
+        }) {
+            return Ok((
+                StatusCode::ACCEPTED,
+                Json(serde_json::json!({ "jobId": existing.job_id, "status": existing })),
+            ));
+        }
+    }
+    let job_id = uuid::Uuid::new_v4().to_string();
+    let initial = ModelPullJobStatus {
+        job_id: job_id.clone(),
+        model_tag: clean.clone(),
+        phase: "checking_runtime".to_string(),
+        status_text: "Checking local Ollama runtime...".to_string(),
+        completed_bytes: 0,
+        total_bytes: 0,
+        percent: None,
+        speed_bytes_per_sec: None,
+        error: None,
+        hardware: None,
+    };
+    if let Ok(mut map) = state.pull_jobs.lock() {
+        map.insert(job_id.clone(), initial.clone());
+    }
+    let jobs_arc = state.pull_jobs.clone();
+    let data_dir = state.store.data_dir.clone();
+    let jid = job_id.clone();
+    std::thread::spawn(move || {
+        run_automated_model_pull(&data_dir, &jid, &clean, |update| {
+            if let Ok(mut map) = jobs_arc.lock() {
+                map.insert(jid.clone(), update);
+            }
+        });
+    });
+    Ok((StatusCode::ACCEPTED, Json(serde_json::json!({ "jobId": job_id, "status": initial }))))
+}
+
+async fn get_active_pull_job(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let map = state
+        .pull_jobs
+        .lock()
+        .map_err(|_| ApiError(OperoError::Process("Job tracker lock poisoned".into())))?;
+    let active = map
+        .values()
+        .find(|j| j.phase != "completed" && j.phase != "failed")
+        .cloned();
+    Ok(Json(serde_json::json!({ "status": active })))
+}
+
+async fn delete_model(
+    State(state): State<Arc<AppState>>,
+    Path(tag): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let data_dir = state.store.data_dir.clone();
+    let hardware = tokio::task::spawn_blocking(move || delete_curated_ollama_model(&tag, Some(&data_dir)))
+        .await
+        .map_err(|e| ApiError(OperoError::Process(format!("Model delete task failed: {e}"))))??;
+    Ok(Json(serde_json::json!({ "hardware": hardware })))
+}
+
+async fn get_pull_model_status(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let map = state
+        .pull_jobs
+        .lock()
+        .map_err(|_| ApiError(OperoError::Process("Job tracker lock poisoned".into())))?;
+    let status = map
+        .get(&job_id)
+        .cloned()
+        .ok_or_else(|| ApiError(OperoError::NotFound(format!("Download job '{job_id}' not found."))))?;
+    Ok(Json(serde_json::json!({ "status": status })))
 }
 
 async fn seed_mmi_memory(State(state): State<Arc<AppState>>) -> Result<Json<serde_json::Value>, ApiError> {
@@ -298,6 +399,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/api/v1/system/hardware", get(get_hardware))
         .route("/api/v1/models/pull", post(pull_model))
+        .route("/api/v1/models/pull-async", post(start_pull_model_async))
+        .route("/api/v1/models/pull-active", get(get_active_pull_job))
+        .route("/api/v1/models/pull-status/{job_id}", get(get_pull_model_status))
+        .route("/api/v1/models/{tag}", delete(delete_model))
         .route("/api/v1/memory/seed-mmi", post(seed_mmi_memory))
         .route("/api/v1/analyzer/documents", get(list_documents))
         .route("/api/v1/analyzer/documents/{id}", delete(delete_document))

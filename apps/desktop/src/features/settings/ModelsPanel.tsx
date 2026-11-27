@@ -1,39 +1,50 @@
 import React, { useState } from 'react';
 import { JiggIcon, playJiggSfx } from '@opero/jiggicons';
+import { ModelDownloadProgressBar } from '../../components/ModelDownloadProgressBar';
+import { useModelPull } from '../../hooks/useModelPull';
+import { isModelDownloadedOnPc, isModelSelectableInApp } from '../../services/modelAvailability';
 import { operoClient } from '../../services/operoClient';
 import { DEFAULT_MODELS, useOperoStore } from '../../store/useOperoStore';
 
 export const ModelsPanel: React.FC = () => {
   const { activeModelId, hardwareProfile, soundEnabled, setActiveModelId, setHardwareProfile } = useOperoStore();
-  const [downloadingTag, setDownloadingTag] = useState<string | null>(null);
+  const { pullJob, isPulling, pullingTag, error: pullError, startDownload } = useModelPull();
   const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deletingTag, setDeletingTag] = useState<string | null>(null);
 
-  const isInstalled = (ollamaTag?: string): boolean => {
-    if (!ollamaTag) return true;
-    const list = hardwareProfile?.installedModels ?? [];
-    return list.some((m) => m === ollamaTag || m.startsWith(`${ollamaTag}-`));
-  };
-
-  const handleDownload = async (tag: string, modelId: string) => {
-    playJiggSfx('step', soundEnabled);
-    setDownloadingTag(tag);
-    setError(null);
+  const handleDelete = async (tag: string, label: string) => {
+    setDeletingTag(tag);
     setNotice(null);
+    playJiggSfx('click', soundEnabled);
     try {
-      const { hardware } = await operoClient.pullModel(tag);
+      const { hardware } = await operoClient.deleteModel(tag);
       setHardwareProfile(hardware);
-      setActiveModelId(modelId);
-      setNotice(`Downloaded and selected ${tag}.`);
-      playJiggSfx('success', soundEnabled);
+      setNotice(`Removed ${label} from this PC.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to download model right now.');
+      setNotice(err instanceof Error ? err.message : `Could not remove ${label}.`);
     } finally {
-      setDownloadingTag(null);
+      setDeletingTag(null);
     }
   };
 
   const recommendedModel = DEFAULT_MODELS.find((m) => m.id === hardwareProfile?.recommendedModelId);
+  const recommendedInstalled = recommendedModel
+    ? isModelSelectableInApp(recommendedModel, hardwareProfile)
+    : false;
+  const autoDownloadAllowed = Boolean(hardwareProfile?.autoDownloadAllowed);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setNotice(null);
+    try {
+      const { hardware } = await operoClient.getHardwareProfile();
+      setHardwareProfile(hardware);
+      setNotice(`Detected ${hardware.installedModels.length} downloaded local model(s).`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <section
@@ -65,27 +76,63 @@ export const ModelsPanel: React.FC = () => {
           )}
         </div>
 
-        {recommendedModel && activeModelId !== recommendedModel.id && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
           <button
             type="button"
-            className="opero-btn primary"
-            onClick={() => {
-              playJiggSfx('click', soundEnabled);
-              setActiveModelId(recommendedModel.id);
-              setNotice(`Applied hardware-recommended model: ${recommendedModel.displayName ?? recommendedModel.modelName}`);
-            }}
-            style={{ minHeight: '32px', fontSize: '12px', flexShrink: 0 }}
+            className="opero-btn"
+            disabled={refreshing || isPulling}
+            onClick={() => void handleRefresh()}
+            style={{ minHeight: '32px', fontSize: '12px' }}
           >
-            Apply Recommended
+            {refreshing ? 'Checking...' : 'Refresh'}
           </button>
-        )}
+
+          {recommendedModel && activeModelId !== recommendedModel.id && (
+            recommendedInstalled ? (
+              <button
+                type="button"
+                className="opero-btn primary"
+                onClick={() => {
+                  playJiggSfx('click', soundEnabled);
+                  setActiveModelId(recommendedModel.id);
+                  setNotice(`Applied hardware-recommended model: ${recommendedModel.displayName ?? recommendedModel.modelName}`);
+                }}
+                style={{ minHeight: '32px', fontSize: '12px' }}
+              >
+                Apply Recommended
+              </button>
+            ) : autoDownloadAllowed && recommendedModel.ollamaTag ? (
+              <button
+                type="button"
+                className="opero-btn primary"
+                disabled={isPulling}
+                onClick={() => {
+                  setNotice(null);
+                  void startDownload(recommendedModel.ollamaTag!, recommendedModel.id, () => {
+                    setNotice(`Downloaded and selected ${recommendedModel.displayName ?? recommendedModel.modelName}.`);
+                  });
+                }}
+                style={{ minHeight: '32px', fontSize: '12px' }}
+              >
+                <JiggIcon name="download" size={14} variant="duotone" />
+                <span>Download Recommended</span>
+              </button>
+            ) : null
+          )}
+        </div>
       </div>
+
+      {pullJob && (isPulling || pullJob.phase === 'completed') && (
+        <ModelDownloadProgressBar job={pullJob} />
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {DEFAULT_MODELS.map((m) => {
-          const active = m.id === activeModelId;
+          const downloaded = isModelDownloadedOnPc(m, hardwareProfile);
+          const selectable = isModelSelectableInApp(m, hardwareProfile);
+          const active = selectable && m.id === activeModelId;
           const isRecommended = m.id === hardwareProfile?.recommendedModelId;
-          const installed = isInstalled(m.ollamaTag);
+          const isThisDownloading = pullingTag === m.ollamaTag;
           const maxBudget = hardwareProfile?.maxModelRamGb ?? 6.0;
           const estRam = m.estimatedModelRamGb ?? 0;
           const fits =
@@ -112,8 +159,13 @@ export const ModelsPanel: React.FC = () => {
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '14.5px', fontWeight: 700, color: 'var(--ink)' }}>
                     {m.displayName ?? m.modelName}
                   </span>
-                  {isRecommended && (
+                  {downloaded && (
                     <span className="status-pill verified" style={{ fontSize: '10.5px', padding: '1px 8px' }}>
+                      Downloaded
+                    </span>
+                  )}
+                  {isRecommended && (
+                    <span className="status-pill" style={{ fontSize: '10.5px', padding: '1px 8px', background: 'var(--brand-sky-soft)', color: '#0F172A' }}>
                       Recommended for this PC
                     </span>
                   )}
@@ -121,9 +173,7 @@ export const ModelsPanel: React.FC = () => {
                     {m.licenseRef}
                   </span>
                 </div>
-                <div style={{ fontSize: '12.5px', color: 'var(--ink)' }}>
-                  {m.shortDescription}
-                </div>
+                <div style={{ fontSize: '12.5px', color: 'var(--ink)' }}>{m.shortDescription}</div>
                 <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
                   {m.capabilitySummary} · {m.languagesLabel}
                 </div>
@@ -134,27 +184,61 @@ export const ModelsPanel: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {m.ollamaTag && !installed && hardwareProfile?.ollamaRunning && (
-                  <button
-                    type="button"
-                    className="opero-btn"
-                    disabled={downloadingTag !== null}
-                    onClick={() => void handleDownload(m.ollamaTag!, m.id)}
-                  >
-                    <JiggIcon name="download" size={14} variant="duotone" />
-                    <span>{downloadingTag === m.ollamaTag ? 'Downloading...' : 'Download'}</span>
-                  </button>
+                {m.ollamaTag && !downloaded ? (
+                  autoDownloadAllowed ? (
+                    <button
+                      type="button"
+                      className={`opero-btn ${isRecommended ? 'primary' : ''}`}
+                      disabled={isPulling}
+                      onClick={() => {
+                        setNotice(null);
+                        void startDownload(m.ollamaTag!, m.id, () => {
+                          setNotice(`Downloaded and selected ${m.displayName ?? m.modelName}.`);
+                        });
+                      }}
+                    >
+                      <JiggIcon name="download" size={14} variant="duotone" />
+                      <span>
+                        {isThisDownloading
+                          ? pullJob?.percent != null
+                            ? `Downloading ${Math.round(pullJob.percent)}%`
+                            : 'Downloading...'
+                          : 'Download'}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                      IT Pre-Install ({m.ollamaTag})
+                    </span>
+                  )
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`opero-btn ${active ? 'primary' : ''}`}
+                      disabled={!selectable}
+                      onClick={() => {
+                        if (!selectable) return;
+                        playJiggSfx('click', soundEnabled);
+                        setActiveModelId(m.id);
+                      }}
+                    >
+                      <span>{active ? 'Selected' : 'Use Model'}</span>
+                    </button>
+                    {m.ollamaTag && downloaded && (
+                      <button
+                        type="button"
+                        className="opero-btn"
+                        aria-label={`Remove ${m.displayName ?? m.modelName}`}
+                        disabled={isPulling || deletingTag !== null}
+                        onClick={() => void handleDelete(m.ollamaTag!, m.displayName ?? m.modelName)}
+                        style={{ minHeight: '32px', padding: '4px 10px', fontSize: '11.5px', color: 'var(--danger)' }}
+                      >
+                        {deletingTag === m.ollamaTag ? 'Removing...' : 'Remove'}
+                      </button>
+                    )}
+                  </>
                 )}
-                <button
-                  type="button"
-                  className={`opero-btn ${active ? 'primary' : ''}`}
-                  onClick={() => {
-                    playJiggSfx('click', soundEnabled);
-                    setActiveModelId(m.id);
-                  }}
-                >
-                  <span>{active ? 'Selected' : 'Use Model'}</span>
-                </button>
               </div>
             </div>
           );
@@ -166,9 +250,9 @@ export const ModelsPanel: React.FC = () => {
           {notice}
         </div>
       )}
-      {error && (
+      {pullError && (
         <div role="alert" style={{ fontSize: '12.5px', color: 'var(--danger)', fontWeight: 600 }}>
-          {error}
+          {pullError}
         </div>
       )}
     </section>
